@@ -1,0 +1,7 @@
+﻿  main.cpp
+C:\Users\jonat\Documents\Projects\Rouge like\main.cpp(12,18): warning C4065:  switch statement contains 'default' but no 'case' labels
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 1 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Rogue Like.vcxproj -> C:\Users\jonat\Documents\Projects\Rouge like\x64\Release\Rogue Like.exe
