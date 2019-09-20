@@ -1,7 +1,10 @@
-﻿  main.cpp
-C:\Users\jonat\Documents\Projects\Rouge like\main.cpp(12,18): warning C4065:  switch statement contains 'default' but no 'case' labels
+﻿  Actor.cpp
+  Engine.cpp
+  main.cpp
+  Map.cpp
   Generating code
-  Previous IPDB not found, fall back to full compilation.
-  All 1 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  192 of 192 functions (100.0%) were compiled.
+    191 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
-  Rogue Like.vcxproj -> C:\Users\jonat\Documents\Projects\Rouge like\x64\Release\Rogue Like.exe
+  Rogue Like.vcxproj -> C:\Users\jonat\Documents\Projects\Rouge_like\x64\Release\Rogue Like.exe

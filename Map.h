@@ -2,7 +2,7 @@
 
 struct Tile {
 	bool canWalk {}; // is tile passable
-	Tile() :canWalk{ true } {}
+	Tile() :canWalk{ false } {}
 };  
 
 class Map {
