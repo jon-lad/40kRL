@@ -1,17 +1,15 @@
 #include <memory>
 #include <list>
-#include "libtcod.h"
-#include "Actor.h"
-#include "Map.h"
-#include "Engine.h"
+#include "main.h"
 
+Engine engine(80, 50);
 
 int main()
 {
-	std::unique_ptr<Engine> engine = std::make_unique<Engine>();
 	while (!TCODConsole::isWindowClosed()) {
-		engine->update();
-		engine->render();
+		engine.update();
+		engine.render();
 		TCODConsole::flush();
 	}
+	return 0;
 }

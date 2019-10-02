@@ -1,10 +1,14 @@
 ﻿  Actor.cpp
+  Attacker.cpp
+  Destructible.cpp
   Engine.cpp
+  Gui.cpp
   main.cpp
   Map.cpp
+  Ai.cpp
   Generating code
-  192 of 192 functions (100.0%) were compiled.
-    191 functions were new in current compilation
+  467 of 467 functions (100.0%) were compiled.
+    466 functions were new in current compilation
     0 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   Rogue Like.vcxproj -> C:\Users\jonat\Documents\Projects\Rouge_like\x64\Release\Rogue Like.exe
