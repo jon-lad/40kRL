@@ -132,13 +132,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="Attacker.cpp" />
+    <ClCompile Include="Destructible.cpp" />
     <ClCompile Include="Engine.cpp" />
+    <ClCompile Include="Gui.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Map.cpp" />
+    <ClCompile Include="Ai.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actor.h" />
+    <ClInclude Include="Ai.h" />
+    <ClInclude Include="Attacker.h" />
     <ClInclude Include="Engine.h" />
+    <ClInclude Include="Destructible.h" />
+    <ClInclude Include="Gui.h" />
+    <ClInclude Include="main.h" />
     <ClInclude Include="Map.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
