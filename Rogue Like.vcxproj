@@ -139,16 +139,20 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Map.cpp" />
     <ClCompile Include="Ai.cpp" />
+    <ClCompile Include="Pickable.cpp" />
+    <ClCompile Include="Container.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actor.h" />
     <ClInclude Include="Ai.h" />
     <ClInclude Include="Attacker.h" />
+    <ClInclude Include="Container.h" />
     <ClInclude Include="Engine.h" />
     <ClInclude Include="Destructible.h" />
     <ClInclude Include="Gui.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="Map.h" />
+    <ClInclude Include="Pickable.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

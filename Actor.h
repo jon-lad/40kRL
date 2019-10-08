@@ -11,7 +11,9 @@ public:
 	bool blocks;
 	std::unique_ptr<Attacker> attacker;
 	std::unique_ptr<Destructible> destructible;
-	std::unique_ptr<Ai> ai;
+	std::unique_ptr<Ai> ai;// something self updating
+	std::unique_ptr<Pickable> pickable;// something that can be picked and used
+	std::unique_ptr<Container> container;//somthing that can contain actors
 	Actor(int x, int y, int ch,const char*name, const TCODColor& col);
 	void update();
 	

@@ -1,4 +1,5 @@
 #pragma once
+
 struct Tile {
 	bool explored {}; // is tile passable
 	Tile() :explored{ false } {}
@@ -18,6 +19,7 @@ public:
 	void computeFOV();
 	bool canWalk(int x, int y) const;//takes into account walls and Actors
 	void addMonster(int x, int y);
+	void addItem(int x, int y);
 
 	int getWidth() const;
 	void setWidth(int width);

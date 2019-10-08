@@ -8,6 +8,11 @@ Actor::Actor(int x, int y, int ch, const char* name, const TCODColor& col) :
 	x{ x }, y{ y }, ch{ ch }, col{ col }, blocks{ true }
 {
 	strcpy_s(this->name, name);
+	attacker.reset();
+	destructible.reset();
+	ai.reset();
+	pickable.reset();
+	container.reset();
 }
 
 void Actor::render() const

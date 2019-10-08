@@ -13,6 +13,7 @@ public:
 	}
 
 	float takeDamage(Actor* owner, float damage);
+	float heal(int amount);
 
 	virtual void die(Actor* owner);
 };
