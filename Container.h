@@ -8,5 +8,5 @@ public:
 
 	Container(int size);
 	bool add(std::unique_ptr<Actor> actor);
-	void remove(std::unique_ptr<Actor> actor);
+	void remove(Actor* actor);
 };

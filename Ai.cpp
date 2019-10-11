@@ -110,7 +110,7 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii) {
 			if (i->get()->pickable && i->get()->getX() == owner->getX() && i->get()->getY() == owner->getY()) {
 				const char* itemName = i->get()->name;
 				Actor* item = i->get();
-				if (item->pickable->pick(std::move(*i), owner) ){
+				if (item->pickable->pick(std::move(*i), owner)) {
 					found = true;
 					engine.gui->message(TCODColor::lightGrey, "You pick up the %s", itemName);
 					break;
@@ -131,12 +131,21 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii) {
 	{
 		Actor* item = chooseFromInventory(owner);
 		if (item) {
-			for (auto i = owner->container->inventory.begin(); i != owner->container->inventory.end();++i ) {
+			for (auto i = owner->container->inventory.begin(); i != owner->container->inventory.end(); ++i) {
 				if (i->get() == item) {
 					item->pickable->use(i->get(), owner);
 					break;
 				}
 			}
+			engine.gameStatus = Engine::NEW_TURN;
+		}
+	}
+	break;
+	case 'd'://drop
+	{
+		Actor* item = chooseFromInventory(owner);
+		if (item) {
+			item->pickable->drop(item, owner);
 			engine.gameStatus = Engine::NEW_TURN;
 		}
 	}
@@ -167,4 +176,32 @@ void MonsterAi::moveOrAttack(Actor * owner, int targetx, int targety) {
 	else if (owner->attacker) {
 		owner->attacker->attack(owner, engine.player);
 	}
+}
+
+ConfusedMonsterAi::ConfusedMonsterAi(int nbTurns, std::unique_ptr<Ai> oldAi): nbTurns{ nbTurns }, oldAi{ std::move(oldAi) } {
+}
+
+void ConfusedMonsterAi::update(Actor* owner) {
+	TCODRandom* rng = TCODRandom::getInstance();
+	int dx = rng->getInt(-1, 1);
+	int dy = rng->getInt(-1, 1);
+	if (dx != 0 || dy != 0) {
+		int destx = owner->getX() + dx;
+		int desty = owner->getY() + dy;
+		if (engine.map->canWalk(destx, desty)) {
+			owner->setX(destx);
+			owner->setY(desty);
+		}
+		else {
+			Actor* actor = engine.getActor(destx, desty);
+			if (actor) {
+				owner->attacker->attack(owner, actor);
+			}
+		}
+	}
+	nbTurns--;
+	if (nbTurns==0) {
+		owner->ai = std::move(oldAi);
+	}
+
 }

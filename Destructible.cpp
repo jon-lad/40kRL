@@ -29,6 +29,7 @@ float Destructible::heal(int amount) {
 void Destructible::die(Actor* owner) {
 	// transform the actor into a corpse!
 	owner->setCh('%');
+	owner->ai.reset();
 	owner->setColor(TCODColor::darkRed);
 	strcpy_s(owner->name,corpseName);
 	owner->blocks = false;

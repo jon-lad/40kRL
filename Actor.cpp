@@ -1,5 +1,6 @@
 #include <memory>
 #include <list>
+#include <cmath>
 #include "main.h"
 
 
@@ -20,11 +21,19 @@ void Actor::render() const
 	TCODConsole::root->setChar(x, y, ch);
 	TCODConsole::root->setCharForeground(x, y, col);
 }
+
 void Actor::update() 
 {
 	if (ai) { ai->update(this); }
 }
 
+
+
+float Actor::getDistance(int cx, int cy){
+	int dx = x - cx;
+	int dy = y - cy;
+	return std::sqrtf(dx * dx + dy * dy);
+}
 
 int Actor::getX() const
 {

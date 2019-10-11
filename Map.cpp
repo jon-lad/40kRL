@@ -209,10 +209,36 @@ void Map::addMonster(int x, int y) {
 }
 
 void Map::addItem(int x, int y) {
-	std::unique_ptr<Actor> healthPotion = std::make_unique<Actor>(x, y, '!', "health potion", TCOD_violet);
-	healthPotion->blocks = false;
-	healthPotion->pickable = std::make_unique<Healer>(4);
-	engine.actors.emplace_front(std::move(healthPotion));
+	TCODRandom* rng = TCODRandom::getInstance();
+	int dice = rng->getInt(0, 100);
+	if (dice < 70) {
+		//create a health potion
+		std::unique_ptr<Actor> healthPotion = std::make_unique<Actor>(x, y, '!', "health potion", TCOD_violet);
+		healthPotion->blocks = false;
+		healthPotion->pickable = std::make_unique<Healer>(4);
+		engine.actors.emplace_front(std::move(healthPotion));
+	}
+	else if (dice < 70 + 10) {
+		//create a scroll of Lightning bolt
+		std::unique_ptr<Actor> scrollOfLightningBolt = std::make_unique<Actor>(x, y, '#', "scroll of lightning bolt", TCOD_light_yellow);
+		scrollOfLightningBolt->blocks = false;
+		scrollOfLightningBolt->pickable = std::make_unique<LightningBolt>(5,20);
+		engine.actors.emplace_front(std::move(scrollOfLightningBolt));
+	}
+	else if (dice < 70 + 10+10) {
+		//create a scroll of Fireball
+		std::unique_ptr<Actor> scrollOfFireball = std::make_unique<Actor>(x, y, '#', "scroll of fireball", TCOD_light_yellow);
+		scrollOfFireball->blocks = false;
+		scrollOfFireball->pickable = std::make_unique<Fireball>(3, 12);
+		engine.actors.emplace_front(std::move(scrollOfFireball));
+	}
+	else if (dice < 70 + 10 + 10 + 10) {
+		//create a scroll of Confusion
+		std::unique_ptr<Actor> scrollOfConfusion = std::make_unique<Actor>(x, y, '#', "scroll of confusion", TCOD_light_yellow);
+		scrollOfConfusion->blocks = false;
+		scrollOfConfusion->pickable = std::make_unique<Confuser>(10, 8);
+		engine.actors.emplace_front(std::move(scrollOfConfusion));
+	}
 }
 //Get and sets for width and height
 int Map::getWidth() const

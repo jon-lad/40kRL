@@ -13,13 +13,12 @@ bool Container::add(std::unique_ptr<Actor> actor) {
 	return true;
 }
 
-void Container::remove(std::unique_ptr<Actor> actor) {
-	std::list<std::unique_ptr<Actor>>::iterator i;
-	for (auto& item : inventory) {
+void Container::remove(Actor* actor) {
+	for (auto &item : inventory) {
 		auto i = inventory.begin();
 		auto e = inventory.end();
 		while (i != e) {
-			if (*i == actor) {
+			if (i->get() == actor) {
 				i = inventory.erase(i);
 			}
 			else { i++; }

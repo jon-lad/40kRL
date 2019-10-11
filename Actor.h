@@ -7,7 +7,7 @@ private:
 	int ch;
 	TCODColor col;
 public:
-	char name[20]; //Actors name
+	char name[120]; //Actors name
 	bool blocks;
 	std::unique_ptr<Attacker> attacker;
 	std::unique_ptr<Destructible> destructible;
@@ -18,6 +18,9 @@ public:
 	void update();
 	
 	void render() const;
+	
+
+	float getDistance(int cx, int cy);
 
 	int getX() const;
 	void setX(int x);

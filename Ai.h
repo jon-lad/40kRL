@@ -26,3 +26,12 @@ protected:
 	int moveCount;
 };
 
+class ConfusedMonsterAi : public Ai {
+public:
+	ConfusedMonsterAi(int nbTurns, std::unique_ptr<Ai> oldAi);
+	void update(Actor* owner);
+protected:
+	int nbTurns;
+	std::unique_ptr<Ai> oldAi;
+};
+
