@@ -1,6 +1,9 @@
+
 #include <list>
 #include <memory>
 #include <string>
+#include <iostream>
+#include <sstream>
 #include <stdarg.h>
 #include "main.h"
 
@@ -23,9 +26,9 @@ void Gui::render() {
 	// draw the message log
 	int y = 1;
 	float colorCoef = 0.4f;
-	for (std::list<std::unique_ptr<Message>>::iterator i = log.begin(); i != log.end(); ++i) {
+	for (auto i = log.begin(); i != log.end(); ++i) {
 		con->setDefaultForeground(i->get()->col* colorCoef);
-		con->printf(MSG_X, y, i->get()->text);
+		con->printf(MSG_X, y, i->get()->text.c_str());
 		y++;
 		colorCoef += 0.3f;
 	}
@@ -34,7 +37,7 @@ void Gui::render() {
 	//blit the the GUI console on the root console
 	TCODConsole::blit(con.get(), 0, 0, engine.screenWidth, PANEL_HEIGHT, TCODConsole::root, 0, engine.screenHeight - PANEL_HEIGHT);
 }
-void Gui::renderBar(int x, int y, int width, const char* name, float value, float maxValue, const TCODColor& barColor, const TCODColor& backColor) {
+void Gui::renderBar(int x, int y, int width, std::string_view name, float value, float maxValue, const TCODColor& barColor, const TCODColor& backColor) {
 	//fill the background
 	con->setDefaultBackground(backColor);
 	con->rect(x, y, width, 1, false, TCOD_BKGND_SET);
@@ -45,7 +48,9 @@ void Gui::renderBar(int x, int y, int width, const char* name, float value, floa
 	con->rect(x, y, barWidth, 1, false, TCOD_BKGND_SET);
 	//print text on top of bar
 	con->setDefaultForeground(TCOD_white);
-	con->printf(x + width / 2, y, TCOD_BKGND_NONE, TCOD_CENTER, "%s : %g/%g", name, value, maxValue);
+	std::stringstream barText;
+	barText << name << " : " << value << "/" << maxValue;
+	con->printf(x + width / 2, y, TCOD_BKGND_NONE, TCOD_CENTER, barText.str().c_str());
 }
 
 void Gui::renderMouseLook() {
@@ -53,52 +58,46 @@ void Gui::renderMouseLook() {
 		//if mouse is out of fov, nothing to render
 		return;
 	}
-	char buf[128] = "";
+	std::string buf = "";
 	bool first = true;
 	for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
 		//find actor under mouse cursor
 		if (i->get()->getX() == engine.mouse.cx && i->get()->getY() == engine.mouse.cy) {
 			if (!first) {
-				strcat_s(buf, ", ");
+				buf += ", ";
 			}
 			else {
 				first = false;
 			}
-			strcat_s(buf, i->get()->name);
+			buf += i->get()->name;
 		}
 	}
 	//Display the list of actors under the mouse cursor
 	con->setDefaultForeground(TCODColor::lightGrey);
-	con->printf(1, 0, buf);
+	con->printf(1, 0, buf.c_str());
 }
 
-Gui::Message::Message(const char* text, const TCODColor& col) :text{ _strdup(text) }, col{ col } {
-}
+Gui::Message::Message(std::string& text, const TCODColor& col): text{ text }, col{ col } 
+{}
 
-Gui::Message::~Message() {
-	free(text);
-}
 
-void Gui::message(const TCODColor &col, const char *text, ...){
-	//build the text
-	va_list ap;
-	char buf[128];
-	va_start(ap, text);
-	vsprintf_s(buf, text, ap);
-	va_end(ap);
-	char *lineBegin = buf;
-	char *lineEnd;
-	 do {
+
+void Gui::message(const TCODColor &col, std::string_view text, ...){
+	std::vector<std::string> splitString;
+	std::string input = text.data();
+	std::istringstream ss(input);
+	std::string token;
+	while(std::getline(ss, token, '\n')) {
+
+		splitString.emplace_back(token);
+	}
+		//add message to log
+	for(auto i = splitString.begin(); i != splitString.end(); ++i) {
 		if (log.size() == MSG_HEIGHT) {
 			log.pop_front();
 		}
-	//detect end of line
-		lineEnd = strchr(lineBegin, '\n');
-		if (lineEnd) {
-			*lineEnd = '\0';
-		}
-		//add message to log
-		
-		log.emplace_back(std::make_unique<Message>(lineBegin, col));
-	} while (lineEnd);
+		log.emplace_back(std::make_unique<Message>(*i, col));
+	}
+
 }
+

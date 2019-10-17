@@ -1,23 +1,26 @@
 #pragma once
 
 
-class Actor {
+class Actor : public Persistent{
 private:
 	int x, y;
 	int ch;
 	TCODColor col;
 public:
-	char name[120]; //Actors name
+	std::string name; //Actors name
 	bool blocks;
 	std::unique_ptr<Attacker> attacker;
 	std::unique_ptr<Destructible> destructible;
 	std::unique_ptr<Ai> ai;// something self updating
 	std::unique_ptr<Pickable> pickable;// something that can be picked and used
 	std::unique_ptr<Container> container;//somthing that can contain actors
-	Actor(int x, int y, int ch,const char*name, const TCODColor& col);
+	Actor(int x, int y, int ch,std::string_view name, const TCODColor& col);
 	void update();
 	
 	void render() const;
+
+	void save(TCODZip& zip);
+	void load(TCODZip& zip);
 	
 
 	float getDistance(int cx, int cy);

@@ -1,12 +1,12 @@
 #pragma once
-class Destructible {
+class Destructible : public Persistent {
 public:
 	float maxHp; // maximum Health points
 	float hp; // current health points
 	float defense; //hit point deflected
-	const char* corpseName; // the actors name onc dead
+	std::string corpseName; // the actors name onc dead
 
-	Destructible(float maxHp, float defense, const char* corpseName);
+	Destructible(float maxHp, float defense, std::string_view corpseName);
 	
 	inline bool isDead() {
 		return hp <= 0;
@@ -16,18 +16,32 @@ public:
 	float heal(int amount);
 
 	virtual void die(Actor* owner);
+
+	virtual void save(TCODZip& zip);
+	virtual void load(TCODZip& zip);
+	static std::unique_ptr<Destructible> create(TCODZip& zip);
+	
+protected:
+	enum class DestructibleType {
+		MONSTER = 0,
+		PLAYER
+	};
 };
 
 class MonsterDestructible : public Destructible {
 public:
-	MonsterDestructible(float maxHp, float defense, const char* corpseName);
+	MonsterDestructible(float maxHp, float defense, std::string_view corpseName);
 	void die(Actor* owner);
+	void save(TCODZip& zip);
+	
 };
 
 class PlayerDestructible : public Destructible {
 public:
-	PlayerDestructible(float maxHp, float defense, const char* corpseName);
+	PlayerDestructible(float maxHp, float defense, std::string_view corpseName);
 	void die(Actor* owner);
+	void save(TCODZip& zip);
+	
 };
 
 

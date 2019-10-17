@@ -90,6 +90,9 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\jonat\Documents\Projects\libtcod-1.14.0-x86_64-msvc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableModules>true</EnableModules>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -139,6 +142,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Map.cpp" />
     <ClCompile Include="Ai.cpp" />
+    <ClCompile Include="Persistent.cpp" />
     <ClCompile Include="Pickable.cpp" />
     <ClCompile Include="Container.cpp" />
   </ItemGroup>
@@ -150,6 +154,7 @@
     <ClInclude Include="Engine.h" />
     <ClInclude Include="Destructible.h" />
     <ClInclude Include="Gui.h" />
+    <ClInclude Include="Persistent.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="Map.h" />
     <ClInclude Include="Pickable.h" />

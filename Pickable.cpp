@@ -1,4 +1,6 @@
+
 #include <memory>
+#include <sstream>
 #include "main.h"
 
 bool Pickable::pick(std::unique_ptr<Actor> owner, Actor* wearer) {
@@ -24,7 +26,9 @@ void Pickable::drop(Actor* owner, Actor* wearer) {
 	if (wearer->container) {
 		owner->setX(wearer->getX());
 		owner->setY(wearer->getY());
-		engine.gui->message(TCOD_light_grey, "%s drops a %s.", wearer->name, owner->name);
+		std::stringstream ss;
+		ss << wearer->name << " drops a " << owner->name << ".";
+		engine.gui->message(TCOD_light_grey, ss.str());
 		
 		for (auto i = wearer->container->inventory.begin(); i != wearer->container->inventory.end(); ) {
 			if (i->get() == owner) {
@@ -44,7 +48,9 @@ bool Healer::use(Actor* owner, Actor* wearer) {
 	if (wearer->destructible) {
 		float amountHealed = wearer->destructible->heal((int)amount);
 		if (amountHealed > 0) {
-			engine.gui->message(TCODColor::lightGrey, "%s healed %g HP.", wearer->name, amountHealed);
+			std::stringstream ss;
+			ss << wearer->name << " healed " << amountHealed << " Hp.";
+			engine.gui->message(TCODColor::lightGrey, ss.str());
 			return Pickable::use(std::move(owner), wearer);
 		}
 
@@ -63,26 +69,29 @@ bool LightningBolt::use(Actor* owner, Actor* wearer) {
 		return false;
 	}
 	//hit closest monster for <damage> hit points
-	engine.gui->message(TCOD_light_blue, "A lightning bolt hit %s with loud thunder!", closestMonster->name);
-	engine.gui->message(TCOD_light_blue, "The damage is %g hit ponts.", damage);
-	closestMonster->destructible->takeDamage(closestMonster, damage);
+	std::stringstream ss;
+	ss << "A lightningbolt hit " << closestMonster->name << "with loud thunder!\n The damage is " << closestMonster->destructible->takeDamage(closestMonster, damage) << " hit points.";
+	engine.gui->message(TCOD_light_blue, ss.str());
 	return Pickable::use(owner, wearer);
 }
 /*Fireball*/
 Fireball::Fireball(float range, float damage) :LightningBolt(range, damage) {}
 
 bool Fireball::use(Actor* owner, Actor* wearer) {
-	engine.gui->message(TCOD_cyan, "Left click on tile for the fireball");
-	engine.gui->message(TCOD_cyan, "or right click to cancel.");
+	engine.gui->message(TCOD_cyan, "Left click on tile for the fireball \n or right click to cancel.");
 	int x, y;
 	if (!engine.pickAtTile(&x, &y)) {
 		return false;
 	}
 	//Burn everything in <range> (including Player)
-	engine.gui->message(TCOD_orange, "The fireball explodes burning everything in %g tiles", range);
+	std::stringstream ss;
+	ss << "The fireball explodes burning everything in " << range << " tiles.";
+	engine.gui->message(TCOD_orange, ss.str());
 	for (auto i = engine.actors.begin(); i != engine.actors.end(); ++i) {
 		if (i->get()->destructible && !i->get()->destructible->isDead() && i->get()->getDistance(x, y) <= range) {
-			engine.gui->message(TCOD_orange, "The %s gets burned for %g hit points", i->get()->name, damage);
+			ss.clear();
+			ss << "The " << i->get()->name << " gets burned for " << damage << " hit points.";
+			engine.gui->message(TCOD_orange, ss.str());
 			i->get()->destructible->takeDamage(i->get(), damage);
 		}
 	}
@@ -94,8 +103,7 @@ bool Fireball::use(Actor* owner, Actor* wearer) {
 Confuser::Confuser(int nbTurns, float range):nbTurns{nbTurns},range{range}{}
 
 bool Confuser::use(Actor* owner, Actor* wearer) {
-	engine.gui->message(TCOD_cyan, "Left click an enemy to confuse it");
-	engine.gui->message(TCOD_cyan, "or right click to cancel");
+	engine.gui->message(TCOD_cyan, "Left click an enemy to confuse it \n or right click to cancel");
 	int x, y;
 	if (!engine.pickAtTile(&x, &y, range)) {
 		return false;
@@ -107,7 +115,8 @@ bool Confuser::use(Actor* owner, Actor* wearer) {
 	//confuse the monster for <nbTurns> turns
 	std::unique_ptr<ConfusedMonsterAi> confusedAi = std::make_unique<ConfusedMonsterAi>(nbTurns, std::move(actor->ai));
 	actor->ai = std::move(confusedAi);
-	engine.gui->message(TCOD_light_green, "The eyes of the %s look vacant", actor->name);
-	engine.gui->message(TCOD_light_green, "as he starts to stumble around!");
+	std::stringstream ss;
+	ss << "The eyes of the " << actor->name << " look vacant \n as he starts to stumble around!";
+	engine.gui->message(TCOD_light_green, ss.str());
 	return Pickable::use(owner, wearer);
 }

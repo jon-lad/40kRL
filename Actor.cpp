@@ -1,14 +1,15 @@
+
 #include <memory>
+#include <string>
 #include <list>
 #include <cmath>
 #include "main.h"
 
 
 
-Actor::Actor(int x, int y, int ch, const char* name, const TCODColor& col) :
-	x{ x }, y{ y }, ch{ ch }, col{ col }, blocks{ true }
+Actor::Actor(int x, int y, int ch, std::string_view name, const TCODColor& col) :
+	x{ x }, y{ y }, ch{ ch }, name{ name }, col{ col }, blocks{ true }
 {
-	strcpy_s(this->name, name);
 	attacker.reset();
 	destructible.reset();
 	ai.reset();
@@ -28,11 +29,10 @@ void Actor::update()
 }
 
 
-
 float Actor::getDistance(int cx, int cy){
 	int dx = x - cx;
 	int dy = y - cy;
-	return std::sqrtf(dx * dx + dy * dy);
+	return std::sqrtf((float)dx * (float)dx + (float)dy * (float)dy);
 }
 
 int Actor::getX() const

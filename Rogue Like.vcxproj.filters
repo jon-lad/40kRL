@@ -51,6 +51,9 @@
     <ClCompile Include="Container.cpp">
       <Filter>Source Files\Atributes</Filter>
     </ClCompile>
+    <ClCompile Include="Persistent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actor.h">
@@ -82,6 +85,9 @@
     </ClInclude>
     <ClInclude Include="Pickable.h">
       <Filter>Header Files\Atributes</Filter>
+    </ClInclude>
+    <ClInclude Include="Persistent.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

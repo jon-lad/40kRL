@@ -1,5 +1,7 @@
+
 #include <memory>
 #include <list>
+#include<sstream>
 #include "main.h"
 
 void PlayerAi::update(Actor* owner) {
@@ -56,7 +58,9 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetx, int targety)
 	for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
 		bool corpseOrItem = i->get()->destructible && i->get()->destructible->isDead() || i->get()->pickable;
 		if (corpseOrItem && i->get()->getX() == targetx && i->get()->getY() == targety) {
-			engine.gui->message(TCODColor::lightGrey, "There's a %s here.", i->get()->name);
+			std::stringstream ss;
+			ss << "Theres a " << i->get()->name << " here.";
+			engine.gui->message(TCODColor::lightGrey, ss.str());
 		}
 	}
 	owner->setX(targetx);
@@ -78,7 +82,7 @@ Actor* PlayerAi::chooseFromInventory(Actor* owner) {
 	int y = 1;
 	for (std::list<std::unique_ptr<Actor>>::iterator i = owner->container->inventory.begin(); i != owner->container->inventory.end(); ++i) {
 		if (*i) {
-			con.printf(2, y, "(%c) %s", shortcut, i->get()->name);
+			con.printf(2, y, "(%c) %s", shortcut, i->get()->name.c_str());
 			y++;
 			shortcut++;
 		}
@@ -108,11 +112,13 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii) {
 		bool found = false;
 		for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
 			if (i->get()->pickable && i->get()->getX() == owner->getX() && i->get()->getY() == owner->getY()) {
-				const char* itemName = i->get()->name;
+				std::string itemName = i->get()->name;
 				Actor* item = i->get();
 				if (item->pickable->pick(std::move(*i), owner)) {
 					found = true;
-					engine.gui->message(TCODColor::lightGrey, "You pick up the %s", itemName);
+					std::stringstream ss;
+					ss << "You pick up the " << itemName <<".";
+					engine.gui->message(TCODColor::lightGrey, ss.str());
 					break;
 				}
 				else if (!found) {

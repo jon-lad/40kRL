@@ -1,23 +1,13 @@
+
 #include <list>
 #include <memory>
 #include "main.h"
 
-Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, FOVRadius{ 10 }, screenWidth{ screenWidth }, screenHeight{screenHeight}
+Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, player{ NULL }, FOVRadius{ 10 }, screenWidth{ screenWidth }, screenHeight{ screenHeight }
 {
+	map.reset();
 	TCODConsole::initRoot(screenWidth, screenHeight, "Rougelike", false);
-	actors.emplace_front(std::make_unique<Actor>(40, 20, '@',"Player", TCOD_white));
-	player = &*actors.front();
-	player->destructible = std::make_unique<Destructible>(30.0f, 2.0f, "Your cadaver");
-	player->attacker = std::make_unique<Attacker>(5.0f);
-	player->ai = std::make_unique<PlayerAi>();
-	player->container = std::make_unique<Container>(26);
-	map = std::make_unique<Map>(80, 43);
 	gui = std::make_unique<Gui>();
-	gui->message(TCODColor::lightGrey, "");
-	gui->message(TCODColor::lightGrey, "");
-	gui->message(TCODColor::lightGrey, "");
-	gui->message(TCODColor::lightGrey, "");
-	gui->message(TCODColor::lightGrey, "Welcome friend");
 }
 
 void Engine::update()
@@ -121,3 +111,17 @@ void Engine::sendToBack(Actor* actor) {
 		}
 	}
 }
+
+void Engine::init() {
+	actors.emplace_front(std::make_unique<Actor>(40, 20, '@', "Player", TCOD_white));
+	player = &*actors.front();
+	player->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver");
+	player->attacker = std::make_unique<Attacker>(5.0f);
+	player->ai = std::make_unique<PlayerAi>();
+	player->container = std::make_unique<Container>(26);
+	map = std::make_unique<Map>(80, 43);
+	map->init(true);
+	
+	gui->message(TCODColor::lightGrey, "\n \n \n Welcome friend. \n welcome to the underhive!");
+}
+

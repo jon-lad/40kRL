@@ -25,3 +25,4 @@ void Container::remove(Actor* actor) {
 		}
 	}
 }
+
