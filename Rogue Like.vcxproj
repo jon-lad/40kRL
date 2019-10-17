@@ -159,6 +159,10 @@
     <ClInclude Include="Map.h" />
     <ClInclude Include="Pickable.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="menu_background1.png" />
+    <Image Include="terminal.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

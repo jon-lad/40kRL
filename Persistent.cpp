@@ -29,10 +29,28 @@ void Engine::save() {
 }
 
 void Engine::load() {
+	engine.gui->menu.clear();
+	engine.gui->menu.addItem(Menu::MenuItemCode::NEW_GAME, "New Game");
 	if (std::filesystem::exists("game.sav")) {
+		engine.gui->menu.addItem(Menu::MenuItemCode::CONTINUE, "Continue");
+	}
+	engine.gui->menu.addItem(Menu::MenuItemCode::EXIT, "Exit");
+	Menu::MenuItemCode menuItem = engine.gui->menu.pick();
+	if (menuItem == Menu::MenuItemCode::EXIT || menuItem == Menu::MenuItemCode::NONE) {
+		//Exit or window closed
+		exit(0);
+	}
+	else if (menuItem == Menu::MenuItemCode::NEW_GAME) {
+		//New Game
+		engine.term();
+		engine.init();
+	}
+	else {
 		TCODZip zip;
+		//continue from saved game
+		engine.term();
 		zip.loadFromFile("game.sav");
-		//load the map
+		//load the 
 		int width = zip.getInt();
 		int height = zip.getInt();
 		map = std::make_unique<Map>(width, height);
@@ -51,10 +69,11 @@ void Engine::load() {
 		}
 		//finaly the log
 		gui->load(zip);
+		// to force Fov recomputation
+		gameStatus = STARTUP;
 	}
-	else {
-		engine.init();
-	}
+	
+	
 }
 
 /*Map*/
@@ -204,6 +223,7 @@ std::unique_ptr<Ai> Ai::create(TCODZip& zip) {
 void PlayerAi::save(TCODZip& zip) {
 	zip.putInt((int)AiType::PLAYER);
 }
+
 void PlayerAi::load(TCODZip& zip) {
 
 }
@@ -212,6 +232,7 @@ void MonsterAi::save(TCODZip& zip) {
 	zip.putInt((int)AiType::MONSTER);
 	zip.putInt(moveCount);
 }
+
 void MonsterAi::load(TCODZip& zip) {
 	moveCount = zip.getInt();
 }
@@ -221,6 +242,7 @@ void ConfusedMonsterAi::save(TCODZip& zip) {
 	zip.putInt(nbTurns);
 	oldAi->save(zip);
 }
+
 void ConfusedMonsterAi::load(TCODZip& zip) {
 	nbTurns = zip.getInt();
 	oldAi = std::move(Ai::create(zip));
@@ -253,6 +275,7 @@ void Healer::save(TCODZip& zip) {
 	zip.putInt((int)PickableType::HEALER);
 	zip.putFloat(amount);
 }
+
 void Healer::load(TCODZip& zip) {
 	amount = zip.getFloat();
 }
@@ -262,6 +285,7 @@ void LightningBolt::save(TCODZip & zip) {
 	zip.putFloat(range);
 	zip.putFloat(damage);
 }
+
 void LightningBolt::load(TCODZip & zip) {
 	range = zip.getFloat();
 	damage = zip.getFloat();
@@ -272,6 +296,7 @@ void Confuser::save(TCODZip& zip) {
 	zip.putInt(nbTurns);
 	zip.putFloat(range);
 }
+
 void Confuser::load(TCODZip& zip) {
 	nbTurns = zip.getInt();
 	range = zip.getFloat();

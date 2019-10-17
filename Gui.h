@@ -1,14 +1,37 @@
 #pragma once
 
+class Menu {
+public:
+	enum class MenuItemCode {
+		NONE = 0,
+		NEW_GAME,
+		CONTINUE,
+		EXIT
+	};
+	void clear();
+	void addItem(MenuItemCode, std::string_view label);
+	MenuItemCode pick();
+protected:
+	struct MenuItem {
+		MenuItemCode code;
+		std::string label;
+	};
+	std::list<std::unique_ptr<MenuItem>> items;
+
+};
+
 
 class Gui: public Persistent {
 public:
+	Menu menu;
+
 	Gui();
 
 	void render();
 	void message(const TCODColor& col, const std::string_view text, ...);
 	void load(TCODZip& zip);
 	void save(TCODZip& zip);
+	void clear();
 protected:
 	std::unique_ptr<TCODConsole> con;
 
@@ -16,6 +39,7 @@ protected:
 			float value, float maxValue, const TCODColor& barColor, 
 			const TCODColor& backColor);
 	void renderMouseLook();
+	
 	
 
 	struct Message {
@@ -27,3 +51,4 @@ protected:
 	std::list<std::unique_ptr<Message>> log;
 
 };
+

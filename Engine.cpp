@@ -1,4 +1,3 @@
-
 #include <list>
 #include <memory>
 #include "main.h"
@@ -15,6 +14,10 @@ void Engine::update()
 	if (gameStatus == STARTUP) { map->computeFOV(); }
 	gameStatus = IDLE;
 	TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, &lastKey, &mouse);
+	if (lastKey.vk == TCODK_ESCAPE) {
+		save();
+		load();
+	}
 	player->update();
 	if (gameStatus == NEW_TURN) {
 		for (std::list<std::unique_ptr<Actor>>::iterator i = actors.begin(); i != actors.end(); ) {
@@ -122,6 +125,13 @@ void Engine::init() {
 	map = std::make_unique<Map>(80, 43);
 	map->init(true);
 	
-	gui->message(TCODColor::lightGrey, "\n \n \n Welcome friend. \n welcome to the underhive!");
+	gui->message(TCODColor::lightGrey, "\n \n \n Hello friend. \n welcome to the underhive!");
+	gameStatus = STARTUP;
+}
+
+void Engine::term() {
+	actors.clear();
+	if (map) map.reset();
+	gui->clear();
 }
 

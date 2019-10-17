@@ -1,2 +1,19 @@
-﻿  Ai.cpp
+﻿  Persistent.cpp
+C:\Users\jonat\Documents\Projects\Rouge_like\Persistent.cpp(315,29): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\jonat\Documents\Projects\Rouge_like\Persistent.cpp(336,23): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244: 'argument': conversion from '_Ty' to 'float', possible loss of data
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         with
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         [
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:             _Ty=int
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         ]
+C:\Users\jonat\Documents\Projects\Rouge_like\Persistent.cpp(188): message : see reference to function template instantiation 'std::unique_ptr<MonsterDestructible,std::default_delete<_Ty>> std::make_unique<MonsterDestructible,int,int,const char(&)[1],0>(int &&,int &&,const char (&)[1])' being compiled
+C:\Users\jonat\Documents\Projects\Rouge_like\Persistent.cpp(188): message :         with
+C:\Users\jonat\Documents\Projects\Rouge_like\Persistent.cpp(188): message :         [
+C:\Users\jonat\Documents\Projects\Rouge_like\Persistent.cpp(188): message :             _Ty=MonsterDestructible
+C:\Users\jonat\Documents\Projects\Rouge_like\Persistent.cpp(188): message :         ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\filesystem(2091): message : see reference to class template instantiation 'std::chrono::time_point<std::filesystem::_File_time_clock,std::filesystem::_File_time_clock::duration>' being compiled
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(1764): message : see reference to class template instantiation 'std::basic_string_view<wchar_t,std::char_traits<wchar_t>>' being compiled
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\chrono(669): message : see reference to class template instantiation 'std::chrono::duration<double,std::ratio<1,1>>' being compiled
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\chrono(177): message : see reference to class template instantiation 'std::chrono::duration<__int64,std::nano>' being compiled
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\chrono(647): message : see reference to class template instantiation 'std::chrono::time_point<std::chrono::steady_clock,std::chrono::steady_clock::duration>' being compiled
   Rogue Like.vcxproj -> C:\Users\jonat\Documents\Projects\Rouge_like\x64\Debug\Rogue Like.exe
