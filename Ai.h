@@ -15,6 +15,9 @@ protected:
 
 class PlayerAi : public Ai {
 public:
+	int xpLevel;
+	PlayerAi();
+	int getNextLevelXp();
 	void update(Actor* owner);
 	void handleActionKey(Actor* owner, int ascii);
 	void save(TCODZip& zip);

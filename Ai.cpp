@@ -5,25 +5,60 @@
 #include "main.h"
 
 void PlayerAi::update(Actor* owner) {
-		if (owner->destructible && owner->destructible->isDead()) {
-			return;
+	int levelUpXp = getNextLevelXp();
+	if (owner->destructible->xp >= levelUpXp) {
+		xpLevel++;
+		owner->destructible->xp -= levelUpXp;
+		std::stringstream ss;
+		ss << "Your battle skills grow stronger! You reached level " << xpLevel << ".";
+		engine.gui->message(TCOD_yellow, ss.str());
+		engine.gui->menu.clear();
+		engine.gui->menu.addItem(Menu::MenuItemCode::CONSTITUTION, "Constitution (+20HP)");
+		engine.gui->menu.addItem(Menu::MenuItemCode::STRENGTH, "Strength (+1 Attack)");
+		engine.gui->menu.addItem(Menu::MenuItemCode::AGILITY, "Agility (+1 Defense)");
+		Menu::MenuItemCode menuItem = engine.gui->menu.pick(Menu::DisplayMode::PAUSE);
+		switch (menuItem) {
+			case Menu::MenuItemCode::CONSTITUTION:
+				owner->destructible->maxHp += 20;
+				owner->destructible->hp += 20;
+				break;
+			case Menu::MenuItemCode::STRENGTH:
+				owner->attacker->power += 1;
+				break;
+			case Menu::MenuItemCode::AGILITY:
+				owner->destructible->defense += 1;
+				break;
+			default: break;
 		}
-		int dx = 0, dy = 0;
-		switch (engine.lastKey.vk)
-		{
-		case TCODK_UP: dy = -1; break;
-		case TCODK_DOWN: dy = 1; break;
-		case TCODK_LEFT: dx = -1; break;
-		case TCODK_RIGHT: dx = 1; break;
-		case TCODK_CHAR: handleActionKey(owner, engine.lastKey.c); break;
-		default: break;
+	}
+	if (owner->destructible && owner->destructible->isDead()) {
+		return;
+	}
+	int dx = 0, dy = 0;
+	switch (engine.lastKey.vk)
+	{
+	case TCODK_UP: dy = -1; break;
+	case TCODK_DOWN: dy = 1; break;
+	case TCODK_LEFT: dx = -1; break;
+	case TCODK_RIGHT: dx = 1; break;
+	case TCODK_TEXT: handleActionKey(owner, *engine.lastKey.text); break;
+	default: break;
+	}
+	if (dx != 0 || dy != 0) {
+		engine.gameStatus = Engine::NEW_TURN;
+		if (moveOrAttack(owner, owner->getX() + dx, owner->getY() + dy)) {
+			engine.map->computeFOV();
 		}
-		if (dx != 0 || dy != 0) {
-			engine.gameStatus = Engine::NEW_TURN;
-			if (moveOrAttack(owner, owner->getX() + dx, owner->getY() + dy)) {
-				engine.map->computeFOV();
-			}
-		}
+	}
+}
+
+PlayerAi::PlayerAi(): xpLevel{1}{}
+
+static constexpr int LEVEL_UP_BASE = 200;
+static constexpr int LEVEL_UP_FACTOR = 150;
+
+int PlayerAi::getNextLevelXp() {
+	return LEVEL_UP_BASE + xpLevel * LEVEL_UP_FACTOR;
 }
 
 
@@ -156,6 +191,14 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii) {
 		}
 	}
 	break;
+	case '>'://go down stairs
+		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()) {
+			engine.nextLevel();
+		}
+		else {
+			engine.gui->message(TCOD_light_grey, "There are no stairs here.");
+		}
+		break;
 	}
 }
 

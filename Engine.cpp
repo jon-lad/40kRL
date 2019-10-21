@@ -2,7 +2,7 @@
 #include <memory>
 #include "main.h"
 
-Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, player{ NULL }, FOVRadius{ 10 }, screenWidth{ screenWidth }, screenHeight{ screenHeight }
+Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, player{ NULL }, FOVRadius{ 10 }, screenWidth{ screenWidth }, screenHeight{ screenHeight }, level{1}
 {
 	map.reset();
 	TCODConsole::initRoot(screenWidth, screenHeight, "Rougelike", false);
@@ -41,12 +41,30 @@ void Engine::render(){
 	map->render();
 	std::list<std::unique_ptr<Actor>>::iterator i;
 	for (i = actors.begin(); i != actors.end(); ++i) {
-		if (map->isInFOV(i->get()->getX(), i->get()->getY())) {
+		if (!i->get()->fovOnly && map->isExplored(i->get()->getX(), i->get()->getY() )||map->isInFOV(i->get()->getX(), i->get()->getY())) {
 			i->get()->render();
 		}
 	}
 	// show the player's stats
 	gui->render();
+}
+
+void Engine::nextLevel() {
+	level++;
+	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength");
+	player->destructible->heal((int)(player->destructible->maxHp / 2));
+	gui->message(TCOD_red, " After a rare moment of peace you descend\n deeper into the dungeon");
+	map.reset();
+	for (auto i = actors.begin(); i != actors.end(); ) {
+		if (i->get() != player && i->get() != stairs) {
+			i = actors.erase(i);
+		}
+		else { ++i; }
+	}
+	//create a new map
+	map = std::make_unique<Map>(80, 43);
+	map->init(true);
+	gameStatus = STARTUP;
 }
 
 Actor* Engine::getClosestMonster(int x, int y, float range) {
@@ -94,7 +112,7 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange) {
 				*y = mouse.cy;
 				return true;
 			}
-			if (mouse.rbutton_pressed || lastKey.vk != TCODK_NONE) {
+			if (mouse.rbutton_pressed || lastKey.c != TCODK_NONE) {
 				return false;
 			}
 		}
@@ -116,12 +134,20 @@ void Engine::sendToBack(Actor* actor) {
 }
 
 void Engine::init() {
-	actors.emplace_front(std::make_unique<Actor>(40, 20, '@', "Player", TCOD_white));
-	player = &*actors.front();
-	player->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver");
-	player->attacker = std::make_unique<Attacker>(5.0f);
-	player->ai = std::make_unique<PlayerAi>();
-	player->container = std::make_unique<Container>(26);
+	std::unique_ptr<Actor>newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", TCOD_white);
+	player = newPlayer.get();
+	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
+	newPlayer->attacker = std::make_unique<Attacker>(5.0f);
+	newPlayer->ai = std::make_unique<PlayerAi>();
+	newPlayer->container = std::make_unique<Container>(26);
+	actors.emplace_front(std::move(newPlayer));
+	std::unique_ptr<Actor>newStair = std::make_unique<Actor>(0, 0, '>', "stairs", TCOD_white);
+	stairs = newStair.get();
+	newStair->blocks = false;
+	newStair->fovOnly = false;
+	actors.emplace_front(std::move(newStair));
+	
+	
 	map = std::make_unique<Map>(80, 43);
 	map->init(true);
 	

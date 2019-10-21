@@ -4,9 +4,10 @@ public:
 	float maxHp; // maximum Health points
 	float hp; // current health points
 	float defense; //hit point deflected
-	std::string corpseName; // the actors name onc dead
+	std::string corpseName; // the actors name once dead
+	int xp; //xp for killing monster or player xp
 
-	Destructible(float maxHp, float defense, std::string_view corpseName);
+	Destructible(float maxHp, float defense, std::string_view corpseName, int xp);
 	
 	inline bool isDead() {
 		return hp <= 0;
@@ -30,7 +31,7 @@ protected:
 
 class MonsterDestructible : public Destructible {
 public:
-	MonsterDestructible(float maxHp, float defense, std::string_view corpseName);
+	MonsterDestructible(float maxHp, float defense, std::string_view corpseName, int xp);
 	void die(Actor* owner);
 	void save(TCODZip& zip);
 	
@@ -38,7 +39,7 @@ public:
 
 class PlayerDestructible : public Destructible {
 public:
-	PlayerDestructible(float maxHp, float defense, std::string_view corpseName);
+	PlayerDestructible(float maxHp, float defense, std::string_view corpseName, int xp);
 	void die(Actor* owner);
 	void save(TCODZip& zip);
 	

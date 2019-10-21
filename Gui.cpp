@@ -12,6 +12,8 @@ static constexpr int PANEL_HEIGHT = 7;
 static constexpr int BAR_WIDTH = 20;
 static constexpr int MSG_X = BAR_WIDTH + 2;
 static constexpr int MSG_HEIGHT = PANEL_HEIGHT - 2;
+static constexpr int PAUSE_MENU_WIDTH = 30;
+static constexpr int PAUSE_MENU_HEIGHT = 15;
 
 Gui::Gui() {
 	con = std::make_unique<TCODConsole>(engine.screenWidth, PANEL_HEIGHT);
@@ -22,7 +24,14 @@ void Gui::render() {
 	con->setDefaultBackground(TCODColor::black);
 	con->clear();
 	//draw the health bar
-	renderBar(1, 1, BAR_WIDTH, "HP", engine.player->destructible->hp, engine.player->destructible->maxHp, TCODColor::lightRed, TCODColor::darkerRed);
+	renderBar(1, 1, BAR_WIDTH, "HP", engine.player->destructible->hp, engine.player->destructible->maxHp, TCOD_light_red, TCOD_darker_red);
+	//draw xp bar
+	PlayerAi* ai = (PlayerAi*) engine.player->ai.get();
+	std::stringstream ss;
+	if (ai) {
+		ss << "XP(" << ai->xpLevel << ")";
+		renderBar(1, 5, BAR_WIDTH, ss.str(), engine.player->destructible->xp, ai->getNextLevelXp(), TCOD_light_violet, TCOD_darker_violet);
+	}
 	// draw the message log
 	int y = 1;
 	float colorCoef = 0.4f;
@@ -34,6 +43,11 @@ void Gui::render() {
 	}
 	//render mouse look
 	renderMouseLook();
+	//dungeon level
+	con->setDefaultForeground(TCOD_white);
+	ss.str(std::string());
+	ss << "Dungeon level " << engine.level;
+	con->printf(3, 3, ss.str().c_str());
 	//blit the the GUI console on the root console
 	TCODConsole::blit(con.get(), 0, 0, engine.screenWidth, PANEL_HEIGHT, TCODConsole::root, 0, engine.screenHeight - PANEL_HEIGHT);
 }
@@ -116,11 +130,25 @@ void Menu::addItem(MenuItemCode code, std::string_view label) {
 	items.emplace_back(std::move(item));
 }
 
-Menu::MenuItemCode Menu::pick(){
-	static TCODImage img("menu_background1.png");
+Menu::MenuItemCode Menu::pick(DisplayMode mode){
 	int selectedItem = 0;
-	while (!TCODConsole::isWindowClosed()) {
+	int menux, menuy;
+	if (mode == DisplayMode::PAUSE) {
+		menux = engine.screenWidth / 2 - PAUSE_MENU_WIDTH / 2;
+		menuy = engine.screenHeight / 2 - PAUSE_MENU_HEIGHT / 2;
+		TCODConsole::root->setDefaultForeground(TCODColor(200, 180, 50));
+		TCODConsole::root->printFrame(menux, menuy, PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT, true,
+			TCOD_BKGND_ALPHA(70), "menu");
+		menux += 2;
+		menuy += 3;
+	}
+	else {
+		static TCODImage img("menu_background1.png");
 		img.blit2x(TCODConsole::root, 0, 0);
+		menux = 10;
+		menuy = TCODConsole::root->getHeight() / 3;
+	}
+	while (!TCODConsole::isWindowClosed()) {
 		int currentItem = 0;
 		for (auto i = items.begin(); i != items.end(); ++i) {
 			if (currentItem == selectedItem) {
@@ -129,7 +157,7 @@ Menu::MenuItemCode Menu::pick(){
 			else {
 				TCODConsole::root->setDefaultForeground(TCOD_light_grey);
 			}
-			TCODConsole::root->print(10, 10 + currentItem * 3, i->get()->label.c_str());
+			TCODConsole::root->print(menux, menuy + currentItem * 3, i->get()->label.c_str());
 			currentItem++;
 		}
 		TCODConsole::flush();

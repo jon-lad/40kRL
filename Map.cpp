@@ -173,6 +173,9 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors
 		engine.player->setY((y1 + y2) / 2);
 	}
 	else {
+		//set starir position
+		engine.stairs->setX((x1 + x2) / 2);
+		engine.stairs->setY((y1 + y2) / 2);
 		TCODRandom* rng = TCODRandom::getInstance();
 		int nbMonsters = rng->getInt(0, MAX_ROOM_MONSTERS);
 		int nbItems = rng->getInt(0, MAX_ROOM_ITEMS);
@@ -201,7 +204,7 @@ void Map::addMonster(int x, int y) {
 	if (rng->getInt(0, 100) < 80) {
 		//create an orc
 		std::unique_ptr<Actor> ork = std::make_unique<Actor>(x, y, 'o', "Ork", TCODColor::desaturatedGreen);
-		ork->destructible =std::move(std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork"));
+		ork->destructible =std::move(std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35));
 		ork->attacker = std::move(std::make_unique<Attacker>(3.0f));
 		ork->ai = std::move(std::make_unique<MonsterAi>());
 		engine.actors.push_back(std::move(ork));
@@ -210,7 +213,7 @@ void Map::addMonster(int x, int y) {
 	else {
 		//create a troll
 		std::unique_ptr<Actor> Nob = std::make_unique<Actor>(x, y, 'N', "Nob", TCODColor::darkerGreen);
-		Nob->destructible = std::move(std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass"));
+		Nob->destructible = std::move(std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100));
 		Nob->attacker = std::move(std::make_unique<Attacker>(4.0f));
 		Nob->ai = std::move(std::make_unique<MonsterAi>());
 		engine.actors.push_back(std::move(Nob));

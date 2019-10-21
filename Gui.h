@@ -6,11 +6,18 @@ public:
 		NONE = 0,
 		NEW_GAME,
 		CONTINUE,
-		EXIT
+		EXIT,
+		CONSTITUTION,
+		STRENGTH,
+		AGILITY
+	};
+	enum class DisplayMode {
+		MAIN,
+		PAUSE
 	};
 	void clear();
 	void addItem(MenuItemCode, std::string_view label);
-	MenuItemCode pick();
+	MenuItemCode pick(DisplayMode mode = DisplayMode::MAIN);
 protected:
 	struct MenuItem {
 		MenuItemCode code;

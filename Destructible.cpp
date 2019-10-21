@@ -2,7 +2,7 @@
 #include <sstream>
 #include "main.h"
 
-Destructible::Destructible(float maxHp, float defense, std::string_view corpseName) : maxHp{ maxHp }, hp{ maxHp }, defense{ defense }, corpseName{ corpseName } {
+Destructible::Destructible(float maxHp, float defense, std::string_view corpseName, int xp) : maxHp{ maxHp }, hp{ maxHp }, defense{ defense }, corpseName{ corpseName }, xp{ xp } {
 	
 }
 
@@ -32,7 +32,7 @@ void Destructible::die(Actor* owner) {
 	// transform the actor into a corpse!
 	owner->setCh('%');
 	owner->ai.reset();
-	owner->setColor(TCODColor::darkRed);
+	owner->setColor(TCOD_dark_red);
 	owner->name = corpseName;
 	owner->blocks = false;
 	// make sure corpses are drawn before living actors
@@ -40,20 +40,21 @@ void Destructible::die(Actor* owner) {
 }
 
 
-MonsterDestructible::MonsterDestructible(float maxHp, float defense, std::string_view corpseName) :
-	Destructible(maxHp, defense, corpseName) {
+MonsterDestructible::MonsterDestructible(float maxHp, float defense, std::string_view corpseName, int xp) :
+	Destructible(maxHp, defense, corpseName, xp) {
 }
 
-PlayerDestructible::PlayerDestructible(float maxHp, float defense, std::string_view corpseName) :
-	Destructible(maxHp, defense, corpseName) {
+PlayerDestructible::PlayerDestructible(float maxHp, float defense, std::string_view corpseName, int xp) :
+	Destructible(maxHp, defense, corpseName, xp) {
 }
 
 void MonsterDestructible::die(Actor* owner) {
 	// transform it into a nasty corpse! it doesn't block, can't be
 	// attacked and doesn't move
 	std::stringstream ss;
-	ss << owner->name << " is dead!";
-	engine.gui->message(TCODColor::lightGrey, ss.str());
+	ss << owner->name << " is dead! You gain " << xp << " xp.";
+	engine.gui->message(TCOD_light_grey, ss.str());
+	engine.player->destructible->xp += xp;
 	Destructible::die(owner);
 }
 

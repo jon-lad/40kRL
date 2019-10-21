@@ -15,10 +15,12 @@ void Engine::save() {
 		map->save(zip);
 		//then the player
 		player->save(zip);
+		//then the stair
+		stairs->save(zip);
 		//then the rest of the actors
-		zip.putInt((int)actors.size() - 1);
+		zip.putInt((int)actors.size() - 2);
 		for (auto i = actors.begin(); i != actors.end(); i++) {
-			if (i->get() != player) {
+			if (i->get() != player && i->get() != stairs) {
 				i->get()->save(zip);
 			}
 		}
@@ -56,9 +58,15 @@ void Engine::load() {
 		map = std::make_unique<Map>(width, height);
 		map->load(zip);
 		//then the player
-		actors.emplace_front(std::make_unique<Actor>(0, 0, 0, "", TCOD_white));
-		player = actors.begin()->get();
+		std::unique_ptr<Actor> newPlayer = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+		player = newPlayer.get();
+		actors.emplace_front(std::move(newPlayer));
 		player->load(zip);
+		//the stairs
+		std::unique_ptr<Actor> newStair = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+		stairs = newStair.get();
+		actors.emplace_front(std::move(newStair));
+		stairs->load(zip);
 		//then all the other actors
 		int nbActors = zip.getInt();
 		while (nbActors > 0) {
@@ -103,6 +111,7 @@ void Actor::save(TCODZip& zip)
 	zip.putColor(&col);
 	zip.putString(name.c_str());
 	zip.putInt(blocks);
+	zip.putInt(fovOnly);
 	//bool for each feature
 	zip.putInt(attacker != 0);
 	zip.putInt(destructible != 0);
@@ -126,6 +135,7 @@ void Actor::load(TCODZip& zip)
 	col = zip.getColor();
 	name = zip.getString();
 	blocks = zip.getInt();
+	fovOnly = zip.getInt();
 	//load feature booleans
 	bool hasAttacker = zip.getInt();
 	bool hasDestructible = zip.getInt();
@@ -170,6 +180,7 @@ void Destructible::save(TCODZip& zip) {
 	zip.putFloat(hp);
 	zip.putFloat(defense);
 	zip.putString(corpseName.c_str());
+	zip.putInt(xp);
 }
 
 void Destructible::load(TCODZip& zip) {
@@ -177,6 +188,7 @@ void Destructible::load(TCODZip& zip) {
 	hp = zip.getFloat();
 	defense = zip.getFloat();
 	corpseName = zip.getString();
+	xp = zip.getInt();
 }
 
 std::unique_ptr<Destructible> Destructible::create(TCODZip& zip) {
@@ -185,10 +197,10 @@ std::unique_ptr<Destructible> Destructible::create(TCODZip& zip) {
 	switch (type)
 	{
 	case DestructibleType::MONSTER:
-		destructible = std::make_unique<MonsterDestructible>(0, 0, "");
+		destructible = std::make_unique<MonsterDestructible>(0, 0, "",0);
 		break;
 	case DestructibleType::PLAYER:
-		destructible = std::make_unique<PlayerDestructible>(0, 0, "");
+		destructible = std::make_unique<PlayerDestructible>(0, 0, "",0);
 		break;
 	}
 	destructible->load(zip);
@@ -222,10 +234,11 @@ std::unique_ptr<Ai> Ai::create(TCODZip& zip) {
 
 void PlayerAi::save(TCODZip& zip) {
 	zip.putInt((int)AiType::PLAYER);
+	zip.putInt(xpLevel);
 }
 
 void PlayerAi::load(TCODZip& zip) {
-
+	xpLevel = zip.getInt();
 }
 
 void MonsterAi::save(TCODZip& zip) {

@@ -9,6 +9,7 @@ private:
 public:
 	std::string name; //Actors name
 	bool blocks;
+	bool fovOnly;
 	std::unique_ptr<Attacker> attacker;
 	std::unique_ptr<Destructible> destructible;
 	std::unique_ptr<Ai> ai;// something self updating

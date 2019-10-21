@@ -1,4 +1,3 @@
-
 #include <memory>
 #include <sstream>
 #include "main.h"
@@ -70,7 +69,7 @@ bool LightningBolt::use(Actor* owner, Actor* wearer) {
 	}
 	//hit closest monster for <damage> hit points
 	std::stringstream ss;
-	ss << "A lightningbolt hit " << closestMonster->name << "with loud thunder!\n The damage is " << closestMonster->destructible->takeDamage(closestMonster, damage) << " hit points.";
+	ss << "A lightningbolt hit the " << closestMonster->name << " with loud thunder!\nThe damage is " << closestMonster->destructible->takeDamage(closestMonster, damage) << " hit points.";
 	engine.gui->message(TCOD_light_blue, ss.str());
 	return Pickable::use(owner, wearer);
 }
@@ -87,9 +86,9 @@ bool Fireball::use(Actor* owner, Actor* wearer) {
 	std::stringstream ss;
 	ss << "The fireball explodes burning everything in " << range << " tiles.";
 	engine.gui->message(TCOD_orange, ss.str());
+	ss.str(std::string());
 	for (auto i = engine.actors.begin(); i != engine.actors.end(); ++i) {
 		if (i->get()->destructible && !i->get()->destructible->isDead() && i->get()->getDistance(x, y) <= range) {
-			ss.clear();
 			ss << "The " << i->get()->name << " gets burned for " << damage << " hit points.";
 			engine.gui->message(TCOD_orange, ss.str());
 			i->get()->destructible->takeDamage(i->get(), damage);
@@ -116,7 +115,7 @@ bool Confuser::use(Actor* owner, Actor* wearer) {
 	std::unique_ptr<ConfusedMonsterAi> confusedAi = std::make_unique<ConfusedMonsterAi>(nbTurns, std::move(actor->ai));
 	actor->ai = std::move(confusedAi);
 	std::stringstream ss;
-	ss << "The eyes of the " << actor->name << " look vacant \n as he starts to stumble around!";
+	ss << "The eyes of the " << actor->name << " look vacant \nas he starts to stumble around!";
 	engine.gui->message(TCOD_light_green, ss.str());
 	return Pickable::use(owner, wearer);
 }
