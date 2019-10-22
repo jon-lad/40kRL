@@ -20,6 +20,7 @@ void Engine::update()
 	}
 	player->update();
 	if (gameStatus == NEW_TURN) {
+		map->currentScentValue++;
 		for (std::list<std::unique_ptr<Actor>>::iterator i = actors.begin(); i != actors.end(); ) {
 			if (i->get() == NULL) {
 				i = actors.erase(i);

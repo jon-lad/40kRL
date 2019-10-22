@@ -1,8 +1,11 @@
 #pragma once
 
+
+
 struct Tile {
 	bool explored {}; // is tile passable
-	Tile() :explored{ false } {}
+	unsigned int scent;
+	Tile() :explored{ false }, scent{ 0 } {}
 };  
 
 class Map : public Persistent {
@@ -10,6 +13,7 @@ private:
 	int width {}; //Map width
 	int height {}; //Map Height
 public:
+	unsigned int currentScentValue;
 	
 	Map(int width, int height);
 	void init(bool withActors);
@@ -30,6 +34,7 @@ public:
 	int getHeight() const;
 	void setHeight(int height);
 	
+	unsigned int getScent(int x, int y) const;
 	
 protected:
 	mutable std::vector<Tile> tiles{};

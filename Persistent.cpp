@@ -89,7 +89,9 @@ void Map::save(TCODZip& zip) {
 	zip.putInt(seed);
 	for (auto i = tiles.begin(); i != tiles.end(); ++i) {
 		zip.putInt(i->explored);
+		zip.putInt(i->scent);
 	}
+	zip.putInt(currentScentValue);
 }
 
 void Map::load(TCODZip& zip) {
@@ -97,8 +99,9 @@ void Map::load(TCODZip& zip) {
 	init(false);
 	for (auto i = tiles.begin(); i != tiles.end(); ++i) {
 		i->explored = (bool)zip.getInt();
+		i->scent = zip.getInt();
 	}
-
+	currentScentValue = zip.getInt();
 }
 
 /*Actors*/
@@ -243,11 +246,11 @@ void PlayerAi::load(TCODZip& zip) {
 
 void MonsterAi::save(TCODZip& zip) {
 	zip.putInt((int)AiType::MONSTER);
-	zip.putInt(moveCount);
+	
 }
 
 void MonsterAi::load(TCODZip& zip) {
-	moveCount = zip.getInt();
+	
 }
 
 void ConfusedMonsterAi::save(TCODZip& zip) {

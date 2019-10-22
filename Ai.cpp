@@ -66,16 +66,7 @@ void MonsterAi::update(Actor* owner) {
 		if (owner->destructible && owner->destructible->isDead()) {
 			return;
 		}
-		if (engine.map->isInFOV(owner->getX(), owner->getY())) {
-			// we can see the player. move towards him
-			moveCount = TRACKING_TURNS;
-		}
-		else {
-			moveCount--;
-		}
-		if (moveCount > 0) {
-			moveOrAttack(owner, engine.player->getX(), engine.player->getY());
-		}
+		moveOrAttack(owner, engine.player->getX(), engine.player->getY());
 }
 
 
@@ -208,23 +199,48 @@ void MonsterAi::moveOrAttack(Actor * owner, int targetx, int targety) {
 	int stepdx = (dx > 0 ? 1 : -1);
 	int stepdy = (dy > 0 ? 1 : -1);
 	float distance = sqrtf((float)dx * (float)dx + (float)dy * (float)dy);
-	if (distance >= 2) {
-		dx = (int)(round(dx / distance));
-		dy = (int)(round(dy / distance));
+	if (distance < 2) {
+		//at melee range attack
+		if (owner->attacker) {
+			owner->attacker->attack(owner, engine.player);
+		}
+		return;
+	}
+	else if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+		//player in sight go towards him
+		dx = (int)std::round(dx / distance);
+		dy = (int)std::round(dx / distance);
 		if (engine.map->canWalk(owner->getX() + dx, owner->getY() + dy)) {
 			owner->setX(owner->getX() + dx);
 			owner->setY(owner->getY() + dy);
-		}
-		else if (engine.map->canWalk(owner->getX() + stepdx, owner->getY())) {
-			owner->setX(owner->getX() + stepdx);
-		}
-		else if (engine.map->canWalk(owner->getX(), owner->getY() + stepdy)) {
-			owner->setY(owner->getY() + stepdy);
+			return;
 		}
 	}
-	else if (owner->attacker) {
-		owner->attacker->attack(owner, engine.player);
+	//player not visible use scent tracking
+	//find the adjacent cell with highest scent level
+	unsigned int bestLevel = 0;
+	int bestCellIndex = -1;
+	static constexpr int tdx[8] = { -1,0,1,-1,1,-1,0,1 };
+	static constexpr int tdy[8] = { -1,-1,-1,0,0,1,1,1 };
+	for (int i = 0; i < 8; i++) {
+		int cellx = owner->getX() + tdx[i];
+		int celly = owner->getY() + tdy[i];
+		if (engine.map->canWalk(cellx, celly)) {
+			unsigned int cellScent = engine.map->getScent(cellx, celly);
+			if (cellScent > engine.map->currentScentValue - SCENT_THRESHOLD && cellScent > bestLevel) {
+				bestLevel = cellScent;
+				bestCellIndex = i;
+			}
+		}
 	}
+	if (bestCellIndex != -1) {
+		//the monster smells the player follow the scent
+		owner->setX(owner->getX() + tdx[bestCellIndex]);
+		owner->setY(owner->getY() + tdy[bestCellIndex]);
+
+	}
+	
+
 }
 
 ConfusedMonsterAi::ConfusedMonsterAi(int nbTurns, std::unique_ptr<Ai> oldAi): nbTurns{ nbTurns }, oldAi{ std::move(oldAi) } {

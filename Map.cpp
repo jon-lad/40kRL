@@ -10,6 +10,8 @@ static constexpr int ROOM_MIN_SIZE = 6;
 static constexpr int MAX_ROOM_MONSTERS = 3;
 static constexpr int MAX_ROOM_ITEMS = 2;
 
+
+
 class BspListener : public ITCODBspCallback {
 private:
 	Map& map; // a map to dig
@@ -43,7 +45,7 @@ public:
 
 
 
-Map::Map(int width, int height) : width{ width }, height{ height }
+Map::Map(int width, int height) : width{ width }, height{ height }, currentScentValue{SCENT_THRESHOLD}
 {
 	seed = TCODRandom::getInstance()->getInt(0, 0x7FFFFFFF);
 
@@ -97,6 +99,21 @@ bool Map::isInFOV(int x, int y) const {
 void Map::computeFOV() {
 	//use TCODMap to compute Field of view for player
 	map->computeFov(engine.player->getX(), engine.player->getY(), engine.FOVRadius);
+	//update scent field
+	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
+			if (isInFOV(x, y)) {
+				unsigned int oldScent = getScent(x, y);
+				int dx = x - engine.player->getX();
+				int dy = y - engine.player->getY();
+				long distance = (int)std::sqrt(dx * dx + dy * dy);
+				unsigned int newScent = currentScentValue - distance;
+				if (newScent > oldScent) {
+					tiles.at(x + (y * width)).scent = newScent;
+				}
+			}
+		}
+	}
 }
 
 bool Map::canWalk(int x, int y) const{
@@ -124,7 +141,26 @@ void Map::render() const
 	{
 		for (int y = 0; y < height; y++)
 		{
-			//if it is if filed of view reder light
+			//render scent
+			/*int scent = SCENT_THRESHOLD - (currentScentValue - getScent(x, y));
+			scent = CLAMP(0, 10, scent);
+			float sc = scent * 0.1f;
+
+			//if it is if filed of view render light
+			if (isInFOV(x, y)) {
+				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? lightWall : TCODColor::lightGrey * sc);
+			}
+			//if it has previously been seen render dark
+			else if (isExplored(x, y)) {
+				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? darkWall : TCODColor::lightGrey * sc);
+			}
+			else if (!isWall(x, y)) {
+				TCODConsole::root->setCharBackground(x, y, TCODColor::white * sc);
+			}*/
+
+			// dont render scent
+
+			//if it is if filed of view render light
 			if (isInFOV(x, y)) {
 				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? lightWall : lightGround);
 			}
@@ -275,6 +311,9 @@ void Map::setHeight(int height)
 }
 
 
-
+unsigned int Map::getScent(int x, int y) const {
+	int location = x + (y * width);
+	return tiles.at(location).scent;
+}
 
 

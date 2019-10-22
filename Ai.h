@@ -1,5 +1,8 @@
 #pragma once
 
+static constexpr int SCENT_THRESHOLD = 20; //amount of turns monser can smell scent
+
+
 class Ai : public Persistent {
 public:
 	virtual void update(Actor* owner) = 0;
@@ -38,7 +41,6 @@ public:
 	void load(TCODZip& zip);
 protected:
 	void moveOrAttack(Actor* owner, int targetx, int targety);
-	int moveCount;
 };
 
 class ConfusedMonsterAi : public Ai {
