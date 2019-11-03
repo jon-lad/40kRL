@@ -2,13 +2,17 @@
 #include <memory>
 #include <vector>
 #include <list>
+#include <sstream>
 #include "main.h"
 
-static constexpr int ROOM_MAX_SIZE = 12;
-static constexpr int ROOM_MIN_SIZE = 6;
+static constexpr auto ROOM_MAX_SIZE = 12;
+static constexpr auto ROOM_MIN_SIZE = 6;
 
-static constexpr int MAX_ROOM_MONSTERS = 3;
-static constexpr int MAX_ROOM_ITEMS = 2;
+static constexpr auto MAX_ROOM_MONSTERS = 3;
+static constexpr auto MAX_ROOM_ITEMS = 2;
+
+
+static constexpr auto ground = '.';
 
 
 
@@ -77,14 +81,30 @@ bool Map::isWall(int x, int y) const
 }
 
 //returns ex x, y position has been in FOV
-bool Map::isExplored(int x, int y) const {
+bool Map::isExplored(int x, int y) const{
 	int tileNo = x + y * width;
-	return tiles.at(tileNo).explored;
+	if (tileNo < tiles.size()) {
+		return tiles.at(tileNo).explored;
+	}
+	return false;
+}
+
+bool Map::isExplorable(int x, int y)const {
+	static constexpr int tdx[8] = { -1,0,1,-1,1,-1,0,1 };
+	static constexpr int tdy[8] = { -1,-1,-1,0,0,1,1,1 };
+	for (int i = 0; i < 8; i++) {
+		int cellx = x + tdx[i];
+		int celly = y + tdy[i];
+		if (!engine.map->isWall(cellx, celly)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /*Find out if x and y are in FOV  if so returns truesets tiles 
 to explored if they have been seen. This is const as is called by render function*/
-bool Map::isInFOV(int x, int y) const {
+bool Map::isInFOV(int x, int y) const{
 	if (x < 0 || x >= width || y < 0 || y >= height) {
 		return false;
 	}
@@ -120,8 +140,8 @@ bool Map::canWalk(int x, int y) const{
 	if (isWall(x, y)) {
 		return false;
 	}
-	for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
-		if (i->get()->blocks && i->get()->getX() == x && i->get()->getY() == y){
+	for (const auto& actor : engine.actors) {
+		if (actor->blocks && actor->getX() == x && actor->getY() == y){
 			return false;
 		}
 	}
@@ -141,8 +161,9 @@ void Map::render() const
 	{
 		for (int y = 0; y < height; y++)
 		{
+
 			//render scent
-			/*int scent = SCENT_THRESHOLD - (currentScentValue - getScent(x, y));
+			int scent = SCENT_THRESHOLD - (currentScentValue - getScent(x, y));
 			scent = CLAMP(0, 10, scent);
 			float sc = scent * 0.1f;
 
@@ -156,18 +177,114 @@ void Map::render() const
 			}
 			else if (!isWall(x, y)) {
 				TCODConsole::root->setCharBackground(x, y, TCODColor::white * sc);
-			}*/
+			}
 
 			// dont render scent
 
 			//if it is if filed of view render light
-			if (isInFOV(x, y)) {
-				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? lightWall : lightGround);
+			/*if (isInFOV(x, y)) {
+				if (isWall(x, y)) {
+					bool isTopExploredWall = isWall(x, y - 1) && isExplorable(x, y - 1);
+					bool isBottomExploredWall = isWall(x, y + 1) && isExplorable(x, y + 1);
+					bool isLeftExploredWall = isWall(x -1, y) && isExplorable(x - 1, y);
+					bool isRightExploredWall = isWall(x + 1, y) && isExplorable(x + 1, y);
+			
+					TCOD_chars_t tileChar = TCOD_CHAR_RADIO_UNSET;
+
+					if (isTopExploredWall && isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DCROSS;
+					}
+					else if (!isTopExploredWall && isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DTEES;
+					}
+					else if (isTopExploredWall && !isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DTEEN;
+					}
+					else if (isTopExploredWall && isBottomExploredWall && !isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DTEEE;
+					}
+					else if (isTopExploredWall && isBottomExploredWall && isLeftExploredWall && !isRightExploredWall) {
+						tileChar = TCOD_CHAR_DTEEW;
+					}
+					else if (!isTopExploredWall && isBottomExploredWall && isLeftExploredWall && !isRightExploredWall) {
+						tileChar = TCOD_CHAR_DNE;
+					}
+					else if (!isTopExploredWall && isBottomExploredWall && !isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DNW;
+					}
+					else if (isTopExploredWall && !isBottomExploredWall && isLeftExploredWall && !isRightExploredWall) {
+						tileChar = TCOD_CHAR_DSE;
+					}
+					else if (isTopExploredWall && !isBottomExploredWall && !isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DSW;
+					}
+					else if (isTopExploredWall && isBottomExploredWall && !isLeftExploredWall && !isRightExploredWall) {
+						tileChar = TCOD_CHAR_DVLINE;
+					}
+					else if (!isTopExploredWall && !isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DHLINE;
+					}
+					
+					TCODConsole::root->setChar(x, y, tileChar);
+					TCODConsole::root->setCharForeground(x, y, lightWall);
+				}
+				else {
+					TCODConsole::root->setChar(x, y, ground);
+					TCODConsole::root->setCharForeground(x, y, lightGround); 
+				}
+				
 			}
 			//if it has previously been seen render dark
 			else if (isExplored(x, y)) {
-				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? darkWall : darkGround);
-			}
+				if (isWall(x, y)) {
+					bool isTopExploredWall = isWall(x, y - 1) && isExplorable(x, y - 1);
+					bool isBottomExploredWall = isWall(x, y + 1) && isExplorable(x, y + 1);
+					bool isLeftExploredWall = isWall(x - 1, y) && isExplorable(x - 1, y);
+					bool isRightExploredWall = isWall(x + 1, y) && isExplorable(x + 1, y);
+
+					TCOD_chars_t tileChar = TCOD_CHAR_RADIO_UNSET;
+
+					if (isTopExploredWall && isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DCROSS;
+					}
+					else if (!isTopExploredWall && isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DTEES;
+					}
+					else if (isTopExploredWall && !isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DTEEN;
+					}
+					else if (isTopExploredWall && isBottomExploredWall && !isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DTEEE;
+					}
+					else if (isTopExploredWall && isBottomExploredWall && isLeftExploredWall && !isRightExploredWall) {
+						tileChar = TCOD_CHAR_DTEEW;
+					}
+					else if (!isTopExploredWall && isBottomExploredWall && isLeftExploredWall && !isRightExploredWall) {
+						tileChar = TCOD_CHAR_DNE;
+					}
+					else if (!isTopExploredWall && isBottomExploredWall && !isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DNW;
+					}
+					else if (isTopExploredWall && !isBottomExploredWall && isLeftExploredWall && !isRightExploredWall) {
+						tileChar = TCOD_CHAR_DSE;
+					}
+					else if (isTopExploredWall && !isBottomExploredWall && !isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DSW;
+					}
+					else if (isTopExploredWall && isBottomExploredWall && !isLeftExploredWall && !isRightExploredWall) {
+						tileChar = TCOD_CHAR_DVLINE;
+					}
+					else if (!isTopExploredWall && !isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
+						tileChar = TCOD_CHAR_DHLINE;
+					}
+					TCODConsole::root->setChar(x, y, tileChar);
+					TCODConsole::root->setCharForeground(x, y, darkWall);
+				}
+				else {
+					TCODConsole::root->setChar(x, y, ground);
+					TCODConsole::root->setCharForeground(x, y, darkGround);
+				}
+			}*/
 		}
 	}
 }
@@ -239,7 +356,7 @@ void Map::addMonster(int x, int y) {
 	TCODRandom* rng = TCODRandom::getInstance();
 	if (rng->getInt(0, 100) < 80) {
 		//create an orc
-		std::unique_ptr<Actor> ork = std::make_unique<Actor>(x, y, 'o', "Ork", TCODColor::desaturatedGreen);
+		auto ork = std::make_unique<Actor>(x, y, 'o', "Ork", TCODColor::desaturatedGreen);
 		ork->destructible =std::move(std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35));
 		ork->attacker = std::move(std::make_unique<Attacker>(3.0f));
 		ork->ai = std::move(std::make_unique<MonsterAi>());
@@ -248,7 +365,7 @@ void Map::addMonster(int x, int y) {
 	}
 	else {
 		//create a troll
-		std::unique_ptr<Actor> Nob = std::make_unique<Actor>(x, y, 'N', "Nob", TCODColor::darkerGreen);
+		auto Nob = std::make_unique<Actor>(x, y, 'N', "Nob", TCODColor::darkerGreen);
 		Nob->destructible = std::move(std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100));
 		Nob->attacker = std::move(std::make_unique<Attacker>(4.0f));
 		Nob->ai = std::move(std::make_unique<MonsterAi>());
@@ -259,33 +376,36 @@ void Map::addMonster(int x, int y) {
 
 void Map::addItem(int x, int y) {
 	TCODRandom* rng = TCODRandom::getInstance();
-	int dice = rng->getInt(0, 100);
+	auto dice = rng->getInt(0, 100);
 	if (dice < 70) {
 		//create a health potion
 		std::unique_ptr<Actor> healthPotion = std::make_unique<Actor>(x, y, '!', "health potion", TCOD_violet);
 		healthPotion->blocks = false;
-		healthPotion->pickable = std::make_unique<Healer>(4);
+		healthPotion->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f)), std::move(std::make_unique<HealthEffect>(4.0f, "", TCODColor::lightGrey)));
 		engine.actors.emplace_front(std::move(healthPotion));
 	}
 	else if (dice < 70 + 10) {
 		//create a scroll of Lightning bolt
 		std::unique_ptr<Actor> scrollOfLightningBolt = std::make_unique<Actor>(x, y, '#', "scroll of lightning bolt", TCOD_light_yellow);
 		scrollOfLightningBolt->blocks = false;
-		scrollOfLightningBolt->pickable = std::make_unique<LightningBolt>(5,20);
+		scrollOfLightningBolt->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::CLOSEST_MONSTER,5.0f)),
+			std::move(std::make_unique<HealthEffect>(-20.0f,"A lightning bolt strikes the # \nwith the sound of loud thunder!\nThe damege is # hit points.", TCODColor::lightBlue)));
 		engine.actors.emplace_front(std::move(scrollOfLightningBolt));
 	}
 	else if (dice < 70 + 10+10) {
 		//create a scroll of Fireball
 		std::unique_ptr<Actor> scrollOfFireball = std::make_unique<Actor>(x, y, '#', "scroll of fireball", TCOD_light_yellow);
 		scrollOfFireball->blocks = false;
-		scrollOfFireball->pickable = std::make_unique<Fireball>(3, 12);
+		scrollOfFireball->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_RANGE, 3.0f)),
+			std::move(std::make_unique<HealthEffect>(-12.0f, "The # gets burned for # hit points.", TCODColor::orange)));
 		engine.actors.emplace_front(std::move(scrollOfFireball));
 	}
 	else if (dice < 70 + 10 + 10 + 10) {
 		//create a scroll of Confusion
 		std::unique_ptr<Actor> scrollOfConfusion = std::make_unique<Actor>(x, y, '#', "scroll of confusion", TCOD_light_yellow);
 		scrollOfConfusion->blocks = false;
-		scrollOfConfusion->pickable = std::make_unique<Confuser>(10, 8);
+		scrollOfConfusion->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_MONSTER, 5.0f)),
+			std::move(std::make_unique<AiChangeEffect>(std::make_unique<ConfusedMonsterAi>(10), "The eyes of the # glaze over\nas he starts to stumble around!.", TCOD_light_green)));
 		engine.actors.emplace_front(std::move(scrollOfConfusion));
 	}
 }

@@ -16,6 +16,19 @@ protected:
 
 };
 
+class TemporaryAi : public Ai {
+public:
+	TemporaryAi(int nbTurns);
+	void update(Actor* owner);
+	virtual void applyTo(Actor* actor);
+	static auto create(TCODZip& zip);
+	virtual void save(TCODZip& zip) {};
+	virtual void load(TCODZip& zip) {};
+protected:
+	int nbTurns;
+	std::unique_ptr<Ai> oldAi;
+};
+
 class PlayerAi : public Ai {
 public:
 	int xpLevel;
@@ -36,21 +49,18 @@ public:
 	void update(Actor* owner);
 	// how many turns the monster chases the player
 	// after losing his sight
-	static const int TRACKING_TURNS = 3;
+	static const auto TRACKING_TURNS = 3;
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
 protected:
 	void moveOrAttack(Actor* owner, int targetx, int targety);
 };
 
-class ConfusedMonsterAi : public Ai {
+class ConfusedMonsterAi : public TemporaryAi {
 public:
-	ConfusedMonsterAi(int nbTurns, std::unique_ptr<Ai> oldAi);
+	ConfusedMonsterAi(int nbTurns);
 	void update(Actor* owner);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
-protected:
-	int nbTurns;
-	std::unique_ptr<Ai> oldAi;
 };
 

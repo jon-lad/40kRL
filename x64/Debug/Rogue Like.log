@@ -1,13 +1,5 @@
-﻿  Map.cpp
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244: 'argument': conversion from '_Ty' to 'float', possible loss of data
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         with
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         [
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:             _Ty=int
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         ]
-C:\Users\jonat\Documents\Projects\Rouge_like\Map.cpp(265): message : see reference to function template instantiation 'std::unique_ptr<Healer,std::default_delete<_Ty>> std::make_unique<Healer,int,0>(int &&)' being compiled
-C:\Users\jonat\Documents\Projects\Rouge_like\Map.cpp(265): message :         with
-C:\Users\jonat\Documents\Projects\Rouge_like\Map.cpp(265): message :         [
-C:\Users\jonat\Documents\Projects\Rouge_like\Map.cpp(265): message :             _Ty=Healer
-C:\Users\jonat\Documents\Projects\Rouge_like\Map.cpp(265): message :         ]
-  LINK : C:\Users\jonat\Documents\Projects\Rouge_like\x64\Debug\Rogue Like.exe not found or not built by the last incremental link; performing full link
+﻿  Ai.cpp
+  Engine.cpp
+  Map.cpp
+  Generating Code...
   Rogue Like.vcxproj -> C:\Users\jonat\Documents\Projects\Rouge_like\x64\Debug\Rogue Like.exe

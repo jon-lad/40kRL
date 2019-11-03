@@ -4,19 +4,14 @@
 #include <string>
 #include <iostream>
 #include <sstream>
-#include <stdarg.h>
+#include <tuple>
 #include "main.h"
 
 
-static constexpr int PANEL_HEIGHT = 7;
-static constexpr int BAR_WIDTH = 20;
-static constexpr int MSG_X = BAR_WIDTH + 2;
-static constexpr int MSG_HEIGHT = PANEL_HEIGHT - 2;
-static constexpr int PAUSE_MENU_WIDTH = 30;
-static constexpr int PAUSE_MENU_HEIGHT = 15;
+
 
 Gui::Gui() {
-	con = std::make_unique<TCODConsole>(engine.screenWidth, PANEL_HEIGHT);
+	con = std::make_unique<TCODConsole>(engine.screenWidth, constants::PANEL_HEIGHT);
 }
 
 void Gui::render() {
@@ -24,20 +19,20 @@ void Gui::render() {
 	con->setDefaultBackground(TCODColor::black);
 	con->clear();
 	//draw the health bar
-	renderBar(1, 1, BAR_WIDTH, "HP", engine.player->destructible->hp, engine.player->destructible->maxHp, TCOD_light_red, TCOD_darker_red);
+	renderBar(1, 1, constants::BAR_WIDTH, "HP", engine.player->destructible->hp, engine.player->destructible->maxHp, TCOD_light_red, TCOD_darker_red);
 	//draw xp bar
 	PlayerAi* ai = (PlayerAi*) engine.player->ai.get();
 	std::stringstream ss;
 	if (ai) {
 		ss << "XP(" << ai->xpLevel << ")";
-		renderBar(1, 5, BAR_WIDTH, ss.str(), engine.player->destructible->xp, ai->getNextLevelXp(), TCOD_light_violet, TCOD_darker_violet);
+		renderBar(1, 5, constants::BAR_WIDTH, ss.str(), (float)engine.player->destructible->xp, (float)ai->getNextLevelXp(), TCOD_light_violet, TCOD_darker_violet);
 	}
 	// draw the message log
 	int y = 1;
 	float colorCoef = 0.4f;
-	for (auto i = log.begin(); i != log.end(); ++i) {
-		con->setDefaultForeground(i->get()->col* colorCoef);
-		con->printf(MSG_X, y, i->get()->text.c_str());
+	for (const auto& message : log) {
+		con->setDefaultForeground(message->col* colorCoef);
+		con->printf(constants::MSG_X, y, message->text.c_str());
 		y++;
 		colorCoef += 0.3f;
 	}
@@ -49,7 +44,7 @@ void Gui::render() {
 	ss << "Dungeon level " << engine.level;
 	con->printf(3, 3, ss.str().c_str());
 	//blit the the GUI console on the root console
-	TCODConsole::blit(con.get(), 0, 0, engine.screenWidth, PANEL_HEIGHT, TCODConsole::root, 0, engine.screenHeight - PANEL_HEIGHT);
+	TCODConsole::blit(con.get(), 0, 0, engine.screenWidth, constants::PANEL_HEIGHT, TCODConsole::root, 0, engine.screenHeight - constants::PANEL_HEIGHT);
 }
 void Gui::renderBar(int x, int y, int width, std::string_view name, float value, float maxValue, const TCODColor& barColor, const TCODColor& backColor) {
 	//fill the background
@@ -91,29 +86,20 @@ void Gui::renderMouseLook() {
 	con->printf(1, 0, buf.c_str());
 }
 
-Gui::Message::Message(std::string& text, const TCODColor& col): text{ text }, col{ col } 
+bool Gui::replace(std::string& str, const std::string& from, const std::string& to) {
+	size_t start_pos = str.find(from);
+	if (start_pos == std::string::npos) {
+		return false;
+	}
+	str.replace(start_pos, from.length(), to);
+	return true;
+}
+
+Gui::Message::Message(std::string_view text, const TCODColor& col): text{ text.data() }, col{ col } 
 {}
 
 
 
-void Gui::message(const TCODColor &col, std::string_view text, ...){
-	std::vector<std::string> splitString;
-	std::string input = text.data();
-	std::istringstream ss(input);
-	std::string token;
-	while(std::getline(ss, token, '\n')) {
-
-		splitString.emplace_back(token);
-	}
-		//add message to log
-	for(auto i = splitString.begin(); i != splitString.end(); ++i) {
-		if (log.size() == MSG_HEIGHT) {
-			log.pop_front();
-		}
-		log.emplace_back(std::make_unique<Message>(*i, col));
-	}
-
-}
 
 void Gui::clear() {
 	log.clear();
@@ -134,10 +120,10 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode){
 	int selectedItem = 0;
 	int menux, menuy;
 	if (mode == DisplayMode::PAUSE) {
-		menux = engine.screenWidth / 2 - PAUSE_MENU_WIDTH / 2;
-		menuy = engine.screenHeight / 2 - PAUSE_MENU_HEIGHT / 2;
+		menux = engine.screenWidth / 2 - constants::PAUSE_MENU_WIDTH / 2;
+		menuy = engine.screenHeight / 2 - constants::PAUSE_MENU_HEIGHT / 2;
 		TCODConsole::root->setDefaultForeground(TCODColor(200, 180, 50));
-		TCODConsole::root->printFrame(menux, menuy, PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT, true,
+		TCODConsole::root->printFrame(menux, menuy, constants::PAUSE_MENU_WIDTH, constants::PAUSE_MENU_HEIGHT, true,
 			TCOD_BKGND_ALPHA(70), "menu");
 		menux += 2;
 		menuy += 3;
@@ -169,7 +155,7 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode){
 		case TCODK_UP:
 			selectedItem--;
 			if (selectedItem < 0) {
-				selectedItem = items.size() - 1;
+				selectedItem = (int)items.size() - 1;
 			}
 			break;
 		case TCODK_DOWN:

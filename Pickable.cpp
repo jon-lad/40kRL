@@ -1,6 +1,9 @@
 #include <memory>
+#include <string>
 #include <sstream>
 #include "main.h"
+
+Pickable::Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr <Effect> effect) :selector{ std::move(selector) }, effect{ std::move(effect) }{ }
 
 bool Pickable::pick(std::unique_ptr<Actor> owner, Actor* wearer) {
 	if (wearer->container && wearer->container->add(std::move(owner))) {
@@ -9,18 +12,33 @@ bool Pickable::pick(std::unique_ptr<Actor> owner, Actor* wearer) {
 	return false;
 }
 
-bool Pickable::use(Actor *owner, Actor* wearer) {
-	if (wearer->container) {
-		for (auto i = wearer->container->inventory.begin(); i != wearer->container->inventory.end();) {
-			if (i->get() == owner) {
-				i = wearer->container->inventory.erase(i);
-				return true;
-			}
-			else { ++i; }
+bool Pickable::use(Actor* owner, Actor* wearer) {
+	TCODList<Actor*> list;
+	if (selector) {
+		selector->selectTargets(wearer, list);
+	}
+	else {
+		list.push(wearer);
+	}
+	bool succeed = false;
+	for (auto& actor: list) {
+		if (effect->applyTo(actor)) {
+			succeed = true;
 		}
 	}
-	return false;
+	if(succeed){
+		if (wearer->container) {
+			for (auto i = wearer->container->inventory.begin(); i != wearer->container->inventory.end();) {
+				if (i->get() == owner) {
+					i = wearer->container->inventory.erase(i);
+				}
+				else { ++i; }
+			}
+		}
+	}
+	return succeed;
 }
+
 void Pickable::drop(Actor* owner, Actor* wearer) {
 	if (wearer->container) {
 		owner->setX(wearer->getX());
@@ -38,84 +56,108 @@ void Pickable::drop(Actor* owner, Actor* wearer) {
 		}
 	}
 }
-/*Pickable items below*/
+/*Effects below*/
 
-/*Healer*/
-Healer::Healer(float amount) :amount{ amount }{}
+/*Health*/
+HealthEffect::HealthEffect(float amount, std::string_view message, const TCODColor& textCol) :amount{ amount }, message{ std::string(message) }, textCol{ textCol }{}
 
-bool Healer::use(Actor* owner, Actor* wearer) {
-	if (wearer->destructible) {
-		float amountHealed = wearer->destructible->heal((int)amount);
-		if (amountHealed > 0) {
-			std::stringstream ss;
-			ss << wearer->name << " healed " << amountHealed << " Hp.";
-			engine.gui->message(TCODColor::lightGrey, ss.str());
-			return Pickable::use(std::move(owner), wearer);
+bool HealthEffect::applyTo(Actor* actor) {
+	if (!actor->destructible) return false;
+	if(amount >0)
+	{
+		float pointsHealed = actor->destructible->heal((int)amount);
+		if (pointsHealed > 0) {
+			if (!message.empty()) {
+				engine.gui->message(textCol, message, std::move(actor->name), std::move(pointsHealed));
+			}
+			return true;
+		}
+	}
+	else {
+		if (!message.empty() && (-amount - actor->destructible->defense) > 0) {
+			engine.gui->message(textCol, message, std::move(actor->name),std::move(-amount - actor->destructible->defense));
+		}
+		if (actor->destructible->takeDamage(actor, -amount) > 0) {
+			return true;
 		}
 
 	}
 	return false;
 }
 
-/*Lightning bolt*/
 
-LightningBolt::LightningBolt(float range, float damage) :range{ range }, damage{ damage }{}
-
-bool LightningBolt::use(Actor* owner, Actor* wearer) {
-	Actor* closestMonster = engine.getClosestMonster(wearer->getX(), wearer->getY(), range);
-	if (!closestMonster) {
-		engine.gui->message(TCODColor::lightGrey, "No monster is close enough to strike!");
-		return false;
-	}
-	//hit closest monster for <damage> hit points
-	std::stringstream ss;
-	ss << "A lightningbolt hit the " << closestMonster->name << " with loud thunder!\nThe damage is " << closestMonster->destructible->takeDamage(closestMonster, damage) << " hit points.";
-	engine.gui->message(TCOD_light_blue, ss.str());
-	return Pickable::use(owner, wearer);
+//Change AI
+AiChangeEffect::AiChangeEffect(std::unique_ptr<TemporaryAi> newAi, std::string_view message, const TCODColor& textCol):
+	message{ std::string(message) }, textCol{ textCol } {
+	this->newAi = std::move(newAi);
 }
-/*Fireball*/
-Fireball::Fireball(float range, float damage) :LightningBolt(range, damage) {}
 
-bool Fireball::use(Actor* owner, Actor* wearer) {
-	engine.gui->message(TCOD_cyan, "Left click on tile for the fireball \n or right click to cancel.");
-	int x, y;
-	if (!engine.pickAtTile(&x, &y)) {
-		return false;
+bool AiChangeEffect::applyTo(Actor* actor) {
+	newAi->applyTo(actor);
+	if (!message.empty()) {
+		engine.gui->message(textCol, message, std::move(actor->name));
 	}
-	//Burn everything in <range> (including Player)
-	std::stringstream ss;
-	ss << "The fireball explodes burning everything in " << range << " tiles.";
-	engine.gui->message(TCOD_orange, ss.str());
-	ss.str(std::string());
-	for (auto i = engine.actors.begin(); i != engine.actors.end(); ++i) {
-		if (i->get()->destructible && !i->get()->destructible->isDead() && i->get()->getDistance(x, y) <= range) {
-			ss << "The " << i->get()->name << " gets burned for " << damage << " hit points.";
-			engine.gui->message(TCOD_orange, ss.str());
-			i->get()->destructible->takeDamage(i->get(), damage);
+	return true;
+}
+
+//Target Selector
+
+
+TargetSelector::TargetSelector(SelectorType type, float range):type { type }, range{ range } {}
+
+void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list) {
+	switch (type) {
+		case SelectorType::SELF: {
+			list.push(wearer);
 		}
-	}
-	return Pickable::use(owner, wearer);
-}
 
-//Confuser
+		case SelectorType::CLOSEST_MONSTER:
+		{
+			Actor* closestMonster = engine.getClosestMonster(wearer->getX(), wearer->getY(), range);
+			if (closestMonster) {
+				list.push(closestMonster);
+			}
+		}
+		break;
+		case SelectorType::SELECTED_MONSTER:
+		{
+			int x, y;
+			engine.gui->message(TCOD_cyan, "Left click to select an an enemy,\nor right click to cancel.");
+			if (engine.pickAtTile(&x, &y, range)) {
+				Actor* actor = engine.getActor(x, y);
+				if (actor) {
+					list.push(actor);
+				}
+			}
 
-Confuser::Confuser(int nbTurns, float range):nbTurns{nbTurns},range{range}{}
-
-bool Confuser::use(Actor* owner, Actor* wearer) {
-	engine.gui->message(TCOD_cyan, "Left click an enemy to confuse it \n or right click to cancel");
-	int x, y;
-	if (!engine.pickAtTile(&x, &y, range)) {
-		return false;
+		}
+		break;
+		case SelectorType::WEARER_RANGE:
+		{
+			for (auto i = engine.actors.begin(); i != engine.actors.end(); ++i) {
+				Actor* actor = i->get();
+				if (actor->destructible && !actor->destructible->isDead() && actor->getDistance(wearer->getX(),wearer->getY())<= range) {
+					list.push(actor);
+				}
+			} 
+		}
+		break;
+		case SelectorType::SELECTED_RANGE:
+		{
+			int x, y;
+			engine.gui->message(TCOD_cyan, "Left-click to select an an tile,\nor right-click to cancel.");
+			if (engine.pickAtTile(&x, &y)) {
+				for (auto i = engine.actors.begin(); i != engine.actors.end(); ++i) {
+					Actor* actor = i->get();
+					if (actor->destructible && !actor->destructible->isDead() && actor->getDistance(x, y) <= range) {
+						list.push(actor);
+					}
+				}
+			}
+		}
+		break;
 	}
-	Actor* actor = engine.getActor(x, y);
-	if (!actor) {
-		return false;
+	if (list.isEmpty()) {
+		engine.gui->message(TCOD_light_grey, "No enemy is close enough.");
 	}
-	//confuse the monster for <nbTurns> turns
-	std::unique_ptr<ConfusedMonsterAi> confusedAi = std::make_unique<ConfusedMonsterAi>(nbTurns, std::move(actor->ai));
-	actor->ai = std::move(confusedAi);
-	std::stringstream ss;
-	ss << "The eyes of the " << actor->name << " look vacant \nas he starts to stumble around!";
-	engine.gui->message(TCOD_light_green, ss.str());
-	return Pickable::use(owner, wearer);
 }

@@ -84,9 +84,8 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetx, int targety)
 	for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
 		bool corpseOrItem = i->get()->destructible && i->get()->destructible->isDead() || i->get()->pickable;
 		if (corpseOrItem && i->get()->getX() == targetx && i->get()->getY() == targety) {
-			std::stringstream ss;
-			ss << "Theres a " << i->get()->name << " here.";
-			engine.gui->message(TCODColor::lightGrey, ss.str());
+			
+			engine.gui->message(TCODColor::lightGrey, "Theres a # here", std::move(i->get()->name));
 		}
 	}
 	owner->setX(targetx);
@@ -136,15 +135,20 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii) {
 	case 'g': //pickup item
 	{
 		bool found = false;
-		for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
-			if (i->get()->pickable && i->get()->getX() == owner->getX() && i->get()->getY() == owner->getY()) {
-				std::string itemName = i->get()->name;
-				Actor* item = i->get();
-				if (item->pickable->pick(std::move(*i), owner)) {
+		for (auto actor = engine.actors.begin(); actor != engine.actors.end(); ++actor) {
+			if (actor->get()->pickable && actor->get()->getX() == owner->getX() && actor->get()->getY() == owner->getY()) {
+				Actor* item = actor->get();
+				if (item->pickable->pick(std::move(*actor), owner)) {
 					found = true;
-					std::stringstream ss;
-					ss << "You pick up the " << itemName <<".";
-					engine.gui->message(TCODColor::lightGrey, ss.str());
+					engine.gui->message(TCODColor::lightGrey, "You pick up the #.", std::move(item->name));
+					auto i = engine.actors.begin();
+					auto e = engine.actors.end();
+					while (i != e) {
+						if (i->get() == nullptr) {
+							i = engine.actors.erase(i);
+						}
+						else { i++; }
+					}
 					break;
 				}
 				else if (!found) {
@@ -243,7 +247,7 @@ void MonsterAi::moveOrAttack(Actor * owner, int targetx, int targety) {
 
 }
 
-ConfusedMonsterAi::ConfusedMonsterAi(int nbTurns, std::unique_ptr<Ai> oldAi): nbTurns{ nbTurns }, oldAi{ std::move(oldAi) } {
+ConfusedMonsterAi::ConfusedMonsterAi(int nbTurns): TemporaryAi(nbTurns) {
 }
 
 void ConfusedMonsterAi::update(Actor* owner) {
@@ -264,9 +268,23 @@ void ConfusedMonsterAi::update(Actor* owner) {
 			}
 		}
 	}
-	nbTurns--;
-	if (nbTurns==0) {
-		owner->ai = std::move(oldAi);
-	}
+	TemporaryAi::update(owner);
 
+}
+
+TemporaryAi::TemporaryAi(int nbTurns) : nbTurns{ nbTurns } {
+}
+
+void TemporaryAi::update(Actor* owner) {
+	nbTurns--;
+	if (nbTurns == 0) {
+		owner->ai = std::move(oldAi);
+
+	}
+}
+
+void TemporaryAi::applyTo(Actor* actor) {
+	oldAi = std::move(actor->ai);
+	std::unique_ptr<TemporaryAi> tempai(this);
+	actor->ai = std::move(tempai);
 }

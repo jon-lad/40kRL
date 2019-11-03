@@ -1,5 +1,6 @@
 #pragma once
 
+
 class Menu {
 public:
 	enum class MenuItemCode {
@@ -35,7 +36,38 @@ public:
 	Gui();
 
 	void render();
-	void message(const TCODColor& col, const std::string_view text, ...);
+	
+	template<typename TCODColor, typename T, typename...Args>
+	void message(const TCODColor& col, const T& text, const Args&&...args) {
+
+		std::vector<std::string> splitString;
+		std::string input = text;
+		std::string token;
+		std::vector<std::string> stringSubs = makeStringList(args...);
+		bool x = true;
+		int i = 0;
+		while(x){
+			if (stringSubs.size() > i) {
+				x = replace(input, "#", stringSubs.at(i));
+				i++;
+			}
+			else { x = false; }
+		}
+		std::stringstream ss(input);
+		while (getline(ss, token, '\n')) {
+			splitString.emplace_back(token);
+		}
+	
+		//add message to log
+		for (const auto& string : splitString) {
+			if (log.size() == constants::MSG_HEIGHT) {
+				log.pop_front();
+			}
+			log.emplace_back(std::make_unique<Message>(string, col));
+		}
+	}
+
+
 	void load(TCODZip& zip);
 	void save(TCODZip& zip);
 	void clear();
@@ -46,16 +78,38 @@ protected:
 			float value, float maxValue, const TCODColor& barColor, 
 			const TCODColor& backColor);
 	void renderMouseLook();
+
+	template<typename T>
+	std::string makeString(const T& val) {
+		std::stringstream ss;
+		ss << val;
+		return ss.str().data();
+	}
+
+	template<typename...Args>
+	std::vector<std::string> makeStringList(Args&&...args) {
+		std::vector<std::string> v;
+		std::string s;
+		std::initializer_list<int>{
+			(s = makeString(std::move(args)),
+				std::clog << "Adding: '" << args << "' [" << typeid(std::move(args)).name() << "]",
+				v.push_back(s),
+				std::clog << " done - verify: '" << v.back() << "'\n",
+				0)...
+		};
+		return v;
+	}
+
+	bool replace(std::string& str, const std::string& from, const std::string& to);
 	
 	
 
 	struct Message {
 		std::string text;
 		TCODColor col;
-		Message(std::string& text, const TCODColor& col);
+		Message(std::string_view text, const TCODColor& col);
 		
 	};
 	std::list<std::unique_ptr<Message>> log;
-
 };
 

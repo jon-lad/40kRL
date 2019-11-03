@@ -1,55 +1,77 @@
 #pragma once
 
+/*Target selector*/
+
+class TargetSelector : public Persistent {
+public:
+	enum class SelectorType {
+		SELF,
+		CLOSEST_MONSTER,
+		SELECTED_MONSTER,
+		WEARER_RANGE,
+		SELECTED_RANGE
+	};
+	TargetSelector(SelectorType type, float range);
+	void selectTargets(Actor* wearer, TCODList<Actor*>& list);
+	void save(TCODZip& zip);
+	void load(TCODZip& zip);
+protected:
+	SelectorType type;
+	float range;
+};
+
+class Effect : public Persistent {
+public:
+	enum class EffectType {
+		HEALTH,
+		CHANGE_AI
+	};
+	virtual bool applyTo(Actor* actor) = 0;
+	static std::unique_ptr<Effect> create(TCODZip& zip);
+};
+
+
+
 class Pickable : public Persistent {
 public:
-	bool pick(std::unique_ptr<Actor> owner, Actor *wearer);
-	virtual bool use(Actor* owner, Actor* wearer);
+	Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr<Effect> effect);
+	bool pick(std::unique_ptr<Actor> owner, Actor* wearer);
+	bool use(Actor* owner, Actor* wearer);
 	void drop(Actor* owner, Actor* wearer);
-	static std::unique_ptr<Pickable> create(TCODZip& zip);
+	void save(TCODZip& zip);
+	void load(TCODZip& zip);
+
 protected:
-	enum class PickableType {
-		HEALER = 0,
-		LIGHTNING_BOLT,
-		CONFUSER,
-		FIREBALL
-	};
+	std::unique_ptr<TargetSelector> selector;
+	std::unique_ptr<Effect> effect;
 };
 
-/*Pickable Items Below*/
 
-class Healer : public Pickable {
+
+
+
+
+class HealthEffect : public Effect {
 public:
 	float amount;
+	std::string message;
+	TCODColor textCol;
+	HealthEffect(float amount, std::string_view message, const TCODColor& textCol);
 
-	Healer(float amount);
-	bool use(Actor* owner, Actor* wearer);
+	bool applyTo(Actor* owner);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
 };
 
-class LightningBolt : public Pickable {
-public:
-	float range;
-	float damage;
-	LightningBolt(float range, float damage);
-	bool use(Actor* owner, Actor* wearer);
-	void save(TCODZip& zip);
-	void load(TCODZip& zip);
-};
 
-class Fireball : public LightningBolt {
+class AiChangeEffect : public Effect {
 public:
-	Fireball(float range, float damage);
-	bool use(Actor* owner, Actor* wearer);
-	void save(TCODZip& zip);
-};
+	std::unique_ptr<TemporaryAi> newAi;
+	std::string message;
+	TCODColor textCol;
 
-class Confuser : public Pickable {
-public:
-	int nbTurns;
-	float range;
-	Confuser(int nbTurns, float range);
-	bool use(Actor* owner, Actor* wearer);
+	AiChangeEffect(std::unique_ptr<TemporaryAi> newAi, std::string_view message, const TCODColor& textCol);
+	bool applyTo(Actor* actor);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
 };

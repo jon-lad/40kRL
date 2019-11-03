@@ -1,4 +1,4 @@
-
+#include <sstream>
 #include <memory>
 #include <list>
 #include "main.h"

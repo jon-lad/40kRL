@@ -1,5 +1,5 @@
 #pragma once
-
+#include "Constants.h"
 #include "libtcod.hpp"
 class Actor;
 #include "Persistent.h"

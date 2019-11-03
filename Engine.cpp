@@ -1,5 +1,6 @@
 #include <list>
 #include <memory>
+#include <sstream>
 #include "main.h"
 
 Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, player{ NULL }, FOVRadius{ 10 }, screenWidth{ screenWidth }, screenHeight{ screenHeight }, level{1}
@@ -22,7 +23,7 @@ void Engine::update()
 	if (gameStatus == NEW_TURN) {
 		map->currentScentValue++;
 		for (std::list<std::unique_ptr<Actor>>::iterator i = actors.begin(); i != actors.end(); ) {
-			if (i->get() == NULL) {
+			if (*i == nullptr) {
 				i = actors.erase(i);
 			}
 			else if (i->get() != player) {
@@ -33,8 +34,6 @@ void Engine::update()
 		}
 	}
 }
-
-	
 
 
 void Engine::render(){
@@ -122,14 +121,13 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange) {
 	return false;
 }
 
+//sends actors to back of list do thst they sre rendered under other actors
 void Engine::sendToBack(Actor* actor) {
 	auto i = actors.begin(); 
 	for (i; i != actors.end(); ++i) {
 	
 		if ( actor == i->get() ) {
 			actors.splice(actors.begin(), actors, i);
-			
-			
 		}
 	}
 }

@@ -1,6 +1,7 @@
 
 #include <memory>
 #include <string>
+#include <sstream>
 #include <list>
 #include <cmath>
 #include "main.h"

@@ -1,6 +1,7 @@
 
 #include <memory>
 #include <list>
+#include <sstream>
 #include "main.h"
 
 Engine engine(80, 50);

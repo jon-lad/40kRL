@@ -1,4 +1,4 @@
-
+#include <sstream>
 #include <filesystem>
 #include "main.h"
 
@@ -90,6 +90,7 @@ void Map::save(TCODZip& zip) {
 	for (auto i = tiles.begin(); i != tiles.end(); ++i) {
 		zip.putInt(i->explored);
 		zip.putInt(i->scent);
+		
 	}
 	zip.putInt(currentScentValue);
 }
@@ -100,6 +101,7 @@ void Map::load(TCODZip& zip) {
 	for (auto i = tiles.begin(); i != tiles.end(); ++i) {
 		i->explored = (bool)zip.getInt();
 		i->scent = zip.getInt();
+		
 	}
 	currentScentValue = zip.getInt();
 }
@@ -157,14 +159,13 @@ void Actor::load(TCODZip& zip)
 		ai = std::move(Ai::create(zip));
 	}
 	if (hasPickable) {
-		pickable = std::move(Pickable::create(zip));
+		pickable = std::make_unique<Pickable>(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF,0.0f), Effect::create(zip));
+		pickable->load(zip);
 	}
 	if (hasContainer) {
 		container = std::make_unique<Container>(0);
 		container->load(zip);
 	}
-
-
 }
 
 /*attacker*/
@@ -200,10 +201,10 @@ std::unique_ptr<Destructible> Destructible::create(TCODZip& zip) {
 	switch (type)
 	{
 	case DestructibleType::MONSTER:
-		destructible = std::make_unique<MonsterDestructible>(0, 0, "",0);
+		destructible = std::make_unique<MonsterDestructible>(0, 0.0f, "", 0);
 		break;
 	case DestructibleType::PLAYER:
-		destructible = std::make_unique<PlayerDestructible>(0, 0, "",0);
+		destructible = std::make_unique<PlayerDestructible>(0, 0, "", 0);
 		break;
 	}
 	destructible->load(zip);
@@ -219,17 +220,29 @@ void MonsterDestructible::save(TCODZip& zip) {
 	zip.putInt((int)DestructibleType::MONSTER);
 	Destructible::save(zip);
 }
+
 /*Ai*/
 std::unique_ptr<Ai> Ai::create(TCODZip& zip) {
-	AiType type = (Ai::AiType)zip.getInt();
+	const auto& type = (Ai::AiType)zip.getInt();
 	std::unique_ptr<Ai> ai;
 	switch (type) {
 	case(AiType::PLAYER):
 		ai = std::make_unique<PlayerAi>(); break;
 	case(AiType::MONSTER):
 		ai = std::make_unique<MonsterAi>(); break;
-	case(AiType::CONFUSED_MONSTER):
-		ai = std::make_unique<ConfusedMonsterAi>(0, std::unique_ptr<Ai>()); break;
+	default: //case(AiType::CONFUSED_MONSTER):
+		ai = std::make_unique<ConfusedMonsterAi>(0); break;
+	}
+	ai->load(zip);
+	return std::move(ai);
+}
+
+auto TemporaryAi::create(TCODZip& zip) {
+	const auto& type = (Ai::AiType)zip.getInt();
+	std::unique_ptr<TemporaryAi> ai;
+	switch (type) {
+	case(Ai::AiType::CONFUSED_MONSTER):
+		ai = std::make_unique<ConfusedMonsterAi>(0); break;
 	}
 	ai->load(zip);
 	return std::move(ai);
@@ -254,81 +267,100 @@ void MonsterAi::load(TCODZip& zip) {
 }
 
 void ConfusedMonsterAi::save(TCODZip& zip) {
-	zip.putInt((int)AiType::CONFUSED_MONSTER);
+	zip.putInt((int)Ai::AiType::CONFUSED_MONSTER);
 	zip.putInt(nbTurns);
-	oldAi->save(zip);
+	zip.putInt(oldAi != 0);
+	if (oldAi) {
+		oldAi->save(zip);
+	}
 }
 
 void ConfusedMonsterAi::load(TCODZip& zip) {
 	nbTurns = zip.getInt();
+	bool hasOldAi = zip.getInt();
+	if (hasOldAi) {
 	oldAi = std::move(Ai::create(zip));
+	}
 }
 
 /*Pickable*/
-std::unique_ptr<Pickable> Pickable::create(TCODZip& zip) {
-	PickableType type = (Pickable::PickableType)zip.getInt();
-	std::unique_ptr<Pickable> pickable;
-	switch (type) 
-	{
-	case(PickableType::HEALER):
-		pickable = std::make_unique<Healer>(0);
+void Pickable::save(TCODZip& zip) {
+	effect->save(zip);
+	zip.putInt(selector != 0);
+	if (selector) {
+		selector->save(zip);
+	}
+	
+}
+
+void Pickable::load(TCODZip& zip) {
+	bool hasSelector = zip.getInt();
+	if (hasSelector) {
+		 
+		selector = std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0);
+		selector->load(zip);
+	}
+	
+
+}
+
+void TargetSelector::save(TCODZip& zip) {
+	zip.putInt((int)type);
+	zip.putFloat(range);
+}
+
+void TargetSelector::load(TCODZip& zip) {
+	type = (SelectorType)zip.getInt();
+	range = zip.getFloat();
+}
+
+std::unique_ptr<Effect> Effect::create(TCODZip& zip) {
+	const auto& type = (EffectType)zip.getInt();
+	std::unique_ptr<Effect> effect;
+	switch (type) {
+	case EffectType::HEALTH:
+		effect = std::make_unique<HealthEffect>(0, "", TCOD_light_grey);
 		break;
-	case(PickableType::LIGHTNING_BOLT):
-		pickable = std::make_unique<LightningBolt>(0,0);
-		break;
-	case(PickableType::CONFUSER):
-		pickable = std::make_unique<Confuser>(0,0);
-		break;
-	case(PickableType::FIREBALL):
-		pickable = std::make_unique<Fireball>(0,0);
+	case EffectType::CHANGE_AI:
+		effect = std::make_unique<AiChangeEffect>(std::make_unique<TemporaryAi>(0), " ", TCOD_light_grey);
 		break;
 	}
-	pickable->load(zip);
-	return std::move(pickable);
+	effect->load(zip);
+	return std::move(effect);
 }
 
-void Healer::save(TCODZip& zip) {
-	zip.putInt((int)PickableType::HEALER);
+void HealthEffect::save(TCODZip& zip) {
+	zip.putInt((int)EffectType::HEALTH);
 	zip.putFloat(amount);
+	zip.putString(message.c_str());
+	zip.putColor(&textCol);
 }
 
-void Healer::load(TCODZip& zip) {
+void HealthEffect::load(TCODZip& zip) {
 	amount = zip.getFloat();
+	message = zip.getString();
+	textCol = zip.getColor();
 }
 
-void LightningBolt::save(TCODZip & zip) {
-	zip.putInt((int)PickableType::LIGHTNING_BOLT);
-	zip.putFloat(range);
-	zip.putFloat(damage);
+void AiChangeEffect::save(TCODZip& zip) {
+	zip.putInt((int)EffectType::CHANGE_AI);
+	
+	newAi->save(zip);
+	zip.putString(message.c_str());
+	zip.putColor(&textCol);
 }
 
-void LightningBolt::load(TCODZip & zip) {
-	range = zip.getFloat();
-	damage = zip.getFloat();
+void AiChangeEffect::load(TCODZip& zip) {
+	
+	newAi = std::move(TemporaryAi::create(zip));
+	message = zip.getString();
+	textCol = zip.getColor();
 }
-
-void Confuser::save(TCODZip& zip) {
-	zip.putInt((int)PickableType::CONFUSER);
-	zip.putInt(nbTurns);
-	zip.putFloat(range);
-}
-
-void Confuser::load(TCODZip& zip) {
-	nbTurns = zip.getInt();
-	range = zip.getFloat();
-}
-
-void Fireball::save(TCODZip& zip) {
-	zip.putInt((int)PickableType::FIREBALL);
-	zip.putFloat(range);
-	zip.putFloat(damage);
-}
-
 
 /*Container*/
 void Container::save(TCODZip& zip) {
 	zip.putInt(size);
-	zip.putInt(inventory.size());
+	zip.putInt((int)inventory.size());
 	for (auto i = inventory.begin(); i != inventory.end(); ++i) {
 		i->get()->save(zip);
 	}
@@ -338,7 +370,7 @@ void Container::load(TCODZip& zip) {
 	size = zip.getInt();
 	int nbActors = zip.getInt();
 	while (nbActors > 0) {
-		auto actor = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+		auto actor = std::make_unique<Actor>(0, 0, 0, " ", TCOD_white);
 		actor->load(zip);
 		inventory.emplace_back(std::move(actor));
 		nbActors--;
@@ -349,7 +381,7 @@ void Container::load(TCODZip& zip) {
 /*Gui*/
 
 void Gui::save(TCODZip& zip) {
-	zip.putInt(log.size());
+	zip.putInt((int)log.size());
 	for (auto i = log.begin(); i != log.end(); i++) {
 		zip.putString(i->get()->text.c_str());
 		zip.putColor(&i->get()->col);

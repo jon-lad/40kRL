@@ -6,6 +6,7 @@ struct Tile {
 	bool explored {}; // is tile passable
 	unsigned int scent;
 	Tile() :explored{ false }, scent{ 0 } {}
+	
 };  
 
 class Map : public Persistent {
@@ -21,6 +22,7 @@ public:
 	void render() const;
 	bool isInFOV(int x, int y) const;
 	bool isExplored(int x, int y) const;
+	bool isExplorable(int x, int y) const;
 	void computeFOV();
 	bool canWalk(int x, int y) const;//takes into account walls and Actors
 	void addMonster(int x, int y);
