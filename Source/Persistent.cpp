@@ -13,6 +13,8 @@ void Engine::save() {
 		zip.putInt(map->getWidth());
 		zip.putInt(map->getHeight());
 		map->save(zip);
+		//then the camera
+		camera->save(zip);
 		//then the player
 		player->save(zip);
 		//then the stair
@@ -52,11 +54,14 @@ void Engine::load() {
 		//continue from saved game
 		engine.term();
 		zip.loadFromFile("game.sav");
-		//load the 
+		//load the map
 		int width = zip.getInt();
 		int height = zip.getInt();
 		map = std::make_unique<Map>(width, height);
 		map->load(zip);
+		//then the camera
+		camera = std::make_unique<Camera>(0, 0, 80, 43, map->getWidth(), map->getHeight());
+		camera->load(zip);
 		//then the player
 		std::unique_ptr<Actor> newPlayer = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
 		player = newPlayer.get();
@@ -397,4 +402,22 @@ void Gui::load(TCODZip& zip) {
 		nbMessages--;
 	}
 
+}
+
+void Camera::save(TCODZip& zip) {
+	zip.putInt(x); 
+	zip.putInt(y);
+	zip.putInt(width);
+	zip.putInt(height);
+	zip.putInt(mapWidth);
+	zip.putInt(mapHeight);
+}
+
+void Camera::load(TCODZip& zip) {
+	x = zip.getInt();
+	y = zip.getInt();
+	width = zip.getInt(); 
+	height = zip.getInt();
+	mapWidth = zip.getInt();
+	mapHeight = zip.getInt();
 }

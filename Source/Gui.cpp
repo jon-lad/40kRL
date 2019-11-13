@@ -63,7 +63,7 @@ void Gui::renderBar(int x, int y, int width, std::string_view name, float value,
 }
 
 void Gui::renderMouseLook() {
-	if (!engine.map->isInFOV(engine.mouse.cx, engine.mouse.cy)) {
+	if (!engine.map->isInFOV(std::get<0>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy)), std::get<1>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy)))) {
 		//if mouse is out of fov, nothing to render
 		return;
 	}
@@ -71,7 +71,7 @@ void Gui::renderMouseLook() {
 	bool first = true;
 	for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
 		//find actor under mouse cursor
-		if (i->get()->getX() == engine.mouse.cx && i->get()->getY() == engine.mouse.cy) {
+		if (i->get()->getX() == std::get<0>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy)) && i->get()->getY() == std::get<1>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy))) {
 			if (!first) {
 				buf += ", ";
 			}

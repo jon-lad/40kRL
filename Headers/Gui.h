@@ -113,7 +113,7 @@ protected:
 	std::list<std::unique_ptr<Message>> log;
 };
 
-class Camera {
+class Camera : public Persistent {
 public:
 	int x, y;
 	int width, height;
@@ -122,5 +122,7 @@ public:
 	std::tuple<int, int> apply(int x, int y);
 	std::tuple<int, int> getWorldLocation(int x, int y);
 	void update(Actor* actor);
+	void save(TCODZip& zip);
+	void load(TCODZip& zip);
 };
 

@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include <sol/sol.hpp>
 #include "main.h"
 
 Pickable::Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr <Effect> effect) :selector{ std::move(selector) }, effect{ std::move(effect) }{ }
@@ -62,10 +63,17 @@ void Pickable::drop(Actor* owner, Actor* wearer) {
 HealthEffect::HealthEffect(float amount, std::string_view message, const TCODColor& textCol) :amount{ amount }, message{ std::string(message) }, textCol{ textCol }{}
 
 bool HealthEffect::applyTo(Actor* actor) {
+	sol::state lua;
+	lua.open_libraries(sol::lib::base);
 	if (!actor->destructible) return false;
-	if(amount >0)
+	if(amount > 0)
 	{
 		float pointsHealed = actor->destructible->heal((int)amount);
+		sol::usertype<Actor> actor_type = lua.new_usertype<Actor>("actorT", sol::constructors <Actor(int , int, int, std::string, TCODColor)>());
+		actor_type["name"] = &Actor::name;
+		lua["act"] = actor;
+
+		lua.script_file("Scripts/Effects.lua");
 		if (pointsHealed > 0) {
 			if (!message.empty()) {
 				engine.gui->message(textCol, message, std::move(actor->name), std::move(pointsHealed));
@@ -110,7 +118,7 @@ void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list) {
 		case SelectorType::SELF: {
 			list.push(wearer);
 		}
-
+		break;
 		case SelectorType::CLOSEST_MONSTER:
 		{
 			Actor* closestMonster = engine.getClosestMonster(wearer->getX(), wearer->getY(), range);

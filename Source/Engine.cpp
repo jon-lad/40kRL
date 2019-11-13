@@ -104,9 +104,9 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange) {
 			for (int cy = 0; cy < map->getHeight(); cy++){
 				std::tuple<int, int> cameraLoc = camera->apply(cx, cy);
 				if (map->isInFOV(cx, cy) && (maxRange == 0 || player->getDistance(cx, cy) <= maxRange)) {
-					TCODColor col = TCODConsole::root->getCharBackground(std::get<0>(cameraLoc), std::get<1>(cameraLoc));
+					TCODColor col = TCODConsole::root->getCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc));
 					col = col*1.2f;
-					TCODConsole::root->setCharBackground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), col);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), col);
 				}
 			}
 		}
