@@ -3,15 +3,15 @@
 
 class Actor : public Persistent{
 private:
-	int x, y;
-	int ch;
-	TCODColor col;
+	int x, y;//x and y position in world
+	int ch; //symbol for actor
+	TCODColor col; //actor color
 public:
 	std::string name; //Actors name
-	bool blocks;
-	bool fovOnly;
-	std::unique_ptr<Attacker> attacker;
-	std::unique_ptr<Destructible> destructible;
+	bool blocks; //does actor dtop movement
+	bool fovOnly;// can you only see the actor when in Fov (after explored)
+	std::unique_ptr<Attacker> attacker; //something which attacks
+	std::unique_ptr<Destructible> destructible; //something which can be destroyed
 	std::unique_ptr<Ai> ai;// something self updating
 	std::unique_ptr<Pickable> pickable;// something that can be picked and used
 	std::unique_ptr<Container> container;//somthing that can contain actors

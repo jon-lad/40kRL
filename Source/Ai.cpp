@@ -90,6 +90,7 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetx, int targety)
 	}
 	owner->setX(targetx);
 	owner->setY(targety);
+	engine.camera->update(owner);
 	return true;
 }
 

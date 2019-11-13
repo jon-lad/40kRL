@@ -13,83 +13,77 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\Atributes">
-      <UniqueIdentifier>{08d024e3-a069-4e73-988d-9d61591fa7a6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Atributes">
-      <UniqueIdentifier>{da8122f8-4ad2-498b-a683-e49e881c4f41}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="Source\Ai.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Map.cpp">
+    <ClCompile Include="Source\Attacker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Engine.cpp">
+    <ClCompile Include="Source\Container.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Gui.cpp">
+    <ClCompile Include="Source\Destructible.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Ai.cpp">
-      <Filter>Source Files\Atributes</Filter>
-    </ClCompile>
-    <ClCompile Include="Attacker.cpp">
-      <Filter>Source Files\Atributes</Filter>
-    </ClCompile>
-    <ClCompile Include="Destructible.cpp">
-      <Filter>Source Files\Atributes</Filter>
-    </ClCompile>
-    <ClCompile Include="Pickable.cpp">
-      <Filter>Source Files\Atributes</Filter>
-    </ClCompile>
-    <ClCompile Include="Container.cpp">
-      <Filter>Source Files\Atributes</Filter>
-    </ClCompile>
-    <ClCompile Include="Persistent.cpp">
+    <ClCompile Include="Source\Engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Actor.cpp">
+    <ClCompile Include="Source\Gui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Map.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Persistent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Pickable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Actor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Actor.h">
+    <ClInclude Include="Headers\Destructible.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Map.h">
+    <ClInclude Include="Headers\Engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Engine.h">
+    <ClInclude Include="Headers\Gui.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="main.h">
+    <ClInclude Include="Headers\main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Gui.h">
+    <ClInclude Include="Headers\Map.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Ai.h">
-      <Filter>Header Files\Atributes</Filter>
-    </ClInclude>
-    <ClInclude Include="Attacker.h">
-      <Filter>Header Files\Atributes</Filter>
-    </ClInclude>
-    <ClInclude Include="Destructible.h">
-      <Filter>Header Files\Atributes</Filter>
-    </ClInclude>
-    <ClInclude Include="Container.h">
-      <Filter>Header Files\Atributes</Filter>
-    </ClInclude>
-    <ClInclude Include="Pickable.h">
-      <Filter>Header Files\Atributes</Filter>
-    </ClInclude>
-    <ClInclude Include="Persistent.h">
+    <ClInclude Include="Headers\Persistent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Constants.h">
+    <ClInclude Include="Headers\Pickable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Actor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Ai.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Attacker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Constants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Container.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

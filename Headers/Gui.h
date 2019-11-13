@@ -47,7 +47,7 @@ public:
 		bool x = true;
 		int i = 0;
 		while(x){
-			if (stringSubs.size() > i) {
+			if ((int)stringSubs.size() > i) {
 				x = replace(input, "#", stringSubs.at(i));
 				i++;
 			}
@@ -111,5 +111,16 @@ protected:
 		
 	};
 	std::list<std::unique_ptr<Message>> log;
+};
+
+class Camera {
+public:
+	int x, y;
+	int width, height;
+	int mapWidth, mapHeight;
+	Camera(int x, int y, int width, int height, int mapWidth, int mapHeight);
+	std::tuple<int, int> apply(int x, int y);
+	std::tuple<int, int> getWorldLocation(int x, int y);
+	void update(Actor* actor);
 };
 

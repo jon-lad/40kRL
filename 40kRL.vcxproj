@@ -20,8 +20,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{CC94C4C0-93B6-4195-9981-7F73E396A357}</ProjectGuid>
-    <RootNamespace>RogueLike</RootNamespace>
+    <ProjectGuid>{CC21A09D-D31B-4453-AAF3-FD6E10C37826}</ProjectGuid>
+    <RootNamespace>My40kRL</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -69,8 +69,21 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;C:\Users\jonat\Documents\Projects\40kRL\Headers;$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;C:\Users\jonat\Documents\Projects\40kRL\Headers;$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;C:\Users\jonat\Documents\Projects\40kRL\Headers;$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;C:\Users\jonat\Documents\Projects\40kRL\Headers;$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -78,9 +91,12 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -89,14 +105,11 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\jonat\Documents\Projects\libtcod-1.14.0-x86_64-msvc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <EnableModules>true</EnableModules>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalLibraryDirectories>C:\Users\jonat\Documents\Projects\libtcod-1.14.0-x86_64-msvc;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -108,11 +121,14 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -123,42 +139,42 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\jonat\Documents\Projects\libtcod-1.14.0-x86_64-msvc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>C:\Users\jonat\Documents\Projects\libtcod-1.14.0-x86_64-msvc;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Actor.cpp" />
-    <ClCompile Include="Attacker.cpp" />
-    <ClCompile Include="Destructible.cpp" />
-    <ClCompile Include="Engine.cpp" />
-    <ClCompile Include="Gui.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Map.cpp" />
-    <ClCompile Include="Ai.cpp" />
-    <ClCompile Include="Persistent.cpp" />
-    <ClCompile Include="Pickable.cpp" />
-    <ClCompile Include="Container.cpp" />
+    <ClCompile Include="Source\Actor.cpp" />
+    <ClCompile Include="Source\Ai.cpp" />
+    <ClCompile Include="Source\Attacker.cpp" />
+    <ClCompile Include="Source\Container.cpp" />
+    <ClCompile Include="Source\Destructible.cpp" />
+    <ClCompile Include="Source\Engine.cpp" />
+    <ClCompile Include="Source\Gui.cpp" />
+    <ClCompile Include="Source\main.cpp" />
+    <ClCompile Include="Source\Map.cpp" />
+    <ClCompile Include="Source\Persistent.cpp" />
+    <ClCompile Include="Source\Pickable.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Actor.h" />
-    <ClInclude Include="Ai.h" />
-    <ClInclude Include="Attacker.h" />
-    <ClInclude Include="Constants.h" />
-    <ClInclude Include="Container.h" />
-    <ClInclude Include="Engine.h" />
-    <ClInclude Include="Destructible.h" />
-    <ClInclude Include="Gui.h" />
-    <ClInclude Include="Persistent.h" />
-    <ClInclude Include="main.h" />
-    <ClInclude Include="Map.h" />
-    <ClInclude Include="Pickable.h" />
+    <ClInclude Include="Headers\Actor.h" />
+    <ClInclude Include="Headers\Ai.h" />
+    <ClInclude Include="Headers\Attacker.h" />
+    <ClInclude Include="Headers\Constants.h" />
+    <ClInclude Include="Headers\Container.h" />
+    <ClInclude Include="Headers\Destructible.h" />
+    <ClInclude Include="Headers\Engine.h" />
+    <ClInclude Include="Headers\Gui.h" />
+    <ClInclude Include="Headers\main.h" />
+    <ClInclude Include="Headers\Map.h" />
+    <ClInclude Include="Headers\Persistent.h" />
+    <ClInclude Include="Headers\Pickable.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

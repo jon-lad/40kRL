@@ -83,7 +83,7 @@ bool Map::isWall(int x, int y) const
 //returns ex x, y position has been in FOV
 bool Map::isExplored(int x, int y) const{
 	int tileNo = x + y * width;
-	if (tileNo < tiles.size()) {
+	if (tileNo < (int) tiles.size()) {
 		return tiles.at(tileNo).explored;
 	}
 	return false;
@@ -155,34 +155,35 @@ void Map::render() const
 	static const TCODColor darkGround{ 50,50,150 };
 	static const TCODColor lightWall{ 130,110,50 };
 	static const TCODColor lightGround{ 200,180,50 };
-
+	std::tuple<int, int> cameraLoc;
 	//for each position on map
 	for (int x = 0; x < width; x++)
 	{
 		for (int y = 0; y < height; y++)
 		{
-
+			cameraLoc = engine.camera->apply(x, y);
 			//render scent
-			int scent = SCENT_THRESHOLD - (currentScentValue - getScent(x, y));
+			/*int scent = SCENT_THRESHOLD - (currentScentValue - getScent(x, y));
 			scent = CLAMP(0, 10, scent);
 			float sc = scent * 0.1f;
 
 			//if it is if filed of view render light
 			if (isInFOV(x, y)) {
-				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? lightWall : TCODColor::lightGrey * sc);
+				
+				TCODConsole::root->setCharBackground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), isWall(x, y) ? lightWall : TCODColor::lightGrey * sc);
 			}
 			//if it has previously been seen render dark
 			else if (isExplored(x, y)) {
-				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? darkWall : TCODColor::lightGrey * sc);
+				TCODConsole::root->setCharBackground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), isWall(x, y) ? darkWall : TCODColor::lightGrey * sc);
 			}
 			else if (!isWall(x, y)) {
-				TCODConsole::root->setCharBackground(x, y, TCODColor::white * sc);
-			}
+				TCODConsole::root->setCharBackground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), TCODColor::white * sc);
+			}*/
 
 			// dont render scent
 
 			//if it is if filed of view render light
-			/*if (isInFOV(x, y)) {
+			if (isInFOV(x, y)) {
 				if (isWall(x, y)) {
 					bool isTopExploredWall = isWall(x, y - 1) && isExplorable(x, y - 1);
 					bool isBottomExploredWall = isWall(x, y + 1) && isExplorable(x, y + 1);
@@ -225,12 +226,12 @@ void Map::render() const
 						tileChar = TCOD_CHAR_DHLINE;
 					}
 					
-					TCODConsole::root->setChar(x, y, tileChar);
-					TCODConsole::root->setCharForeground(x, y, lightWall);
+					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), tileChar);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), lightWall);
 				}
 				else {
-					TCODConsole::root->setChar(x, y, ground);
-					TCODConsole::root->setCharForeground(x, y, lightGround); 
+					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), ground);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), lightGround); 
 				}
 				
 			}
@@ -277,14 +278,14 @@ void Map::render() const
 					else if (!isTopExploredWall && !isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
 						tileChar = TCOD_CHAR_DHLINE;
 					}
-					TCODConsole::root->setChar(x, y, tileChar);
-					TCODConsole::root->setCharForeground(x, y, darkWall);
+					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), tileChar);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), darkWall);
 				}
 				else {
-					TCODConsole::root->setChar(x, y, ground);
-					TCODConsole::root->setCharForeground(x, y, darkGround);
+					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), ground);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), darkGround);
 				}
-			}*/
+			}
 		}
 	}
 }

@@ -1,0 +1,39 @@
+FIXES---
+
+map scrolling not fixed on player being centre
+
+Done
+log messages use strings 
+# character substitutes variables
+pick and drop functions work as intended
+
+
+FEATURES
+
+to do
+
+Stats for characters
+
+for V1.0
+
+guns
+equipable items
+character generation
+npc Ai
+stairs up
+chat with NPC's
+Map generation based on region.
+Lua Map generation
+Lua Actor generateion
+Lua Ai
+enemy ai/ enemy types
+story
+
+for v.2.0
+outdoor regions
+world generation
+cover
+
+
+v0.1
+added map scrolling

@@ -169,3 +169,27 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode){
 	}
 	return MenuItemCode::NONE;
 }
+
+Camera::Camera(int x, int y, int width, int height, int mapWidth, int mapHeight) : 
+	x{ x }, y{ y }, width{ width }, height{ height }, mapWidth{ mapWidth }, mapHeight{ mapHeight }{}
+
+std::tuple<int, int> Camera::apply(int x, int y) {
+	x += this->x;
+	y += this->y;
+	return std::make_tuple(x, y);
+}
+
+std::tuple<int, int> Camera::getWorldLocation(int x, int y) {
+	x -= this->x;
+	y -= this->y;
+	return std::make_tuple(x, y);
+}
+
+
+
+void Camera::update(Actor* actor) {
+	x = -actor->getX() + (int)(width / 2);
+	y = -actor->getY() + (int)(height / 2);
+
+	//TODO add limits to stop camera near map edges
+}

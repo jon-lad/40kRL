@@ -8,6 +8,8 @@ Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, player
 	map.reset();
 	TCODConsole::initRoot(screenWidth, screenHeight, "Rougelike", false);
 	gui = std::make_unique<Gui>();
+	
+	
 }
 
 void Engine::update()
@@ -62,8 +64,11 @@ void Engine::nextLevel() {
 		else { ++i; }
 	}
 	//create a new map
-	map = std::make_unique<Map>(80, 43);
+	map = std::make_unique<Map>(160, 86);
 	map->init(true);
+	camera->mapWidth = map->getWidth();
+	camera->mapHeight = map->getHeight();
+	camera->update(player);
 	gameStatus = STARTUP;
 }
 
@@ -97,19 +102,21 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange) {
 		render();
 		for (int cx = 0; cx < map->getWidth(); cx++) {
 			for (int cy = 0; cy < map->getHeight(); cy++){
+				std::tuple<int, int> cameraLoc = camera->apply(cx, cy);
 				if (map->isInFOV(cx, cy) && (maxRange == 0 || player->getDistance(cx, cy) <= maxRange)) {
-					TCODColor col = TCODConsole::root->getCharBackground(cx, cy);
+					TCODColor col = TCODConsole::root->getCharBackground(std::get<0>(cameraLoc), std::get<1>(cameraLoc));
 					col = col*1.2f;
-					TCODConsole::root->setCharBackground(cx, cy, col);
+					TCODConsole::root->setCharBackground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), col);
 				}
 			}
 		}
 		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, &lastKey, &mouse);
-		if (map->isInFOV(mouse.cx, mouse.cy) && (maxRange==0 || player->getDistance(mouse.cx,mouse.cy)<= maxRange)) {
+		std::tuple<int, int> cameraLoc = camera->getWorldLocation(mouse.cx, mouse.cy);
+		if (map->isInFOV(std::get<0>(cameraLoc), std::get<1>(cameraLoc)) && (maxRange==0 || player->getDistance(std::get<0>(cameraLoc), std::get<1>(cameraLoc))<= maxRange)) {
 			TCODConsole::root->setCharBackground(mouse.cx, mouse.cy, TCOD_white);
 			if (mouse.lbutton_pressed) {
-				*x = mouse.cx;
-				*y = mouse.cy;
+				*x = std::get<0>(cameraLoc);
+				*y = std::get<1>(cameraLoc);
 				return true;
 			}
 			if (mouse.rbutton_pressed || lastKey.c != TCODK_NONE) {
@@ -147,9 +154,10 @@ void Engine::init() {
 	actors.emplace_front(std::move(newStair));
 	
 	
-	map = std::make_unique<Map>(80, 43);
+	map = std::make_unique<Map>(160, 86);
 	map->init(true);
-	
+	camera = std::make_unique<Camera>(0, 0, 80, 43, map->getWidth(), map->getHeight());
+	camera->update(player);
 	gui->message(TCODColor::lightGrey, "\n \n \n Hello friend. \n welcome to the underhive!");
 	gameStatus = STARTUP;
 }

@@ -1,0 +1,35 @@
+﻿  Actor.cpp
+  Ai.cpp
+  Attacker.cpp
+  Container.cpp
+  Destructible.cpp
+  Engine.cpp
+  Gui.cpp
+  main.cpp
+  Map.cpp
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244: 'argument': conversion from '_Ty' to 'int', possible loss of data
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         with
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         [
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:             _Ty=float
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         ]
+  Persistent.cpp
+C:\Users\jonat\source\repos\40kRL\Source\Map.cpp(385): message : see reference to function template instantiation 'std::unique_ptr<Effect,std::default_delete<_Ty>> std::make_unique<Effect,int,float,const char(&)[1],const TCODColor&,0>(int &&,float &&,const char (&)[1],const TCODColor &)' being compiled
+C:\Users\jonat\source\repos\40kRL\Source\Map.cpp(385): message :         with
+C:\Users\jonat\source\repos\40kRL\Source\Map.cpp(385): message :         [
+C:\Users\jonat\source\repos\40kRL\Source\Map.cpp(385): message :             _Ty=Effect
+C:\Users\jonat\source\repos\40kRL\Source\Map.cpp(385): message :         ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244: 'argument': conversion from '_Ty' to 'float', possible loss of data
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         with
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         [
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:             _Ty=int
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\memory(2057,56): warning C4244:         ]
+C:\Users\jonat\source\repos\40kRL\Source\Persistent.cpp(206): message : see reference to function template instantiation 'std::unique_ptr<MonsterDestructible,std::default_delete<_Ty>> std::make_unique<MonsterDestructible,int,float,const char(&)[1],int,0>(int &&,float &&,const char (&)[1],int &&)' being compiled
+C:\Users\jonat\source\repos\40kRL\Source\Persistent.cpp(206): message :         with
+C:\Users\jonat\source\repos\40kRL\Source\Persistent.cpp(206): message :         [
+C:\Users\jonat\source\repos\40kRL\Source\Persistent.cpp(206): message :             _Ty=MonsterDestructible
+C:\Users\jonat\source\repos\40kRL\Source\Persistent.cpp(206): message :         ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\filesystem(2091): message : see reference to class template instantiation 'std::chrono::time_point<std::filesystem::_File_time_clock,std::filesystem::_File_time_clock::duration>' being compiled
+  Pickable.cpp
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.23.28105\include\xstring(1764): message : see reference to class template instantiation 'std::basic_string_view<wchar_t,std::char_traits<wchar_t>>' being compiled
+  Generating Code...
+C:\Users\jonat\source\repos\40kRL\Source\Pickable.cpp(6,10): fatal error C1083: Cannot open include file: 'sol/sol.hpp': No such file or directory

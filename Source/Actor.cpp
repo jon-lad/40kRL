@@ -20,8 +20,11 @@ Actor::Actor(int x, int y, int ch, std::string_view name, const TCODColor& col) 
 
 void Actor::render() const
 {
-	TCODConsole::root->setChar(x, y, ch);
-	TCODConsole::root->setCharForeground(x, y, col);
+	std::tuple<int , int> cameraLoc;
+	cameraLoc = engine.camera->apply(x, y);
+
+	TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), ch);
+	TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), col);
 }
 
 void Actor::update() 
