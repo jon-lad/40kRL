@@ -63,21 +63,30 @@ void Pickable::drop(Actor* owner, Actor* wearer) {
 HealthEffect::HealthEffect(float amount, std::string_view message, const TCODColor& textCol) :amount{ amount }, message{ std::string(message) }, textCol{ textCol }{}
 
 bool HealthEffect::applyTo(Actor* actor) {
+	if (!actor->destructible) return false;
+
 	sol::state lua;
 	lua.open_libraries(sol::lib::base);
-	if (!actor->destructible) return false;
+	
+	sol::usertype<Destructible> destructible_type = lua.new_usertype<Destructible>("Destructible", sol::constructors<Destructible(float, float, std::string, int)>());
+	sol::usertype<Actor> actor_type = lua.new_usertype<Actor>("Actor", sol::constructors <Actor(int, int, int, std::string, TCODColor)>());
+	actor_type["name"] = &Actor::name;
+	actor_type["destructible"] = &Actor::destructible;
+	actor_type["ai"] = &Actor::ai;
+	destructible_type["heal"] = &Destructible::heal;
+	lua["act"] = actor;
+	lua["amount"] = amount;
+	
+
 	if(amount > 0)
 	{
-		float pointsHealed = actor->destructible->heal((int)amount);
-		sol::usertype<Actor> actor_type = lua.new_usertype<Actor>("actorT", sol::constructors <Actor(int , int, int, std::string, TCODColor)>());
-		actor_type["name"] = &Actor::name;
-		lua["act"] = actor;
-
-		lua.script_file("Scripts/Effects.lua");
+		float pointsHealed = lua.script_file("Scripts/Effects.lua");
+		
 		if (pointsHealed > 0) {
 			if (!message.empty()) {
 				engine.gui->message(textCol, message, std::move(actor->name), std::move(pointsHealed));
 			}
+			lua.collect_garbage();
 			return true;
 		}
 	}
@@ -86,10 +95,12 @@ bool HealthEffect::applyTo(Actor* actor) {
 			engine.gui->message(textCol, message, std::move(actor->name),std::move(-amount - actor->destructible->defense));
 		}
 		if (actor->destructible->takeDamage(actor, -amount) > 0) {
+			lua.collect_garbage();
 			return true;
 		}
 
 	}
+	lua.collect_garbage();
 	return false;
 }
 

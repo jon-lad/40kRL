@@ -10,11 +10,11 @@ public:
 	std::string name; //Actors name
 	bool blocks; //does actor dtop movement
 	bool fovOnly;// can you only see the actor when in Fov (after explored)
-	std::unique_ptr<Attacker> attacker; //something which attacks
-	std::unique_ptr<Destructible> destructible; //something which can be destroyed
-	std::unique_ptr<Ai> ai;// something self updating
-	std::unique_ptr<Pickable> pickable;// something that can be picked and used
-	std::unique_ptr<Container> container;//somthing that can contain actors
+	std::shared_ptr<Attacker> attacker; //something which attacks
+	std::shared_ptr<Destructible> destructible; //something which can be destroyed
+	std::shared_ptr<Ai> ai;// something self updating
+	std::shared_ptr<Pickable> pickable;// something that can be picked and used
+	std::shared_ptr<Container> container;//somthing that can contain actors
 	Actor(int x, int y, int ch,std::string_view name, const TCODColor& col);
 	void update();
 	

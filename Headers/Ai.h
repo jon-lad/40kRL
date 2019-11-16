@@ -26,7 +26,7 @@ public:
 	virtual void load(TCODZip& zip) {};
 protected:
 	int nbTurns;
-	std::unique_ptr<Ai> oldAi;
+	std::shared_ptr<Ai> oldAi;
 };
 
 class PlayerAi : public Ai {

@@ -13,6 +13,7 @@ public:
 		return hp <= 0;
 	}
 
+
 	float takeDamage(Actor* owner, float damage);
 	float heal(int amount);
 

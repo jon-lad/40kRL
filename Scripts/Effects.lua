@@ -2,10 +2,10 @@
 
 --List of different effects 
 --health effect
-if act ~= nil then
-  local name = act.name
-  print(name)
-end
+
+  local healAmount = act.destructible:heal(amount)
+  
+  return healAmount
 
 -- change ai effect
 

@@ -122,7 +122,7 @@ Actor* PlayerAi::chooseFromInventory(Actor* owner) {
 	TCODSystem::waitForEvent(TCOD_EVENT_KEY_PRESS, &key, NULL, true);
 	if (key.vk == TCODK_CHAR) {
 		int actorIndex = key.c - 'a';
-		if (actorIndex >= 0 && actorIndex < owner->container->inventory.size()) {
+		if (actorIndex >= 0 && actorIndex < (int) owner->container->inventory.size()) {
 			std::list<std::unique_ptr<Actor>>::iterator it = owner->container->inventory.begin();
 			std::advance(it, actorIndex);
 			return it->get();
