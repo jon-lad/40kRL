@@ -1,4 +1,5 @@
 #pragma once
+//actor can take damage and be destroyed
 class Destructible : public Persistent {
 public:
 	float maxHp; // maximum Health points
@@ -9,40 +10,44 @@ public:
 
 	Destructible(float maxHp, float defense, std::string_view corpseName, int xp);
 	
+	//return if actor has died
 	inline bool isDead() {
 		return hp <= 0;
 	}
 
 
-	float takeDamage(Actor* owner, float damage);
-	float heal(int amount);
+	float takeDamage(Actor* owner, float damage); //if actor is attacked work out how much hp is lost
+	float heal(int amount); //restore hp to actor
 
-	virtual void die(Actor* owner);
+	virtual void die(Actor* owner); //what actor does when it dies
 
-	virtual void save(TCODZip& zip);
-	virtual void load(TCODZip& zip);
-	static std::unique_ptr<Destructible> create(TCODZip& zip);
+	virtual void save(TCODZip& zip); //save destructible data to zip
+	virtual void load(TCODZip& zip); //load destructible data from zip
+	static std::unique_ptr<Destructible> create(TCODZip& zip); //factory function for loading destructibles
 	
 protected:
+	//enum for factory function
 	enum class DestructibleType {
 		MONSTER = 0,
 		PLAYER
 	};
 };
 
+//monster destructible dies and turns into corpse
 class MonsterDestructible : public Destructible {
 public:
 	MonsterDestructible(float maxHp, float defense, std::string_view corpseName, int xp);
-	void die(Actor* owner);
-	void save(TCODZip& zip);
+	void die(Actor* owner);//turns actor into corpse
+	void save(TCODZip& zip);//save destructible data to zip
 	
 };
 
+//player dies and game ends
 class PlayerDestructible : public Destructible {
 public:
 	PlayerDestructible(float maxHp, float defense, std::string_view corpseName, int xp);
-	void die(Actor* owner);
-	void save(TCODZip& zip);
+	void die(Actor* owner);//ends game
+	void save(TCODZip& zip);//save destructible data to zip
 	
 };
 

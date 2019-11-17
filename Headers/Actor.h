@@ -16,25 +16,30 @@ public:
 	std::shared_ptr<Pickable> pickable;// something that can be picked and used
 	std::shared_ptr<Container> container;//somthing that can contain actors
 	Actor(int x, int y, int ch,std::string_view name, const TCODColor& col);
-	void update();
+	void update();// update the actor each turn
 	
-	void render() const;
+	void render() const;//render the actors onto the map
 
-	void save(TCODZip& zip);
-	void load(TCODZip& zip);
+	void save(TCODZip& zip); // Save actor details to zip
+	void load(TCODZip& zip); // load actor details from zip
 	
 
-	float getDistance(int cx, int cy);
+	float getDistance(int cx, int cy);//retuens distace from actor to tile
 
+	//Getter and setter for x co-ord
 	int getX() const;
 	void setX(int x);
 
-	int getY() const;
+
+	//Getter and setter for x co-ord
+	int getY() const; 
 	void setY(int y);
 	
+	//Getter and setter for ascii character
 	int getCh() const;
 	void setCh(int ch);
 
+	//Getter and setter for character color
 	TCODColor getColor() const;
 	void setColor(const TCODColor &col);
 
