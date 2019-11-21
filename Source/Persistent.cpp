@@ -128,12 +128,14 @@ void Actor::save(TCODZip& zip)
 	zip.putInt(ai != 0);
 	zip.putInt(pickable != 0);
 	zip.putInt(container != 0);
+	zip.putInt(equipment != 0);
 	//save the features themselves
 	if (attacker) attacker->save(zip);
 	if (destructible) destructible->save(zip);
 	if (ai) ai->save(zip);
 	if (pickable) pickable->save(zip);
 	if (container) container->save(zip);
+	if (equipment) equipment->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -152,6 +154,8 @@ void Actor::load(TCODZip& zip)
 	bool hasAi = zip.getInt();
 	bool hasPickable = zip.getInt();
 	bool hasContainer = zip.getInt();
+	bool hasEquipment = zip.getInt();
+
 	//load features
 	if (hasAttacker) {
 		attacker = std::make_unique<Attacker>(0.0f);
@@ -164,12 +168,16 @@ void Actor::load(TCODZip& zip)
 		ai = std::move(Ai::create(zip));
 	}
 	if (hasPickable) {
-		pickable = std::make_unique<Pickable>(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF,0.0f), Effect::create(zip));
+		pickable = std::make_unique<Pickable>(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF,0.0f), Effect::create(zip), Equipment::EquipLocation::NONE);
 		pickable->load(zip);
 	}
 	if (hasContainer) {
 		container = std::make_unique<Container>(0);
 		container->load(zip);
+	}
+	if (hasEquipment) {
+		equipment = std::make_unique<Equipment>();
+		equipment->load(zip);
 	}
 }
 
@@ -206,7 +214,7 @@ std::unique_ptr<Destructible> Destructible::create(TCODZip& zip) {
 	switch (type)
 	{
 	case DestructibleType::MONSTER:
-		destructible = std::make_unique<MonsterDestructible>(0, 0.0f, "", 0);
+		destructible = std::make_unique<MonsterDestructible>(0, 0, "", 0);
 		break;
 	case DestructibleType::PLAYER:
 		destructible = std::make_unique<PlayerDestructible>(0, 0, "", 0);
@@ -295,7 +303,8 @@ void Pickable::save(TCODZip& zip) {
 	if (selector) {
 		selector->save(zip);
 	}
-	
+
+	zip.putInt((int)equipLocation);
 }
 
 void Pickable::load(TCODZip& zip) {
@@ -305,7 +314,8 @@ void Pickable::load(TCODZip& zip) {
 		selector = std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0);
 		selector->load(zip);
 	}
-	
+
+	equipLocation = (Equipment::EquipLocation) zip.getInt();
 
 }
 
@@ -339,6 +349,7 @@ void HealthEffect::save(TCODZip& zip) {
 	zip.putFloat(amount);
 	zip.putString(message.c_str());
 	zip.putColor(&textCol);
+	
 }
 
 void HealthEffect::load(TCODZip& zip) {
@@ -382,9 +393,47 @@ void Container::load(TCODZip& zip) {
 	}
 
 }
+/*Equpment*/
+void Equipment::save(TCODZip& zip) {
+	zip.putInt(human.head != 0);
+	zip.putInt(human.body != 0);
+	zip.putInt(human.hands != 0);
+	zip.putInt(human.legs != 0);
+
+	if(human.head) human.head->save(zip);
+	if(human.body) human.body->save(zip);
+	if(human.hands) human.hands->save(zip);
+	if(human.legs) human.legs->save(zip);
+}
+
+
+void Equipment::load(TCODZip& zip) {
+
+	bool hasHead = zip.getInt();
+	bool hasBody = zip.getInt();
+	bool hasHands = zip.getInt();
+	bool hasLegs = zip.getInt();
+
+	if (hasHead) {
+		human.head = std::make_unique<Actor>(0, 0, 0, " ", TCOD_white);
+		human.head->load(zip);
+	}
+	if (hasBody) {
+		human.body = std::make_unique<Actor>(0, 0, 0, " ", TCOD_white);
+		human.body->load(zip);
+	}
+	if (hasHands) {
+		human.hands = std::make_unique<Actor>(0, 0, 0, " ", TCOD_white);
+		human.hands->load(zip);
+	}
+	if (hasLegs) {
+		human.legs = std::make_unique<Actor>(0, 0, 0, " ", TCOD_white);
+		human.legs->load(zip);
+	}
+
+}
 
 /*Gui*/
-
 void Gui::save(TCODZip& zip) {
 	zip.putInt((int)log.size());
 	for (auto i = log.begin(); i != log.end(); i++) {

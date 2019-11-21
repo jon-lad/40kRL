@@ -150,6 +150,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Headers\Equipment.cpp" />
     <ClCompile Include="Source\Actor.cpp" />
     <ClCompile Include="Source\Ai.cpp" />
     <ClCompile Include="Source\Attacker.cpp" />
@@ -170,6 +171,7 @@
     <ClInclude Include="Headers\Container.h" />
     <ClInclude Include="Headers\Destructible.h" />
     <ClInclude Include="Headers\Engine.h" />
+    <ClInclude Include="Headers\Equipment.h" />
     <ClInclude Include="Headers\Gui.h" />
     <ClInclude Include="Headers\main.h" />
     <ClInclude Include="Headers\Map.h" />

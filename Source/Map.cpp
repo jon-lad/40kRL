@@ -278,6 +278,7 @@ void Map::render() const
 					else if (!isTopExploredWall && !isBottomExploredWall && isLeftExploredWall && isRightExploredWall) {
 						tileChar = TCOD_CHAR_DHLINE;
 					}
+				
 					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), tileChar);
 					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), darkWall);
 				}
@@ -378,36 +379,48 @@ void Map::addMonster(int x, int y) {
 void Map::addItem(int x, int y) {
 	TCODRandom* rng = TCODRandom::getInstance();
 	auto dice = rng->getInt(0, 100);
-	if (dice < 70) {
+	if (dice < 60) {
 		//create a health potion
 		std::unique_ptr<Actor> healthPotion = std::make_unique<Actor>(x, y, '!', "health potion", TCOD_violet);
 		healthPotion->blocks = false;
-		healthPotion->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f)), std::move(std::make_unique<HealthEffect>(4.0f, "", TCODColor::lightGrey)));
+		healthPotion->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f)), std::move(std::make_unique<HealthEffect>(4.0f, "", TCODColor::lightGrey)), Equipment::EquipLocation::NONE);
 		engine.actors.emplace_front(std::move(healthPotion));
 	}
-	else if (dice < 70 + 10) {
+	else if (dice < 60 + 10) {
 		//create a scroll of Lightning bolt
-		std::unique_ptr<Actor> scrollOfLightningBolt = std::make_unique<Actor>(x, y, '#', "scroll of lightning bolt", TCOD_light_yellow);
+		std::unique_ptr<Actor> scrollOfLightningBolt = std::make_unique<Actor>(x, y, '?', "scroll of lightning bolt", TCOD_light_yellow);
 		scrollOfLightningBolt->blocks = false;
 		scrollOfLightningBolt->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::CLOSEST_MONSTER,5.0f)),
-			std::move(std::make_unique<HealthEffect>(-20.0f,"A lightning bolt strikes the # \nwith the sound of loud thunder!\nThe damege is # hit points.", TCODColor::lightBlue)));
+			std::move(std::make_unique<HealthEffect>(-20.0f,"A lightning bolt strikes the # \nwith the sound of loud thunder!\nThe damege is # hit points.", TCODColor::lightBlue)), Equipment::EquipLocation::NONE);
 		engine.actors.emplace_front(std::move(scrollOfLightningBolt));
 	}
-	else if (dice < 70 + 10+10) {
+	else if (dice < 60 + 10 + 10) {
 		//create a scroll of Fireball
-		std::unique_ptr<Actor> scrollOfFireball = std::make_unique<Actor>(x, y, '#', "scroll of fireball", TCOD_light_yellow);
+		std::unique_ptr<Actor> scrollOfFireball = std::make_unique<Actor>(x, y, '?', "scroll of fireball", TCOD_light_yellow);
 		scrollOfFireball->blocks = false;
 		scrollOfFireball->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_RANGE, 3.0f)),
-			std::move(std::make_unique<HealthEffect>(-12.0f, "The # gets burned for # hit points.", TCODColor::orange)));
+			std::move(std::make_unique<HealthEffect>(-12.0f, "The # gets burned for # hit points.", TCODColor::orange)), Equipment::EquipLocation::NONE);
 		engine.actors.emplace_front(std::move(scrollOfFireball));
 	}
-	else if (dice < 70 + 10 + 10 + 10) {
+	else if (dice < 60 + 10 + 10 + 10) {
 		//create a scroll of Confusion
-		std::unique_ptr<Actor> scrollOfConfusion = std::make_unique<Actor>(x, y, '#', "scroll of confusion", TCOD_light_yellow);
+		std::unique_ptr<Actor> scrollOfConfusion = std::make_unique<Actor>(x, y, '?', "scroll of confusion", TCOD_light_yellow);
 		scrollOfConfusion->blocks = false;
-		scrollOfConfusion->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_MONSTER, 5.0f)),
-			std::move(std::make_unique<AiChangeEffect>(std::make_unique<ConfusedMonsterAi>(10), "The eyes of the # glaze over\nas he starts to stumble around!.", TCOD_light_green)));
+		scrollOfConfusion->pickable = std::make_unique<Pickable>(std::move
+			(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_MONSTER, 5.0f)),
+			std::move(std::make_unique<AiChangeEffect>(std::make_unique<ConfusedMonsterAi>(10), "The eyes of the # glaze over\nas he starts to stumble around!.", TCOD_light_green)), Equipment::EquipLocation::NONE);
 		engine.actors.emplace_front(std::move(scrollOfConfusion));
+	}
+	else if (dice < 60 + 10 + 10 + 10 + 10) {
+		//create a sword
+		std::unique_ptr<Actor>powerSword = std::make_unique<Actor>
+			(x, y, '\\', "power sword", TCOD_white);
+		powerSword->blocks = false;
+		powerSword->pickable = std::make_unique<Pickable>(
+			std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f)),
+			std::move(std::make_unique<HealthEffect>(0.0f, "", TCODColor::lightGrey)),
+			Equipment::EquipLocation::HANDS);
+		engine.actors.emplace_front(std::move(powerSword));
 	}
 }
 

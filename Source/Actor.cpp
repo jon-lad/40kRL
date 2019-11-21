@@ -11,11 +11,7 @@
 Actor::Actor(int x, int y, int ch, std::string_view name, const TCODColor& col) :
 	x{ x }, y{ y }, ch{ ch }, name{ name }, col{ col }, blocks{ true }, fovOnly{true}
 {
-	attacker.reset();
-	destructible.reset();
-	ai.reset();
-	pickable.reset();
-	container.reset();
+	
 }
 
 void Actor::render() const

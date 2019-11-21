@@ -13,20 +13,14 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\Attributes">
+      <UniqueIdentifier>{40853cbd-b564-4a0e-b1b4-0807a2f8bfd1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Attributes">
+      <UniqueIdentifier>{6382159e-5620-4c87-bd81-504f4236a498}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\Ai.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Attacker.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Container.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Destructible.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -42,17 +36,29 @@
     <ClCompile Include="Source\Persistent.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Pickable.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Actor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Ai.cpp">
+      <Filter>Source Files\Attributes</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Attacker.cpp">
+      <Filter>Source Files\Attributes</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Destructible.cpp">
+      <Filter>Source Files\Attributes</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Container.cpp">
+      <Filter>Source Files\Attributes</Filter>
+    </ClCompile>
+    <ClCompile Include="Headers\Equipment.cpp">
+      <Filter>Source Files\Attributes</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Pickable.cpp">
+      <Filter>Source Files\Attributes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Headers\Destructible.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Headers\Engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -68,23 +74,29 @@
     <ClInclude Include="Headers\Persistent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Pickable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Headers\Actor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Headers\Ai.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Headers\Attacker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\Constants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Headers\Ai.h">
+      <Filter>Header Files\Attributes</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Attacker.h">
+      <Filter>Header Files\Attributes</Filter>
+    </ClInclude>
     <ClInclude Include="Headers\Container.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Attributes</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Destructible.h">
+      <Filter>Header Files\Attributes</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Equipment.h">
+      <Filter>Header Files\Attributes</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Pickable.h">
+      <Filter>Header Files\Attributes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

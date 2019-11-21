@@ -14,26 +14,28 @@ to do
 
 Stats for characters
 
-for V1.0
+for V0.1.0
 
 guns
 equipable items
 character generation
-npc Ai
 stairs up
+
+
+for later versions
+story
+npc Ai
+outdoor regions
+world generation
+cover
 chat with NPC's
 Map generation based on region.
 Lua Map generation
 Lua Actor generateion
 Lua Ai
 enemy ai/ enemy types
-story
 
-for v.2.0
-outdoor regions
-world generation
-cover
-
+done
 
 v0.1
 added map scrolling

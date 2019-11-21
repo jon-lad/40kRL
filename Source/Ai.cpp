@@ -133,6 +133,30 @@ Actor* PlayerAi::chooseFromInventory(Actor* owner) {
 
 void PlayerAi::handleActionKey(Actor* owner, int ascii) {
 	switch (ascii) {
+	case 'd'://drop
+	{
+		Actor* item = chooseFromInventory(owner);
+		if (item) {
+			item->pickable->drop(item, owner);
+			engine.gameStatus = Engine::NEW_TURN;
+		}
+	}
+	break;
+	case 'w': //wear item
+	{
+		Actor* item = chooseFromInventory(owner);
+		if (item) {
+			for (auto i = owner->container->inventory.begin(); i != owner->container->inventory.end(); ++i) {
+				if (i->get() == item) {
+					item->pickable->equip(std::move(*i), owner);
+					i = owner->container->inventory.erase(i);
+					break;
+				}
+			}
+			engine.gameStatus = Engine::NEW_TURN;
+		}
+	}
+	break;
 	case 'g': //pickup item
 	{
 		bool found = false;
@@ -178,14 +202,8 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii) {
 		}
 	}
 	break;
-	case 'd'://drop
-	{
-		Actor* item = chooseFromInventory(owner);
-		if (item) {
-			item->pickable->drop(item, owner);
-			engine.gameStatus = Engine::NEW_TURN;
-		}
-	}
+	case 'r': //remove equipment
+
 	break;
 	case '>'://go down stairs
 		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()) {

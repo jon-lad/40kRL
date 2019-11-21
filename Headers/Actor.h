@@ -15,6 +15,7 @@ public:
 	std::shared_ptr<Ai> ai;// something self updating
 	std::shared_ptr<Pickable> pickable;// something that can be picked and used
 	std::shared_ptr<Container> container;//somthing that can contain actors
+	std::shared_ptr<Equipment> equipment;//something that can equip items
 	Actor(int x, int y, int ch,std::string_view name, const TCODColor& col);
 	void update();// update the actor each turn
 	

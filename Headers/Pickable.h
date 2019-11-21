@@ -34,16 +34,20 @@ public:
 
 class Pickable : public Persistent {
 public:
-	Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr<Effect> effect);
+	Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr<Effect> effect, Equipment::EquipLocation equipLocation);
 	bool pick(std::unique_ptr<Actor> owner, Actor* wearer);
+	bool equip(std::unique_ptr<Actor>, Actor* wearer);
 	bool use(Actor* owner, Actor* wearer);
 	void drop(Actor* owner, Actor* wearer);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
 
+	Equipment::EquipLocation equipLocation;
+
 protected:
 	std::unique_ptr<TargetSelector> selector;
 	std::unique_ptr<Effect> effect;
+	
 };
 
 
@@ -57,7 +61,6 @@ public:
 	std::string message;
 	TCODColor textCol;
 	HealthEffect(float amount, std::string_view message, const TCODColor& textCol);
-
 	bool applyTo(Actor* owner);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
@@ -69,6 +72,7 @@ public:
 	std::unique_ptr<TemporaryAi> newAi;
 	std::string message;
 	TCODColor textCol;
+	
 
 	AiChangeEffect(std::unique_ptr<TemporaryAi> newAi, std::string_view message, const TCODColor& textCol);
 	bool applyTo(Actor* actor);

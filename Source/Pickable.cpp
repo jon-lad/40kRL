@@ -4,7 +4,10 @@
 #include <sol/sol.hpp>
 #include "main.h"
 
-Pickable::Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr <Effect> effect) :selector{ std::move(selector) }, effect{ std::move(effect) }{ }
+Pickable::Pickable(std::unique_ptr<TargetSelector> selector, 
+	std::unique_ptr<Effect> effect, Equipment::EquipLocation equpiLocation)
+	:selector{ std::move(selector) }, effect{ std::move(effect) }, equipLocation{ equipLocation }
+{}
 
 bool Pickable::pick(std::unique_ptr<Actor> owner, Actor* wearer) {
 	if (wearer->container && wearer->container->add(std::move(owner))) {
@@ -57,6 +60,18 @@ void Pickable::drop(Actor* owner, Actor* wearer) {
 		}
 	}
 }
+
+//Equip item and apply effect
+bool Pickable::equip(std::unique_ptr<Actor> owner, Actor* wearer) {
+	//if wearer can equp items and this item equipable
+	if (wearer->equipment && wearer->equipment->equip(std::move(owner), wearer))
+	{ 
+		//apply effect as defined in Effects.lua, canceled on removal
+		owner->pickable->effect->applyTo(wearer); 
+		return true;
+	}
+	return false;
+}
 /*Effects below*/
 
 /*Health*/
@@ -67,13 +82,23 @@ bool HealthEffect::applyTo(Actor* actor) {
 
 	sol::state lua;
 	lua.open_libraries(sol::lib::base);
+
+	//Setting Actor as userdatata so it can be used in lua scripts
+	sol::usertype<Actor> actor_type = lua.new_usertype<Actor>
+		("Actor", sol::constructors <Actor(int, int, int, std::string, TCODColor)>());
 	
-	sol::usertype<Destructible> destructible_type = lua.new_usertype<Destructible>("Destructible", sol::constructors<Destructible(float, float, std::string, int)>());
-	sol::usertype<Actor> actor_type = lua.new_usertype<Actor>("Actor", sol::constructors <Actor(int, int, int, std::string, TCODColor)>());
-	actor_type["name"] = &Actor::name;
+	
+	actor_type["name"]         = &Actor::name;
 	actor_type["destructible"] = &Actor::destructible;
-	actor_type["ai"] = &Actor::ai;
+	actor_type["ai"]           = &Actor::ai;
+	
+	//setting destructible as user type to use in lua scripts
+	sol::usertype<Destructible> destructible_type = lua.new_usertype<Destructible>
+		("Destructible", sol::constructors<Destructible(float, float, std::string, int)>());
+
 	destructible_type["heal"] = &Destructible::heal;
+	
+	//passing arguments to lua script
 	lua["act"] = actor;
 	lua["amount"] = amount;
 	
