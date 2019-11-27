@@ -5,16 +5,6 @@
 #include <sstream>
 #include "main.h"
 
-static constexpr auto ROOM_MAX_SIZE = 12;
-static constexpr auto ROOM_MIN_SIZE = 6;
-
-static constexpr auto MAX_ROOM_MONSTERS = 3;
-static constexpr auto MAX_ROOM_ITEMS = 2;
-
-
-static constexpr auto ground = '.';
-
-
 
 class BspListener : public ITCODBspCallback {
 private:
@@ -29,8 +19,8 @@ public:
 			bool withActors = (bool) userData;
 			// dig a room
 
-			w = map.rng->getInt(ROOM_MIN_SIZE, node->w - 2);
-			h = map.rng->getInt(ROOM_MIN_SIZE, node->h - 2);
+			w = map.rng->getInt(constants::ROOM_MIN_SIZE, node->w - 2);
+			h = map.rng->getInt(constants::ROOM_MIN_SIZE, node->h - 2);
 			x = map.rng->getInt(node->x + 1, node->x + node->w - w - 1);
 			y = map.rng->getInt(node->y + 1, node->y + node->h - h - 1);
 			map.createRoom(roomNum == 0, x, y, x + w - 1, y + h - 1, withActors);
@@ -66,7 +56,7 @@ void Map::init(bool withActors) {
 	//Create Binary Space partittion for Room generation
 	TCODBsp bsp(0, 0, width, height);
 	//Split the BSP into Partitions which are larger than Room Max size
-	bsp.splitRecursive(rng.get(), 8, ROOM_MAX_SIZE, ROOM_MAX_SIZE, 1.5, 1.5);
+	bsp.splitRecursive(rng.get(), 8, constants::ROOM_MAX_SIZE, constants::ROOM_MAX_SIZE, 1.5, 1.5);
 	//new BSP listener to create rooms using the generated partitions
 	BspListener listener(*this);
 	//Traverse the BSP and create the rooms and connect with corridors
@@ -151,10 +141,7 @@ bool Map::canWalk(int x, int y) const{
 void Map::render() const
 {
 	//constanst colours to render
-	static const TCODColor darkWall{ 0,0,100 };
-	static const TCODColor darkGround{ 50,50,150 };
-	static const TCODColor lightWall{ 130,110,50 };
-	static const TCODColor lightGround{ 200,180,50 };
+	
 	std::tuple<int, int> cameraLoc;
 	//for each position on map
 	for (int x = 0; x < width; x++)
@@ -165,7 +152,7 @@ void Map::render() const
 			//render scent
 			/*int scent = SCENT_THRESHOLD - (currentScentValue - getScent(x, y));
 			scent = CLAMP(0, 10, scent);
-			float sc = scent * 0.1f;
+			double sc = scent * 0.1f;
 
 			//if it is if filed of view render light
 			if (isInFOV(x, y)) {
@@ -227,11 +214,11 @@ void Map::render() const
 					}
 					
 					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), tileChar);
-					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), lightWall);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), constants::lightWall);
 				}
 				else {
-					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), ground);
-					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), lightGround); 
+					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), constants::ground);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), constants::lightGround); 
 				}
 				
 			}
@@ -280,11 +267,11 @@ void Map::render() const
 					}
 				
 					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), tileChar);
-					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), darkWall);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), constants::darkWall);
 				}
 				else {
-					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), ground);
-					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), darkGround);
+					TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), constants::ground);
+					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), constants::darkGround);
 				}
 			}
 		}
@@ -332,8 +319,8 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors
 		engine.stairs->setX((x1 + x2) / 2);
 		engine.stairs->setY((y1 + y2) / 2);
 		TCODRandom* rng = TCODRandom::getInstance();
-		int nbMonsters = rng->getInt(0, MAX_ROOM_MONSTERS);
-		int nbItems = rng->getInt(0, MAX_ROOM_ITEMS);
+		int nbMonsters = rng->getInt(0, constants::MAX_ROOM_MONSTERS);
+		int nbItems = rng->getInt(0, constants::MAX_ROOM_ITEMS);
 		while (nbMonsters> 0){
 			int x = rng->getInt(x1, x2);
 			int y = rng->getInt(y1, y2);
@@ -359,8 +346,8 @@ void Map::addMonster(int x, int y) {
 	if (rng->getInt(0, 100) < 80) {
 		//create an orc
 		auto ork = std::make_unique<Actor>(x, y, 'o', "Ork", TCODColor::desaturatedGreen);
-		ork->destructible =std::move(std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35));
-		ork->attacker = std::move(std::make_unique<Attacker>(3.0f));
+		ork->destructible =std::move(std::make_unique<MonsterDestructible>(10.0, 0.0, "dead Ork", 35));
+		ork->attacker = std::move(std::make_unique<Attacker>(3.0));
 		ork->ai = std::move(std::make_unique<MonsterAi>());
 		engine.actors.push_back(std::move(ork));
 		
@@ -368,8 +355,8 @@ void Map::addMonster(int x, int y) {
 	else {
 		//create a troll
 		auto Nob = std::make_unique<Actor>(x, y, 'N', "Nob", TCODColor::darkerGreen);
-		Nob->destructible = std::move(std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100));
-		Nob->attacker = std::move(std::make_unique<Attacker>(4.0f));
+		Nob->destructible = std::move(std::make_unique<MonsterDestructible>(16.0, 1.0, "Nob carcass", 100));
+		Nob->attacker = std::move(std::make_unique<Attacker>(4.0));
 		Nob->ai = std::move(std::make_unique<MonsterAi>());
 		engine.actors.push_back(std::move(Nob));
 	}
@@ -383,23 +370,23 @@ void Map::addItem(int x, int y) {
 		//create a health potion
 		std::unique_ptr<Actor> healthPotion = std::make_unique<Actor>(x, y, '!', "health potion", TCOD_violet);
 		healthPotion->blocks = false;
-		healthPotion->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f)), std::move(std::make_unique<HealthEffect>(4.0f, "", TCODColor::lightGrey)), Equipment::EquipLocation::NONE);
+		healthPotion->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0)), std::move(std::make_unique<HealthEffect>(4.0, "", TCODColor::lightGrey)), Equipment::EquipLocation::NONE);
 		engine.actors.emplace_front(std::move(healthPotion));
 	}
 	else if (dice < 60 + 10) {
 		//create a scroll of Lightning bolt
 		std::unique_ptr<Actor> scrollOfLightningBolt = std::make_unique<Actor>(x, y, '?', "scroll of lightning bolt", TCOD_light_yellow);
 		scrollOfLightningBolt->blocks = false;
-		scrollOfLightningBolt->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::CLOSEST_MONSTER,5.0f)),
-			std::move(std::make_unique<HealthEffect>(-20.0f,"A lightning bolt strikes the # \nwith the sound of loud thunder!\nThe damege is # hit points.", TCODColor::lightBlue)), Equipment::EquipLocation::NONE);
+		scrollOfLightningBolt->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::CLOSEST_MONSTER,5.0)),
+			std::move(std::make_unique<HealthEffect>(-20.0,"A lightning bolt strikes the # \nwith the sound of loud thunder!\nThe damege is # hit points.", TCODColor::lightBlue)), Equipment::EquipLocation::NONE);
 		engine.actors.emplace_front(std::move(scrollOfLightningBolt));
 	}
 	else if (dice < 60 + 10 + 10) {
 		//create a scroll of Fireball
 		std::unique_ptr<Actor> scrollOfFireball = std::make_unique<Actor>(x, y, '?', "scroll of fireball", TCOD_light_yellow);
 		scrollOfFireball->blocks = false;
-		scrollOfFireball->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_RANGE, 3.0f)),
-			std::move(std::make_unique<HealthEffect>(-12.0f, "The # gets burned for # hit points.", TCODColor::orange)), Equipment::EquipLocation::NONE);
+		scrollOfFireball->pickable = std::make_unique<Pickable>(std::move(std::make_unique<TargetSelector>(selector_t::SELECTED_RANGE, 3.0)),
+			std::move(std::make_unique<HealthEffect>(-12.0, "The # gets burned for # hit points.", TCODColor::orange)), Equipment::EquipLocation::NONE);
 		engine.actors.emplace_front(std::move(scrollOfFireball));
 	}
 	else if (dice < 60 + 10 + 10 + 10) {
@@ -407,7 +394,7 @@ void Map::addItem(int x, int y) {
 		std::unique_ptr<Actor> scrollOfConfusion = std::make_unique<Actor>(x, y, '?', "scroll of confusion", TCOD_light_yellow);
 		scrollOfConfusion->blocks = false;
 		scrollOfConfusion->pickable = std::make_unique<Pickable>(std::move
-			(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_MONSTER, 5.0f)),
+			(std::make_unique<TargetSelector>(selector_t::SELECTED_MONSTER, 5.0)),
 			std::move(std::make_unique<AiChangeEffect>(std::make_unique<ConfusedMonsterAi>(10), "The eyes of the # glaze over\nas he starts to stumble around!.", TCOD_light_green)), Equipment::EquipLocation::NONE);
 		engine.actors.emplace_front(std::move(scrollOfConfusion));
 	}
@@ -417,8 +404,8 @@ void Map::addItem(int x, int y) {
 			(x, y, '\\', "power sword", TCOD_white);
 		powerSword->blocks = false;
 		powerSword->pickable = std::make_unique<Pickable>(
-			std::move(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f)),
-			std::move(std::make_unique<HealthEffect>(0.0f, "", TCODColor::lightGrey)),
+			std::move(std::make_unique<TargetSelector>(selector_t::SELF, 0.0)),
+			std::move(std::make_unique<HealthEffect>(10.0, "", TCODColor::lightGrey)),
 			Equipment::EquipLocation::HANDS);
 		engine.actors.emplace_front(std::move(powerSword));
 	}

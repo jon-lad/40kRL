@@ -1,5 +1,15 @@
 #pragma once
 
+class TargetSelector;
+class Effect;
+class Actor;
+
+
+using targetPtr_t = std::unique_ptr<TargetSelector>;
+using effectPtr_t = std::unique_ptr<Effect>;
+using actorPtr_t = std::unique_ptr<Actor>;
+using equipLoc_t = Equipment::EquipLocation;
+
 /*Target selector*/
 
 class TargetSelector : public Persistent {
@@ -11,42 +21,45 @@ public:
 		WEARER_RANGE,
 		SELECTED_RANGE
 	};
-	TargetSelector(SelectorType type, float range);
+	TargetSelector(SelectorType type, double range);
 	void selectTargets(Actor* wearer, TCODList<Actor*>& list);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
 protected:
 	SelectorType type;
-	float range;
+	double range;
 };
 
 class Effect : public Persistent {
 public:
 	enum class EffectType {
 		HEALTH,
-		CHANGE_AI
+		CHANGE_AI,
+		CHANGE_STAT
 	};
 	virtual bool applyTo(Actor* actor) = 0;
-	static std::unique_ptr<Effect> create(TCODZip& zip);
+	static effectPtr_t create(TCODZip& zip);
 };
 
 
 
 class Pickable : public Persistent {
 public:
-	Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr<Effect> effect, Equipment::EquipLocation equipLocation);
-	bool pick(std::unique_ptr<Actor> owner, Actor* wearer);
-	bool equip(std::unique_ptr<Actor>, Actor* wearer);
+	Pickable(targetPtr_t selector, effectPtr_t effect, equipLoc_t equipLocation);
+	bool pick(actorPtr_t owner, Actor* wearer);
+	bool equip(actorPtr_t owner, Actor* wearer);
 	bool use(Actor* owner, Actor* wearer);
 	void drop(Actor* owner, Actor* wearer);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
 
-	Equipment::EquipLocation equipLocation;
+	equipLoc_t equipLocation;
+	
 
 protected:
-	std::unique_ptr<TargetSelector> selector;
-	std::unique_ptr<Effect> effect;
+	targetPtr_t selector;
+	effectPtr_t effect;
+	
 	
 };
 
@@ -57,10 +70,10 @@ protected:
 
 class HealthEffect : public Effect {
 public:
-	float amount;
+	double amount;
 	std::string message;
 	TCODColor textCol;
-	HealthEffect(float amount, std::string_view message, const TCODColor& textCol);
+	HealthEffect(double amount, std::string_view message, const TCODColor& textCol);
 	bool applyTo(Actor* owner);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);

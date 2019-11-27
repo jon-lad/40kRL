@@ -4,12 +4,11 @@
 #include <sol/sol.hpp>
 #include "main.h"
 
-Pickable::Pickable(std::unique_ptr<TargetSelector> selector, 
-	std::unique_ptr<Effect> effect, Equipment::EquipLocation equpiLocation)
+Pickable::Pickable(targetPtr_t selector, effectPtr_t effect, equipLoc_t equipLocation)
 	:selector{ std::move(selector) }, effect{ std::move(effect) }, equipLocation{ equipLocation }
 {}
 
-bool Pickable::pick(std::unique_ptr<Actor> owner, Actor* wearer) {
+bool Pickable::pick(actorPtr_t owner, Actor* wearer) {
 	if (wearer->container && wearer->container->add(std::move(owner))) {
 		return true;
 	}
@@ -32,7 +31,8 @@ bool Pickable::use(Actor* owner, Actor* wearer) {
 	}
 	if(succeed){
 		if (wearer->container) {
-			for (auto i = wearer->container->inventory.begin(); i != wearer->container->inventory.end();) {
+			for (auto i = wearer->container->inventory.begin();
+				i != wearer->container->inventory.end();) {
 				if (i->get() == owner) {
 					i = wearer->container->inventory.erase(i);
 				}
@@ -51,7 +51,8 @@ void Pickable::drop(Actor* owner, Actor* wearer) {
 		ss << wearer->name << " drops a " << owner->name << ".";
 		engine.gui->message(TCOD_light_grey, ss.str());
 		
-		for (auto i = wearer->container->inventory.begin(); i != wearer->container->inventory.end(); ) {
+		for (auto i = wearer->container->inventory.begin();
+			i != wearer->container->inventory.end(); ) {
 			if (i->get() == owner) {
 				engine.actors.emplace_front(std::move(*i));
 				i = wearer->container->inventory.erase(i);
@@ -62,20 +63,21 @@ void Pickable::drop(Actor* owner, Actor* wearer) {
 }
 
 //Equip item and apply effect
-bool Pickable::equip(std::unique_ptr<Actor> owner, Actor* wearer) {
+bool Pickable::equip(actorPtr_t owner, Actor* wearer) {
 	//if wearer can equp items and this item equipable
+	Actor* item = owner.get();
 	if (wearer->equipment && wearer->equipment->equip(std::move(owner), wearer))
 	{ 
-		//apply effect as defined in Effects.lua, canceled on removal
-		owner->pickable->effect->applyTo(wearer); 
+		item->pickable->effect->applyTo(wearer);
 		return true;
-	}
+	}else if(!wearer->equipment) wearer->container->add(std::move(owner));
 	return false;
 }
 /*Effects below*/
 
 /*Health*/
-HealthEffect::HealthEffect(float amount, std::string_view message, const TCODColor& textCol) :amount{ amount }, message{ std::string(message) }, textCol{ textCol }{}
+HealthEffect::HealthEffect(double amount, std::string_view message, const TCODColor& textCol)
+	:amount{ amount }, message{ std::string(message) }, textCol{ textCol }{}
 
 bool HealthEffect::applyTo(Actor* actor) {
 	if (!actor->destructible) return false;
@@ -94,7 +96,7 @@ bool HealthEffect::applyTo(Actor* actor) {
 	
 	//setting destructible as user type to use in lua scripts
 	sol::usertype<Destructible> destructible_type = lua.new_usertype<Destructible>
-		("Destructible", sol::constructors<Destructible(float, float, std::string, int)>());
+		("Destructible", sol::constructors<Destructible(double, double, std::string, int)>());
 
 	destructible_type["heal"] = &Destructible::heal;
 	
@@ -105,11 +107,12 @@ bool HealthEffect::applyTo(Actor* actor) {
 
 	if(amount > 0)
 	{
-		float pointsHealed = lua.script_file("Scripts/Effects.lua");
+		double pointsHealed = lua.script_file("Scripts/Effects.lua");
 		
 		if (pointsHealed > 0) {
 			if (!message.empty()) {
-				engine.gui->message(textCol, message, std::move(actor->name), std::move(pointsHealed));
+				engine.gui->message(textCol, message, std::move(actor->name),
+					std::move(pointsHealed));
 			}
 			lua.collect_garbage();
 			return true;
@@ -117,7 +120,8 @@ bool HealthEffect::applyTo(Actor* actor) {
 	}
 	else {
 		if (!message.empty() && (-amount - actor->destructible->defense) > 0) {
-			engine.gui->message(textCol, message, std::move(actor->name),std::move(-amount - actor->destructible->defense));
+			engine.gui->message(textCol, message, std::move(actor->name),
+				std::move(-amount - actor->destructible->defense));
 		}
 		if (actor->destructible->takeDamage(actor, -amount) > 0) {
 			lua.collect_garbage();
@@ -147,7 +151,7 @@ bool AiChangeEffect::applyTo(Actor* actor) {
 //Target Selector
 
 
-TargetSelector::TargetSelector(SelectorType type, float range):type { type }, range{ range } {}
+TargetSelector::TargetSelector(SelectorType type, double range):type { type }, range{ range } {}
 
 void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list) {
 	switch (type) {

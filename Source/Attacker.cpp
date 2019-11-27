@@ -2,7 +2,7 @@
 #include <sstream>
 #include "main.h"
 
-Attacker::Attacker(float power) : power{ power } {};
+Attacker::Attacker(double power) : power{ power } {};
 
 void Attacker::attack(Actor* owner, Actor* target) {
 	if (target->destructible && !target->destructible->isDead()) {

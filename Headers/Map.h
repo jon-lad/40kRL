@@ -1,6 +1,6 @@
 #pragma once
 
-
+using selector_t = TargetSelector::SelectorType;
 
 struct Tile {
 	bool explored {}; // is tile passable

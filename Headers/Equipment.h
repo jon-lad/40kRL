@@ -27,3 +27,5 @@ public:
 	bool equip(std::unique_ptr<Actor> owner, Actor* wearer);
 
 };
+
+using equipLoc_t = Equipment::EquipLocation;

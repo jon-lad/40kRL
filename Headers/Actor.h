@@ -25,7 +25,7 @@ public:
 	void load(TCODZip& zip); // load actor details from zip
 	
 
-	float getDistance(int cx, int cy);//retuens distace from actor to tile
+	double getDistance(int cx, int cy);//retuens distace from actor to tile
 
 	//Getter and setter for x co-ord
 	int getX() const;

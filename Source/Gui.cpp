@@ -25,11 +25,12 @@ void Gui::render() {
 	std::stringstream ss;
 	if (ai) {
 		ss << "XP(" << ai->xpLevel << ")";
-		renderBar(1, 5, constants::BAR_WIDTH, ss.str(), (float)engine.player->destructible->xp, (float)ai->getNextLevelXp(), TCOD_light_violet, TCOD_darker_violet);
+		renderBar(1, 5, constants::BAR_WIDTH, ss.str(), 
+			static_cast<double>(engine.player->destructible->xp), static_cast<double>(ai->getNextLevelXp()), TCOD_light_violet, TCOD_darker_violet);
 	}
 	// draw the message log
 	int y = 1;
-	float colorCoef = 0.4f;
+	double colorCoef = 0.4f;
 	for (const auto& message : log) {
 		con->setDefaultForeground(message->col* colorCoef);
 		con->printf(constants::MSG_X, y, message->text.c_str());
@@ -46,12 +47,12 @@ void Gui::render() {
 	//blit the the GUI console on the root console
 	TCODConsole::blit(con.get(), 0, 0, engine.screenWidth, constants::PANEL_HEIGHT, TCODConsole::root, 0, engine.screenHeight - constants::PANEL_HEIGHT);
 }
-void Gui::renderBar(int x, int y, int width, std::string_view name, float value, float maxValue, const TCODColor& barColor, const TCODColor& backColor) {
+void Gui::renderBar(int x, int y, int width, std::string_view name, double value, double maxValue, const TCODColor& barColor, const TCODColor& backColor) {
 	//fill the background
 	con->setDefaultBackground(backColor);
 	con->rect(x, y, width, 1, false, TCOD_BKGND_SET);
 	//compute how much of bar is filled
-	int barWidth = (int)(value / maxValue * width);
+	int barWidth = static_cast<int>(value / maxValue * width);
 	//draw the bar
 	con->setDefaultBackground(barColor);
 	con->rect(x, y, barWidth, 1, false, TCOD_BKGND_SET);
@@ -69,16 +70,16 @@ void Gui::renderMouseLook() {
 	}
 	std::string buf = "";
 	bool first = true;
-	for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
+	for (const auto &actor : engine.actors) {
 		//find actor under mouse cursor
-		if (i->get()->getX() == std::get<0>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy)) && i->get()->getY() == std::get<1>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy))) {
+		if (actor->getX() == std::get<0>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy)) && actor->getY() == std::get<1>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy))) {
 			if (!first) {
 				buf += ", ";
 			}
 			else {
 				first = false;
 			}
-			buf += i->get()->name;
+			buf += actor->name;
 		}
 	}
 	//Display the list of actors under the mouse cursor
@@ -136,14 +137,14 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode){
 	}
 	while (!TCODConsole::isWindowClosed()) {
 		int currentItem = 0;
-		for (auto i = items.begin(); i != items.end(); ++i) {
+		for (const auto &item : items) {
 			if (currentItem == selectedItem) {
 				TCODConsole::root->setDefaultForeground(TCOD_lighter_orange);
 			}
 			else {
 				TCODConsole::root->setDefaultForeground(TCOD_light_grey);
 			}
-			TCODConsole::root->print(menux, menuy + currentItem * 3, i->get()->label.c_str());
+			TCODConsole::root->print(menux, menuy + currentItem * 3, item->label.c_str());
 			currentItem++;
 		}
 		TCODConsole::flush();
@@ -155,15 +156,15 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode){
 		case TCODK_UP:
 			selectedItem--;
 			if (selectedItem < 0) {
-				selectedItem = (int)items.size() - 1;
+				selectedItem = static_cast<int>(std::size(items)) - 1;
 			}
 			break;
 		case TCODK_DOWN:
-			selectedItem = selectedItem + 1 % items.size();
+			selectedItem = (selectedItem + 1) % static_cast<int>(std::size(items));
 			break;
 		case TCODK_ENTER:
 			advance(chooseItem, selectedItem);
-			return chooseItem->get()->code;
+			return (*chooseItem)->code;
 		default: break;
 		}
 	}
@@ -187,9 +188,29 @@ std::tuple<int, int> Camera::getWorldLocation(int x, int y) {
 
 
 
-void Camera::update(Actor* actor) {
-	x = -actor->getX() + (int)(width / 2);
-	y = -actor->getY() + (int)(height / 2);
+void Camera::update(Actor* actor, bool centre) {
+	if (centre) {
+		x = -actor->getX() + (int)(width / 2);
+		y = -actor->getY() + (int)(height / 2);
+	}
+	else {
+		std::tuple<int, int> screenLoc;
+		screenLoc = apply(actor->getX(), actor->getY());
 
-	//TODO add limits to stop camera near map edges
+		if (std::get<0>(screenLoc) < constants::SCREEN_BORDER && -x > -constants::MAP_BORDER) {
+			x += 1;
+		}
+
+		if (std::get<0>(screenLoc) > width - constants::SCREEN_BORDER && -x < engine.map->getWidth() - width + constants::MAP_BORDER) {
+			x -= 1;
+		}
+		if (std::get<1>(screenLoc) < constants::SCREEN_BORDER && -y > -constants::MAP_BORDER) {
+			y += 1;
+		}
+		if (std::get<1>(screenLoc) > height - constants::SCREEN_BORDER && -x < engine.map->getHeight() - height + constants::MAP_BORDER) {
+			y -= 1;
+		}
+	}
+
 }
+

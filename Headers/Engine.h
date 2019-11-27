@@ -1,5 +1,6 @@
 #pragma once
 
+using actorPtr_t = std::unique_ptr<Actor>;
 
 class Engine {
 public:
@@ -10,7 +11,7 @@ public:
 		VICTORY,
 		DEFEAT
 	} gameStatus;
-	std::list<std::unique_ptr<Actor>> actors;
+	std::list<actorPtr_t> actors;
 	std::unique_ptr<Map> map;
 	Actor* player;
 	Actor* stairs;
@@ -28,15 +29,14 @@ public:
 	void update();
 	void render();
 	void sendToBack(Actor* actor);
-	Actor* getClosestMonster(int x, int y, float range);
+	Actor* getClosestMonster(int x, int y, double range);
 	Actor* getActor(int x, int y) const;
-	bool pickAtTile(int* x, int* y, float maxRange = 0.0f);
+	bool pickAtTile(int* x, int* y, double maxRange = 0.0);
 	void nextLevel();
 	void init();
 	void term();
 	void save();
 	void load();
-private:
 	
 };
 

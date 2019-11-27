@@ -3,13 +3,11 @@
 #include <sstream>
 #include "main.h"
 
-Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, player{ NULL }, FOVRadius{ 10 }, screenWidth{ screenWidth }, screenHeight{ screenHeight }, level{1}
+Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, player{ nullptr }, FOVRadius{ 10 }, screenWidth{ screenWidth }, screenHeight{ screenHeight }, level{1}
 {
 	map.reset();
-	TCODConsole::initRoot(screenWidth, screenHeight, "Rougelike", false);
+	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
 	gui = std::make_unique<Gui>();
-	
-	
 }
 
 void Engine::update()
@@ -24,7 +22,7 @@ void Engine::update()
 	player->update();
 	if (gameStatus == NEW_TURN) {
 		map->currentScentValue++;
-		for (std::list<std::unique_ptr<Actor>>::iterator i = actors.begin(); i != actors.end(); ) {
+		for (auto i = actors.begin(); i != actors.end(); ) {
 			if (*i == nullptr) {
 				i = actors.erase(i);
 			}
@@ -37,12 +35,10 @@ void Engine::update()
 	}
 }
 
-
 void Engine::render(){
 	TCODConsole::root->clear();
 	map->render();
-	std::list<std::unique_ptr<Actor>>::iterator i;
-	for (i = actors.begin(); i != actors.end(); ++i) {
+	for (auto i = actors.begin(); i != actors.end(); ++i) {
 		if (!i->get()->fovOnly && map->isExplored(i->get()->getX(), i->get()->getY() )||map->isInFOV(i->get()->getX(), i->get()->getY())) {
 			i->get()->render();
 		}
@@ -68,17 +64,17 @@ void Engine::nextLevel() {
 	map->init(true);
 	camera->mapWidth = map->getWidth();
 	camera->mapHeight = map->getHeight();
-	camera->update(player);
+	camera->update(player, true);
 	gameStatus = STARTUP;
 }
 
-Actor* Engine::getClosestMonster(int x, int y, float range) {
-	Actor* closest = NULL;
-	float bestDistance = 1E6f;
+Actor* Engine::getClosestMonster(int x, int y, double range) {
+	Actor* closest = nullptr;
+	double bestDistance = 1E6f;
 	for (auto i = actors.begin(); i != actors.end(); ++i) {
 		if (i->get() != player && i->get()->destructible && !i->get()->destructible->isDead()) {
-			float distance = i->get()->getDistance(x, y);
-			if (distance < bestDistance && (distance <= range || range == 0.0f)) {
+			double distance = i->get()->getDistance(x, y);
+			if (distance < bestDistance && (distance <= range || range == 0.0)) {
 				bestDistance = distance;
 				closest = i->get();
 			}
@@ -90,14 +86,14 @@ Actor* Engine::getClosestMonster(int x, int y, float range) {
 Actor* Engine::getActor(int x, int y)const {
 	for (auto i = actors.begin(); i != actors.end(); ++i)
 	{
-		if (i->get()->getX()== x && i->get()->getY()== y && i->get()->destructible && !i->get()->destructible->isDead()) {
+		if ((*i)->getX()== x && (*i)->getY()== y && (*i)->destructible && !(*i)->destructible->isDead()) {
 			return i->get();
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
-bool Engine::pickAtTile(int* x, int* y, float maxRange) {
+bool Engine::pickAtTile(int* x, int* y, double maxRange) {
 	while (!TCODConsole::isWindowClosed()) {
 		render();
 		for (int cx = 0; cx < map->getWidth(); cx++) {
@@ -140,12 +136,13 @@ void Engine::sendToBack(Actor* actor) {
 }
 
 void Engine::init() {
-	std::unique_ptr<Actor>newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", TCOD_white);
+	actorPtr_t newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", TCOD_white);
 	player = newPlayer.get();
-	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
-	newPlayer->attacker = std::make_unique<Attacker>(5.0f);
+	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0, 2.0, "Your cadaver", 0);
+	newPlayer->attacker = std::make_unique<Attacker>(5.0);
 	newPlayer->ai = std::make_unique<PlayerAi>();
 	newPlayer->container = std::make_unique<Container>(26);
+	newPlayer->equipment = std::make_unique<Equipment>();
 	actors.emplace_front(std::move(newPlayer));
 	std::unique_ptr<Actor>newStair = std::make_unique<Actor>(0, 0, '>', "stairs", TCOD_white);
 	stairs = newStair.get();
@@ -157,7 +154,7 @@ void Engine::init() {
 	map = std::make_unique<Map>(160, 86);
 	map->init(true);
 	camera = std::make_unique<Camera>(0, 0, 80, 43, map->getWidth(), map->getHeight());
-	camera->update(player);
+	camera->update(player, true);
 	gui->message(TCODColor::lightGrey, "\n \n \n Hello friend. \n welcome to the underhive!");
 	gameStatus = STARTUP;
 }

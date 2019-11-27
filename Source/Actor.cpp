@@ -29,10 +29,11 @@ void Actor::update()
 }
 
 
-float Actor::getDistance(int cx, int cy){
+double Actor::getDistance(int cx, int cy){
 	int dx = x - cx;
 	int dy = y - cy;
-	return std::sqrtf((float)dx * (float)dx + (float)dy * (float)dy);
+	return std::sqrt(static_cast<double>(dx) * static_cast<double>(dx) 
+		+ static_cast<double>(dy) * static_cast<double>(dy));
 }
 
 int Actor::getX() const

@@ -2,11 +2,11 @@
 #include <sstream>
 #include "main.h"
 
-Destructible::Destructible(float maxHp, float defense, std::string_view corpseName, int xp) : maxHp{ maxHp }, hp{ maxHp }, defense{ defense }, corpseName{ corpseName }, xp{ xp } {
+Destructible::Destructible(double maxHp, double defense, std::string_view corpseName, int xp) : maxHp{ maxHp }, hp{ maxHp }, defense{ defense }, corpseName{ corpseName }, xp{ xp } {
 	
 }
 
-float Destructible::takeDamage(Actor* owner, float damage) {
+double Destructible::takeDamage(Actor* owner, double damage) {
 	damage -= defense;
 	if (damage > 0) {
 		hp -= damage;
@@ -19,13 +19,13 @@ float Destructible::takeDamage(Actor* owner, float damage) {
 	return damage;
 }
 
-float Destructible::heal(int amount) {
+double Destructible::heal(int amount) {
 	hp += amount;
 	if (hp > maxHp) {
-		amount -= (int)hp - (int)maxHp;
+		amount -= static_cast<int>(hp) - static_cast<int>(maxHp);
 		hp = maxHp;
 	}
-	return (float)amount;
+	return static_cast<double>(amount);
 }
 
 void Destructible::die(Actor* owner) {
@@ -40,11 +40,11 @@ void Destructible::die(Actor* owner) {
 }
 
 
-MonsterDestructible::MonsterDestructible(float maxHp, float defense, std::string_view corpseName, int xp) :
+MonsterDestructible::MonsterDestructible(double maxHp, double defense, std::string_view corpseName, int xp) :
 	Destructible(maxHp, defense, corpseName, xp) {
 }
 
-PlayerDestructible::PlayerDestructible(float maxHp, float defense, std::string_view corpseName, int xp) :
+PlayerDestructible::PlayerDestructible(double maxHp, double defense, std::string_view corpseName, int xp) :
 	Destructible(maxHp, defense, corpseName, xp) {
 }
 

@@ -75,7 +75,7 @@ protected:
 	std::unique_ptr<TCODConsole> con;
 
 	void renderBar(int x, int y, int width, const std::string_view name, 
-			float value, float maxValue, const TCODColor& barColor, 
+			double value, double maxValue, const TCODColor& barColor, 
 			const TCODColor& backColor);
 	void renderMouseLook();
 
@@ -121,7 +121,7 @@ public:
 	Camera(int x, int y, int width, int height, int mapWidth, int mapHeight);
 	std::tuple<int, int> apply(int x, int y);
 	std::tuple<int, int> getWorldLocation(int x, int y);
-	void update(Actor* actor);
+	void update(Actor* actor, bool centre);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
 };

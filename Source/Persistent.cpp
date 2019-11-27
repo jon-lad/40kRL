@@ -158,7 +158,7 @@ void Actor::load(TCODZip& zip)
 
 	//load features
 	if (hasAttacker) {
-		attacker = std::make_unique<Attacker>(0.0f);
+		attacker = std::make_unique<Attacker>(0.0);
 		attacker->load(zip);
 	}
 	if (hasDestructible) {
@@ -168,7 +168,8 @@ void Actor::load(TCODZip& zip)
 		ai = std::move(Ai::create(zip));
 	}
 	if (hasPickable) {
-		pickable = std::make_unique<Pickable>(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF,0.0f), Effect::create(zip), Equipment::EquipLocation::NONE);
+		pickable = std::make_unique<Pickable>(std::make_unique<TargetSelector>
+			(selector_t::SELF,0.0), Effect::create(zip), equipLoc_t::NONE);
 		pickable->load(zip);
 	}
 	if (hasContainer) {
@@ -184,7 +185,7 @@ void Actor::load(TCODZip& zip)
 /*attacker*/
 
 void Attacker::save(TCODZip& zip) {
-	zip.putFloat(power);
+	zip.putFloat(static_cast<float>(power));
 }
 
 void Attacker::load(TCODZip& zip) {
@@ -193,9 +194,9 @@ void Attacker::load(TCODZip& zip) {
 
 /*Detructable*/
 void Destructible::save(TCODZip& zip) {
-	zip.putFloat(maxHp);
-	zip.putFloat(hp);
-	zip.putFloat(defense);
+	zip.putFloat(static_cast<float>(maxHp));
+	zip.putFloat(static_cast<float>(hp));
+	zip.putFloat(static_cast<float>(defense));
 	zip.putString(corpseName.c_str());
 	zip.putInt(xp);
 }
@@ -209,7 +210,7 @@ void Destructible::load(TCODZip& zip) {
 }
 
 std::unique_ptr<Destructible> Destructible::create(TCODZip& zip) {
-	DestructibleType type = (Destructible::DestructibleType)zip.getInt();
+	DestructibleType type = static_cast<DestructibleType>(zip.getInt());
 	std::unique_ptr<Destructible> destructible;
 	switch (type)
 	{
@@ -225,18 +226,18 @@ std::unique_ptr<Destructible> Destructible::create(TCODZip& zip) {
 }
 
 void PlayerDestructible::save(TCODZip& zip) {
-	zip.putInt((int)DestructibleType::PLAYER);
+	zip.putInt(static_cast<int>(DestructibleType::PLAYER));
 	Destructible::save(zip);
 }
 
 void MonsterDestructible::save(TCODZip& zip) {
-	zip.putInt((int)DestructibleType::MONSTER);
+	zip.putInt(static_cast<int>(DestructibleType::MONSTER));
 	Destructible::save(zip);
 }
 
 /*Ai*/
 std::unique_ptr<Ai> Ai::create(TCODZip& zip) {
-	const auto& type = (Ai::AiType)zip.getInt();
+	const auto& type = static_cast<AiType>(zip.getInt());
 	std::unique_ptr<Ai> ai;
 	switch (type) {
 	case(AiType::PLAYER):
@@ -251,7 +252,7 @@ std::unique_ptr<Ai> Ai::create(TCODZip& zip) {
 }
 
 auto TemporaryAi::create(TCODZip& zip) {
-	const auto& type = (Ai::AiType)zip.getInt();
+	const auto& type = static_cast<AiType>(zip.getInt());
 	std::unique_ptr<TemporaryAi> ai;
 	switch (type) {
 	case(Ai::AiType::CONFUSED_MONSTER):
@@ -262,7 +263,7 @@ auto TemporaryAi::create(TCODZip& zip) {
 }
 
 void PlayerAi::save(TCODZip& zip) {
-	zip.putInt((int)AiType::PLAYER);
+	zip.putInt(static_cast<int>(AiType::PLAYER));
 	zip.putInt(xpLevel);
 }
 
@@ -271,7 +272,7 @@ void PlayerAi::load(TCODZip& zip) {
 }
 
 void MonsterAi::save(TCODZip& zip) {
-	zip.putInt((int)AiType::MONSTER);
+	zip.putInt(static_cast<int>(AiType::MONSTER));
 	
 }
 
@@ -280,7 +281,7 @@ void MonsterAi::load(TCODZip& zip) {
 }
 
 void ConfusedMonsterAi::save(TCODZip& zip) {
-	zip.putInt((int)Ai::AiType::CONFUSED_MONSTER);
+	zip.putInt(static_cast<int>(AiType::CONFUSED_MONSTER));
 	zip.putInt(nbTurns);
 	zip.putInt(oldAi != 0);
 	if (oldAi) {
@@ -304,33 +305,33 @@ void Pickable::save(TCODZip& zip) {
 		selector->save(zip);
 	}
 
-	zip.putInt((int)equipLocation);
+	zip.putInt(static_cast<int>(equipLocation));
 }
 
 void Pickable::load(TCODZip& zip) {
 	bool hasSelector = zip.getInt();
 	if (hasSelector) {
 		 
-		selector = std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0);
+		selector = std::make_unique<TargetSelector>(selector_t::SELF, 0);
 		selector->load(zip);
 	}
 
-	equipLocation = (Equipment::EquipLocation) zip.getInt();
+	equipLocation = static_cast<equipLoc_t>(zip.getInt());
 
 }
 
 void TargetSelector::save(TCODZip& zip) {
-	zip.putInt((int)type);
-	zip.putFloat(range);
+	zip.putInt(static_cast<int>(type));
+	zip.putFloat(static_cast<float>(range));
 }
 
 void TargetSelector::load(TCODZip& zip) {
-	type = (SelectorType)zip.getInt();
+	type = static_cast<SelectorType>(zip.getInt());
 	range = zip.getFloat();
 }
 
 std::unique_ptr<Effect> Effect::create(TCODZip& zip) {
-	const auto& type = (EffectType)zip.getInt();
+	const auto& type = static_cast<EffectType>(zip.getInt());
 	std::unique_ptr<Effect> effect;
 	switch (type) {
 	case EffectType::HEALTH:
@@ -345,8 +346,8 @@ std::unique_ptr<Effect> Effect::create(TCODZip& zip) {
 }
 
 void HealthEffect::save(TCODZip& zip) {
-	zip.putInt((int)EffectType::HEALTH);
-	zip.putFloat(amount);
+	zip.putInt(static_cast<int>(EffectType::HEALTH));
+	zip.putFloat(static_cast<float>(amount));
 	zip.putString(message.c_str());
 	zip.putColor(&textCol);
 	
@@ -359,7 +360,7 @@ void HealthEffect::load(TCODZip& zip) {
 }
 
 void AiChangeEffect::save(TCODZip& zip) {
-	zip.putInt((int)EffectType::CHANGE_AI);
+	zip.putInt(static_cast<int>(EffectType::CHANGE_AI));
 	
 	newAi->save(zip);
 	zip.putString(message.c_str());
@@ -376,9 +377,9 @@ void AiChangeEffect::load(TCODZip& zip) {
 /*Container*/
 void Container::save(TCODZip& zip) {
 	zip.putInt(size);
-	zip.putInt((int)inventory.size());
-	for (auto i = inventory.begin(); i != inventory.end(); ++i) {
-		i->get()->save(zip);
+	zip.putInt(static_cast<int>(inventory.size()));
+	for (const auto& actor :inventory) {
+		actor->save(zip);
 	}
 }
 
@@ -435,10 +436,10 @@ void Equipment::load(TCODZip& zip) {
 
 /*Gui*/
 void Gui::save(TCODZip& zip) {
-	zip.putInt((int)log.size());
-	for (auto i = log.begin(); i != log.end(); i++) {
-		zip.putString(i->get()->text.c_str());
-		zip.putColor(&i->get()->col);
+	zip.putInt(static_cast<int>(log.size()));
+	for (const auto &message : log) {
+		zip.putString(message->text.c_str());
+		zip.putColor(&message->col);
 	}
 }
 

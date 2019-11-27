@@ -4,9 +4,9 @@
 class Attacker : public Persistent {
 public:
 
-	float power; //hit points given
+	double power; //hit points given
 
-	Attacker(float power);
+	Attacker(double power);
 	void attack(Actor* owner, Actor* target); // attack target
 	void save(TCODZip& zip); //save attacker data to zip
 	void load(TCODZip& zip); //load attacker data to zip

@@ -41,6 +41,15 @@ void PlayerAi::update(Actor* owner) {
 	case TCODK_DOWN: dy = 1; break;
 	case TCODK_LEFT: dx = -1; break;
 	case TCODK_RIGHT: dx = 1; break;
+	case TCODK_KP7: dy = -1; dx = -1; break;
+	case TCODK_KP8: dy = -1; break;
+	case TCODK_KP9: dy = -1; dx = 1; break;
+	case TCODK_KP4: dx = -1; break;
+	case TCODK_KP6: dx = 1; break;
+	case TCODK_KP1: dy = 1; dx = -1; break;
+	case TCODK_KP2: dy = 1; break;
+	case TCODK_KP3: dy = 1; dx = 1; break;
+
 	case TCODK_TEXT: handleActionKey(owner, *engine.lastKey.text); break;
 	default: break;
 	}
@@ -90,7 +99,7 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetx, int targety)
 	}
 	owner->setX(targetx);
 	owner->setY(targety);
-	engine.camera->update(owner);
+	engine.camera->update(owner, false);
 	return true;
 }
 
@@ -107,11 +116,11 @@ Actor* PlayerAi::chooseFromInventory(Actor* owner) {
 	int shortcut = 'a';
 	int y = 1;
 	for (std::list<std::unique_ptr<Actor>>::iterator i = owner->container->inventory.begin(); i != owner->container->inventory.end(); ++i) {
-		if (*i) {
-			con.printf(2, y, "(%c) %s", shortcut, i->get()->name.c_str());
-			y++;
-			shortcut++;
-		}
+			if (*i) {
+				con.printf(2, y, "(%c) %s", shortcut, i->get()->name.c_str());
+				y++;
+				shortcut++;
+			}
 	}
 	//blit the inventory console on the root console
 	TCODConsole::blit(&con, 0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT, TCODConsole::root, engine.screenWidth/2 - INVENTORY_WIDTH/2,
@@ -128,7 +137,7 @@ Actor* PlayerAi::chooseFromInventory(Actor* owner) {
 			return it->get();
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 void PlayerAi::handleActionKey(Actor* owner, int ascii) {
@@ -221,7 +230,8 @@ void MonsterAi::moveOrAttack(Actor * owner, int targetx, int targety) {
 	int dy = targety - owner->getY();
 	int stepdx = (dx > 0 ? 1 : -1);
 	int stepdy = (dy > 0 ? 1 : -1);
-	float distance = sqrtf((float)dx * (float)dx + (float)dy * (float)dy);
+	double distance = sqrt(static_cast<double>(dx) * static_cast<double>(dx) 
+		+ static_cast<double>(dy) * static_cast<double>(dy));
 	if (distance < 2) {
 		//at melee range attack
 		if (owner->attacker) {
@@ -231,8 +241,8 @@ void MonsterAi::moveOrAttack(Actor * owner, int targetx, int targety) {
 	}
 	else if (engine.map->isInFOV(owner->getX(), owner->getY())) {
 		//player in sight go towards him
-		dx = (int)std::round(dx / distance);
-		dy = (int)std::round(dx / distance);
+		dx = static_cast<int>(std::round(dx / distance));
+		dy = static_cast<int>(std::round(dx / distance));
 		if (engine.map->canWalk(owner->getX() + dx, owner->getY() + dy)) {
 			owner->setX(owner->getX() + dx);
 			owner->setY(owner->getY() + dy);
