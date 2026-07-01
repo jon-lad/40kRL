@@ -153,6 +153,7 @@
     <ClCompile Include="Source\Destructible.cpp" />
     <ClCompile Include="Source\Engine.cpp" />
     <ClCompile Include="Source\Gui.cpp" />
+    <ClCompile Include="Source\InputHandler.cpp" />
     <ClCompile Include="Source\main.cpp" />
     <ClCompile Include="Source\Map.cpp" />
     <ClCompile Include="Source\Persistent.cpp" />
@@ -163,15 +164,18 @@
     <ClInclude Include="Headers\Ai.h" />
     <ClInclude Include="Headers\Attacker.h" />
     <ClInclude Include="Headers\CharConstants.h" />
+    <ClInclude Include="Headers\Colors.h" />
     <ClInclude Include="Headers\Constants.h" />
     <ClInclude Include="Headers\Container.h" />
     <ClInclude Include="Headers\Destructible.h" />
     <ClInclude Include="Headers\Engine.h" />
     <ClInclude Include="Headers\Gui.h" />
+    <ClInclude Include="Headers\InputHandler.h" />
     <ClInclude Include="Headers\main.h" />
     <ClInclude Include="Headers\Map.h" />
     <ClInclude Include="Headers\Persistent.h" />
     <ClInclude Include="Headers\Pickable.h" />
+    <ClInclude Include="Headers\RenderUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
