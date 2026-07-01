@@ -231,7 +231,7 @@ void Map::renderOutdoor() const
 					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_OUTDOOR_GROUND);
 					break;
 				case TerrainType::TREE:
-					TCODConsole::root->setChar(screenX, screenY, TCOD_CHAR_SPADE);
+					TCODConsole::root->setChar(screenX, screenY, CharConst::SPADE);
 					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_TREE);
 					break;
 				case TerrainType::WATER:
@@ -246,7 +246,7 @@ void Map::renderOutdoor() const
 					TCODConsole::root->setCharForeground(screenX, screenY, DARK_OUTDOOR_GROUND);
 					break;
 				case TerrainType::TREE:
-					TCODConsole::root->setChar(screenX, screenY, TCOD_CHAR_SPADE);
+					TCODConsole::root->setChar(screenX, screenY, CharConst::SPADE);
 					TCODConsole::root->setCharForeground(screenX, screenY, DARK_TREE);
 					break;
 				case TerrainType::WATER:
@@ -467,20 +467,20 @@ bool Map::canWalk(int x, int y) const
 
 // Selects the appropriate double-line box-drawing character for a wall tile
 // based on which of its four cardinal neighbours are also wall tiles.
-static TCOD_chars_t chooseWallGlyph(bool top, bool bottom, bool left, bool right)
+static int chooseWallGlyph(bool top, bool bottom, bool left, bool right)
 {
-	if ( top &&  bottom &&  left &&  right) return TCOD_CHAR_DCROSS;
-	if (!top &&  bottom &&  left &&  right) return TCOD_CHAR_DTEES;
-	if ( top && !bottom &&  left &&  right) return TCOD_CHAR_DTEEN;
-	if ( top &&  bottom && !left &&  right) return TCOD_CHAR_DTEEE;
-	if ( top &&  bottom &&  left && !right) return TCOD_CHAR_DTEEW;
-	if (!top &&  bottom &&  left && !right) return TCOD_CHAR_DNE;
-	if (!top &&  bottom && !left &&  right) return TCOD_CHAR_DNW;
-	if ( top && !bottom &&  left && !right) return TCOD_CHAR_DSE;
-	if ( top && !bottom && !left &&  right) return TCOD_CHAR_DSW;
-	if ( top &&  bottom && !left && !right) return TCOD_CHAR_DVLINE;
-	if (!top && !bottom &&  left &&  right) return TCOD_CHAR_DHLINE;
-	return TCOD_CHAR_RADIO_UNSET;
+	if ( top &&  bottom &&  left &&  right) return CharConst::DCROSS;
+	if (!top &&  bottom &&  left &&  right) return CharConst::DTEES;
+	if ( top && !bottom &&  left &&  right) return CharConst::DTEEN;
+	if ( top &&  bottom && !left &&  right) return CharConst::DTEEE;
+	if ( top &&  bottom &&  left && !right) return CharConst::DTEEW;
+	if (!top &&  bottom &&  left && !right) return CharConst::DNE;
+	if (!top &&  bottom && !left &&  right) return CharConst::DNW;
+	if ( top && !bottom &&  left && !right) return CharConst::DSE;
+	if ( top && !bottom && !left &&  right) return CharConst::DSW;
+	if ( top &&  bottom && !left && !right) return CharConst::DVLINE;
+	if (!top && !bottom &&  left &&  right) return CharConst::DHLINE;
+	return CharConst::RADIO_UNSET;
 }
 
 static void renderWallTile(int screenX, int screenY, int worldX, int worldY,
