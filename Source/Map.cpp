@@ -3,6 +3,7 @@
 #include <vector>
 #include <list>
 #include <sstream>
+#include <sol/sol.hpp>
 #include "main.h"
 
 static constexpr int ROOM_MAX_SIZE     = 12;
@@ -251,22 +252,72 @@ void Map::createRoom(bool isFirstRoom, int x1, int y1, int x2, int y2, bool with
 	}
 }
 
+// ─── Lua-driven spawn helpers ────────────────────────────────────────────────
+
+// Maps Lua colour names to TCODColor values.
+static TCODColor colorFromName(const std::string& name)
+{
+	if (name == "desaturatedGreen") return TCODColor::desaturatedGreen;
+	if (name == "darkerGreen")      return TCODColor::darkerGreen;
+	if (name == "lightBlue")        return TCODColor::lightBlue;
+	if (name == "orange")           return TCODColor::orange;
+	if (name == "lightGreen")       return TCODColor::lightGreen;
+	if (name == "violet")           return TCOD_violet;
+	if (name == "lightYellow")      return TCOD_light_yellow;
+	return TCODColor::white;
+}
+
+// Maps Lua selector-type strings to the enum.
+static TargetSelector::SelectorType selectorFromName(const std::string& name)
+{
+	if (name == "SELF")             return TargetSelector::SelectorType::SELF;
+	if (name == "CLOSEST_MONSTER")  return TargetSelector::SelectorType::CLOSEST_MONSTER;
+	if (name == "SELECTED_MONSTER") return TargetSelector::SelectorType::SELECTED_MONSTER;
+	if (name == "WEARER_RANGE")     return TargetSelector::SelectorType::WEARER_RANGE;
+	if (name == "SELECTED_RANGE")   return TargetSelector::SelectorType::SELECTED_RANGE;
+	return TargetSelector::SelectorType::SELF;
+}
+
 void Map::addMonster(int x, int y)
 {
 	TCODRandom* rng = TCODRandom::getInstance();
+	const int roll = rng->getInt(0, 100);
 
-	if (rng->getInt(0, 100) < 80) {
-		auto ork = std::make_unique<Actor>(x, y, 'o', "Ork", TCODColor::desaturatedGreen);
-		ork->destructible = std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35);
-		ork->attacker     = std::make_unique<Attacker>(3.0f);
-		ork->ai           = std::make_unique<MonsterAi>();
-		engine.actors.push_back(std::move(ork));
-	} else {
-		auto nob = std::make_unique<Actor>(x, y, 'N', "Nob", TCODColor::darkerGreen);
-		nob->destructible = std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100);
-		nob->attacker     = std::make_unique<Attacker>(4.0f);
-		nob->ai           = std::make_unique<MonsterAi>();
-		engine.actors.push_back(std::move(nob));
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base, sol::lib::string);
+
+		// Inject C++ callback that Lua calls to actually create the actor.
+		lua["addActor"] = [](int ax, int ay, int glyph, const std::string& name,
+			const std::string& colorName, float hp, float defense,
+			const std::string& corpse, int xp, float power)
+		{
+			TCODColor col = colorFromName(colorName);
+			auto monster = std::make_unique<Actor>(ax, ay, glyph, name, col);
+			monster->destructible = std::make_unique<MonsterDestructible>(hp, defense, corpse, xp);
+			monster->attacker     = std::make_unique<Attacker>(power);
+			monster->ai           = std::make_unique<MonsterAi>();
+			engine.actors.push_back(std::move(monster));
+		};
+
+		lua.script_file("Scripts/Enemies.lua");
+		lua["spawnEnemy"](roll, x, y);
+
+	} catch (const sol::error& e) {
+		// Lua script failed — fall back to hard-coded spawn so the game still works.
+		if (roll < 80) {
+			auto ork = std::make_unique<Actor>(x, y, 'o', "Ork", TCODColor::desaturatedGreen);
+			ork->destructible = std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35);
+			ork->attacker     = std::make_unique<Attacker>(3.0f);
+			ork->ai           = std::make_unique<MonsterAi>();
+			engine.actors.push_back(std::move(ork));
+		} else {
+			auto nob = std::make_unique<Actor>(x, y, 'N', "Nob", TCODColor::darkerGreen);
+			nob->destructible = std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100);
+			nob->attacker     = std::make_unique<Attacker>(4.0f);
+			nob->ai           = std::make_unique<MonsterAi>();
+			engine.actors.push_back(std::move(nob));
+		}
 	}
 }
 
@@ -275,45 +326,57 @@ void Map::addItem(int x, int y)
 	TCODRandom* rng  = TCODRandom::getInstance();
 	const int   roll = rng->getInt(0, 100);
 
-	// Spawn chances: 70% health potion, 10% lightning bolt, 10% fireball, 10% confusion scroll.
-	if (roll < 70) {
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base, sol::lib::string);
+
+		// Inject C++ factory callbacks that Lua's spawnItem function will call.
+		lua["spawnHealthPotion"] = [](int ix, int iy, float healAmount) {
+			auto potion = std::make_unique<Actor>(ix, iy, '!', "health potion", TCOD_violet);
+			potion->blocks   = false;
+			potion->pickable = std::make_unique<Pickable>(
+				std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
+				std::make_unique<HealthEffect>(healAmount, "", TCODColor::lightGrey));
+			engine.actors.emplace_front(std::move(potion));
+		};
+
+		lua["spawnDamageScroll"] = [](int ix, int iy, float damage, const std::string& name,
+			const std::string& message, const std::string& colorName,
+			const std::string& selectorName, float range)
+		{
+			TCODColor col = colorFromName(colorName);
+			auto scroll = std::make_unique<Actor>(ix, iy, '#', name, TCOD_light_yellow);
+			scroll->blocks   = false;
+			scroll->pickable = std::make_unique<Pickable>(
+				std::make_unique<TargetSelector>(selectorFromName(selectorName), range),
+				std::make_unique<HealthEffect>(damage, message, col));
+			engine.actors.emplace_front(std::move(scroll));
+		};
+
+		lua["spawnConfusionScroll"] = [](int ix, int iy, int turns, const std::string& name,
+			const std::string& message, const std::string& colorName, float range)
+		{
+			TCODColor col = colorFromName(colorName);
+			auto scroll = std::make_unique<Actor>(ix, iy, '#', name, TCOD_light_yellow);
+			scroll->blocks   = false;
+			scroll->pickable = std::make_unique<Pickable>(
+				std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_MONSTER, range),
+				std::make_unique<AiChangeEffect>(
+					std::make_unique<ConfusedMonsterAi>(turns), message, col));
+			engine.actors.emplace_front(std::move(scroll));
+		};
+
+		lua.script_file("Scripts/Items.lua");
+		lua["spawnItem"](roll, x, y);
+
+	} catch (const sol::error& e) {
+		// Lua script failed — fall back to a simple health potion.
 		auto potion = std::make_unique<Actor>(x, y, '!', "health potion", TCOD_violet);
 		potion->blocks   = false;
 		potion->pickable = std::make_unique<Pickable>(
 			std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
 			std::make_unique<HealthEffect>(4.0f, "", TCODColor::lightGrey));
 		engine.actors.emplace_front(std::move(potion));
-
-	} else if (roll < 80) {
-		auto scroll = std::make_unique<Actor>(x, y, '#', "scroll of lightning bolt", TCOD_light_yellow);
-		scroll->blocks   = false;
-		scroll->pickable = std::make_unique<Pickable>(
-			std::make_unique<TargetSelector>(TargetSelector::SelectorType::CLOSEST_MONSTER, 5.0f),
-			std::make_unique<HealthEffect>(-20.0f,
-				"A lightning bolt strikes the #\nwith a crack of loud thunder!\nThe damage is # hit points.",
-				TCODColor::lightBlue));
-		engine.actors.emplace_front(std::move(scroll));
-
-	} else if (roll < 90) {
-		auto scroll = std::make_unique<Actor>(x, y, '#', "scroll of fireball", TCOD_light_yellow);
-		scroll->blocks   = false;
-		scroll->pickable = std::make_unique<Pickable>(
-			std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_RANGE, 3.0f),
-			std::make_unique<HealthEffect>(-12.0f,
-				"The # gets burned for # hit points.",
-				TCODColor::orange));
-		engine.actors.emplace_front(std::move(scroll));
-
-	} else {
-		auto scroll = std::make_unique<Actor>(x, y, '#', "scroll of confusion", TCOD_light_yellow);
-		scroll->blocks   = false;
-		scroll->pickable = std::make_unique<Pickable>(
-			std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_MONSTER, 5.0f),
-			std::make_unique<AiChangeEffect>(
-				std::make_unique<ConfusedMonsterAi>(10),
-				"The eyes of the # glaze over as he starts to stumble around!",
-				TCOD_light_green));
-		engine.actors.emplace_front(std::move(scroll));
 	}
 }
 
