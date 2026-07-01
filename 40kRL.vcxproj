@@ -166,6 +166,7 @@
     <ClInclude Include="Headers\Actor.h" />
     <ClInclude Include="Headers\Ai.h" />
     <ClInclude Include="Headers\Attacker.h" />
+    <ClInclude Include="Headers\CharConstants.h" />
     <ClInclude Include="Headers\Constants.h" />
     <ClInclude Include="Headers\Container.h" />
     <ClInclude Include="Headers\Destructible.h" />
