@@ -74,12 +74,18 @@ void Engine::nextLevel()
 	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength.");
 	player->destructible->heal(static_cast<int>(player->destructible->maxHp / 2));
 
-	// Determine level type: only level 20 is outdoor, all others are BSP.
-	const bool isOutdoor = (dungeonLevel == 20);
+	// Determine level type: outdoor every outdoorTransitionLevel levels (default 20), BSP otherwise.
+	static constexpr int DEFAULT_TRANSITION_LEVEL = 20;
+	int transitionLevel = DEFAULT_TRANSITION_LEVEL;
+
+	// TODO: read transitionLevel from Config.lua (outdoorTransitionLevel) once config is loaded globally.
+
+	const bool isOutdoor = (dungeonLevel % transitionLevel == 0);
+	const bool wasOutdoor = ((dungeonLevel - 1) % transitionLevel == 0) && (dungeonLevel > 1);
 
 	if (isOutdoor) {
 		gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
-	} else if (dungeonLevel == 21) {
+	} else if (wasOutdoor) {
 		gui->message(TCOD_red, "You descend back into the depths beneath the surface.");
 	} else {
 		gui->message(TCOD_red, "After a rare moment of peace you descend deeper into the dungeon.");

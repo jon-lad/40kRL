@@ -57,6 +57,17 @@ so that the game world feels larger and more varied.
    maps.
 6. THE level type SHALL be determined solely by `dungeonLevel`: level 20 is outdoor, all other
    levels are BSP.
+7. THE outdoor transition level (20) SHALL be configurable via `outdoorTransitionLevel` in
+   `Scripts/Config.lua`, representing the depth of each dungeon segment. WHEN `dungeonLevel` is
+   a multiple of `outdoorTransitionLevel`, THE Engine SHALL generate an Outdoor_Level; all other
+   levels SHALL be BSP. This causes the dungeon/outdoor pattern to loop every
+   `outdoorTransitionLevel` levels.
+8. THE architecture SHALL support a future world-size system where outdoor maps tile in both
+   horizontal and vertical directions, approximating a spherical planetary surface: WHEN the
+   player reaches the edge of an outdoor map, a new adjacent outdoor map SHALL be generated;
+   WHEN the number of distinct outdoor maps in either axis reaches a configurable `worldSize`
+   limit, the world SHALL wrap (loop) back to previously visited maps. This feature is out of
+   scope for the current spec but informs the design of the outdoor generation seed strategy.
 
 ---
 
