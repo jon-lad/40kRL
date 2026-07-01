@@ -27,9 +27,10 @@ void Engine::update()
 	if (gameStatus == STARTUP) { map->computeFOV(); }
 	gameStatus = IDLE;
 
-	TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, &lastKey, &mouse);
+	TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, nullptr, nullptr);
+	pollInput(inputState);
 
-	if (lastKey.vk == TCODK_ESCAPE) {
+	if (inputState.key.key == SDLK_ESCAPE) {
 		save();
 		load();
 	}
@@ -157,19 +158,20 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 			}
 		}
 
-		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, &lastKey, &mouse);
-		auto [worldX, worldY] = camera->getWorldLocation(mouse.cx, mouse.cy);
+		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, nullptr, nullptr);
+		pollInput(inputState);
+		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
 
 		if (map->isInFOV(worldX, worldY)
 			&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
 		{
-			TCODConsole::root->setCharBackground(mouse.cx, mouse.cy, TCOD_white);
-			if (mouse.lbutton_pressed) {
+			TCODConsole::root->setCharBackground(inputState.mouse.cellX, inputState.mouse.cellY, TCOD_white);
+			if (inputState.mouse.lbutton_pressed) {
 				*x = worldX;
 				*y = worldY;
 				return true;
 			}
-			if (mouse.rbutton_pressed || lastKey.vk != TCODK_NONE) {
+			if (inputState.mouse.rbutton_pressed || inputState.key.key != SDLK_UNKNOWN) {
 				return false;
 			}
 		}

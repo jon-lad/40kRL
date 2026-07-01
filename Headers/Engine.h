@@ -26,8 +26,7 @@ public:
 	int screenHeight;
 
 	std::unique_ptr<Camera> camera;
-	TCOD_key_t lastKey;
-	TCOD_mouse_t mouse;
+	InputState inputState;
 	std::unique_ptr<Gui> gui;
 	int dungeonLevel;
 

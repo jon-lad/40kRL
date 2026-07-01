@@ -51,13 +51,16 @@ void PlayerAi::update(Actor* owner)
 	}
 
 	int dx = 0, dy = 0;
-	switch (engine.lastKey.vk) {
-		case TCODK_UP:    dy = -1; break;
-		case TCODK_DOWN:  dy =  1; break;
-		case TCODK_LEFT:  dx = -1; break;
-		case TCODK_RIGHT: dx =  1; break;
-		case TCODK_TEXT:  handleActionKey(owner, *engine.lastKey.text); break;
-		default: break;
+	switch (engine.inputState.key.key) {
+		case SDLK_UP:    dy = -1; break;
+		case SDLK_DOWN:  dy =  1; break;
+		case SDLK_LEFT:  dx = -1; break;
+		case SDLK_RIGHT: dx =  1; break;
+		default:
+			if (engine.inputState.key.c != 0) {
+				handleActionKey(owner, engine.inputState.key.c);
+			}
+			break;
 	}
 
 	if (dx != 0 || dy != 0) {

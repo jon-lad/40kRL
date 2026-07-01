@@ -227,31 +227,25 @@ void Map::renderOutdoor() const
 			if (isInFOV(x, y)) {
 				switch (terrain) {
 				case TerrainType::GROUND:
-					TCODConsole::root->setChar(screenX, screenY, '.');
-					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_OUTDOOR_GROUND);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '.', {LIGHT_OUTDOOR_GROUND.r, LIGHT_OUTDOOR_GROUND.g, LIGHT_OUTDOOR_GROUND.b});
 					break;
 				case TerrainType::TREE:
-					TCODConsole::root->setChar(screenX, screenY, CharConst::SPADE);
-					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_TREE);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, CharConst::SPADE, {LIGHT_TREE.r, LIGHT_TREE.g, LIGHT_TREE.b});
 					break;
 				case TerrainType::WATER:
-					TCODConsole::root->setChar(screenX, screenY, '~');
-					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_WATER);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '~', {LIGHT_WATER.r, LIGHT_WATER.g, LIGHT_WATER.b});
 					break;
 				}
 			} else if (isExplored(x, y)) {
 				switch (terrain) {
 				case TerrainType::GROUND:
-					TCODConsole::root->setChar(screenX, screenY, '.');
-					TCODConsole::root->setCharForeground(screenX, screenY, DARK_OUTDOOR_GROUND);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '.', {DARK_OUTDOOR_GROUND.r, DARK_OUTDOOR_GROUND.g, DARK_OUTDOOR_GROUND.b});
 					break;
 				case TerrainType::TREE:
-					TCODConsole::root->setChar(screenX, screenY, CharConst::SPADE);
-					TCODConsole::root->setCharForeground(screenX, screenY, DARK_TREE);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, CharConst::SPADE, {DARK_TREE.r, DARK_TREE.g, DARK_TREE.b});
 					break;
 				case TerrainType::WATER:
-					TCODConsole::root->setChar(screenX, screenY, '~');
-					TCODConsole::root->setCharForeground(screenX, screenY, DARK_WATER);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '~', {DARK_WATER.r, DARK_WATER.g, DARK_WATER.b});
 					break;
 				}
 			}
@@ -491,8 +485,7 @@ static void renderWallTile(int screenX, int screenY, int worldX, int worldY,
 	const bool left   = mapPtr->isWall(worldX - 1, worldY) && mapPtr->isExplorable(worldX - 1, worldY);
 	const bool right  = mapPtr->isWall(worldX + 1, worldY) && mapPtr->isExplorable(worldX + 1, worldY);
 
-	TCODConsole::root->setChar(screenX, screenY, chooseWallGlyph(top, bottom, left, right));
-	TCODConsole::root->setCharForeground(screenX, screenY, wallColor);
+	renderPutChar(TCODConsole::root->get_data(), screenX, screenY, chooseWallGlyph(top, bottom, left, right), {wallColor.r, wallColor.g, wallColor.b});
 }
 
 void Map::render() const
@@ -515,15 +508,13 @@ void Map::render() const
 				if (isWall(x, y)) {
 					renderWallTile(screenX, screenY, x, y, LIGHT_WALL, this);
 				} else {
-					TCODConsole::root->setChar(screenX, screenY, GROUND_GLYPH);
-					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_GROUND);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, GROUND_GLYPH, {LIGHT_GROUND.r, LIGHT_GROUND.g, LIGHT_GROUND.b});
 				}
 			} else if (isExplored(x, y)) {
 				if (isWall(x, y)) {
 					renderWallTile(screenX, screenY, x, y, DARK_WALL, this);
 				} else {
-					TCODConsole::root->setChar(screenX, screenY, GROUND_GLYPH);
-					TCODConsole::root->setCharForeground(screenX, screenY, DARK_GROUND);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, GROUND_GLYPH, {DARK_GROUND.r, DARK_GROUND.g, DARK_GROUND.b});
 				}
 			}
 		}

@@ -76,7 +76,7 @@ void Gui::renderBar(int x, int y, int width, std::string_view name,
 
 void Gui::renderMouseLook()
 {
-	auto [worldX, worldY] = engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy);
+	auto [worldX, worldY] = engine.camera->getWorldLocation(engine.inputState.mouse.cellX, engine.inputState.mouse.cellY);
 	if (!engine.map->isInFOV(worldX, worldY)) { return; }
 
 	// Build a comma-separated list of actor names at the cursor tile.
