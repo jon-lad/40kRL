@@ -193,9 +193,31 @@ std::tuple<int, int> Camera::getWorldLocation(int screenX, int screenY)
 	return { screenX - x, screenY - y };
 }
 
-void Camera::update(Actor* trackedActor)
+void Camera::update(Actor* trackedActor, bool isOutdoor)
 {
-	x = -trackedActor->getX() + width  / 2;
-	y = -trackedActor->getY() + height / 2;
-	// TODO: clamp offset so the camera stops at map edges.
+	if (!isOutdoor) {
+		// BSP: always centre on player
+		x = -trackedActor->getX() + width / 2;
+		y = -trackedActor->getY() + height / 2;
+	} else {
+		// Outdoor: scroll by 1 tile when player is within margin of viewport edge
+		int screenX = trackedActor->getX() + x;
+		int screenY = trackedActor->getY() + y;
+
+		if (screenX < scrollMargin)
+			x += 1;
+		else if (screenX >= width - scrollMargin)
+			x -= 1;
+
+		if (screenY < scrollMargin)
+			y += 1;
+		else if (screenY >= height - scrollMargin)
+			y -= 1;
+	}
+
+	// Clamp to map bounds
+	if (x > 0) x = 0;
+	if (y > 0) y = 0;
+	if (x < -(mapWidth - width)) x = -(mapWidth - width);
+	if (y < -(mapHeight - height)) y = -(mapHeight - height);
 }

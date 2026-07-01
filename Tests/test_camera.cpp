@@ -38,19 +38,29 @@ TEST_CASE("PBT: Camera apply/getWorldLocation is a bijection", "[camera][pbt]")
     });
 }
 
-TEST_CASE("PBT: Camera centres on player after update", "[camera][pbt]")
+TEST_CASE("PBT: Camera centres on player after update (BSP mode)", "[camera][pbt]")
 {
-    rc::prop("camera offset centres the player in the viewport", []() {
-        const int playerX = *rc::gen::inRange(0, 160);
-        const int playerY = *rc::gen::inRange(0, 86);
+    rc::prop("camera offset centres the player in the viewport, then clamps to map bounds", []() {
+        const int mapW    = 160;
+        const int mapH    = 86;
+        const int playerX = *rc::gen::inRange(0, mapW);
+        const int playerY = *rc::gen::inRange(0, mapH);
         const int vpW     = *rc::gen::inRange(20, 120);
         const int vpH     = *rc::gen::inRange(10, 60);
 
-        Camera cam(0, 0, vpW, vpH, 160, 86);
+        Camera cam(0, 0, vpW, vpH, mapW, mapH);
         Actor player(playerX, playerY, '@', "Player", TCOD_white);
-        cam.update(&player);
+        cam.update(&player, false);
 
-        RC_ASSERT(cam.x == -(playerX) + vpW / 2);
-        RC_ASSERT(cam.y == -(playerY) + vpH / 2);
+        // Expected: centred then clamped
+        int expectedX = -(playerX) + vpW / 2;
+        int expectedY = -(playerY) + vpH / 2;
+        if (expectedX > 0) expectedX = 0;
+        if (expectedY > 0) expectedY = 0;
+        if (expectedX < -(mapW - vpW)) expectedX = -(mapW - vpW);
+        if (expectedY < -(mapH - vpH)) expectedY = -(mapH - vpH);
+
+        RC_ASSERT(cam.x == expectedX);
+        RC_ASSERT(cam.y == expectedY);
     });
 }

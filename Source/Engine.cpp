@@ -86,7 +86,7 @@ void Engine::nextLevel()
 	map->init(true);
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
-	camera->update(player);
+	camera->update(player, map->getLevelType() == LevelType::OUTDOOR);
 	gameStatus = STARTUP;
 }
 
@@ -191,7 +191,7 @@ void Engine::init()
 	map->init(true);
 	camera = std::make_unique<Camera>(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
 		map->getWidth(), map->getHeight());
-	camera->update(player);
+	camera->update(player, false);
 
 	gui->message(TCODColor::lightGrey, "\n \n \n Hello friend. \n Welcome to the underhive!");
 	gameStatus = STARTUP;

@@ -95,7 +95,7 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 
 	owner->setX(targetX);
 	owner->setY(targetY);
-	engine.camera->update(owner);
+	engine.camera->update(owner, engine.map->getLevelType() == LevelType::OUTDOOR);
 	return true;
 }
 

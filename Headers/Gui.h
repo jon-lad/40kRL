@@ -117,10 +117,11 @@ public:
 	int x, y;
 	int width, height;
 	int mapWidth, mapHeight;
+	int scrollMargin = 20;
 	Camera(int x, int y, int width, int height, int mapWidth, int mapHeight);
 	std::tuple<int, int> apply(int x, int y);
 	std::tuple<int, int> getWorldLocation(int x, int y);
-	void update(Actor* actor);
+	void update(Actor* actor, bool isOutdoor = false);
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
 };
