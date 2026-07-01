@@ -126,6 +126,7 @@
     <ClCompile Include="test_camera.cpp" />
     <ClCompile Include="test_container.cpp" />
     <ClCompile Include="test_destructible.cpp" />
+    <ClCompile Include="test_outdoor_map.cpp" />
   </ItemGroup>
 
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->

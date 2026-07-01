@@ -54,8 +54,8 @@ public:
 	// Returns true if a tile was selected, false if cancelled.
 	bool pickAtTile(int* x, int* y, float maxRange = 0.0f);
 
-	// Changes depth and generates a new level. direction: -1 = ascend, +1 = descend.
-	void nextLevel(int direction);
+	// Changes depth and generates a new level. Direction is determined by the stairs glyph.
+	void nextLevel();
 
 	// Creates the player actor, stairs, and initial map for a new game.
 	void init();

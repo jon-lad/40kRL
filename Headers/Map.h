@@ -93,6 +93,9 @@ public:
 
 	LevelType getLevelType() const { return levelType; }
 
+	// Returns the terrain type at (x, y). Only valid for OUTDOOR levels.
+	TerrainType getTerrainType(int x, int y) const { return terrainTypes[x + y * width]; }
+
 protected:
 	mutable std::vector<Tile> tiles; // flat array indexed as x + y * width
 	std::unique_ptr<TCODMap>     map;
