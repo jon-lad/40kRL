@@ -38,6 +38,6 @@ config = {
     outdoorMaxItems    = 5,
 
     -- Outdoor level transition and camera
-    outdoorTransitionLevel = 20,
+    startingDepth          = 20,   -- player starts at this depth, ascends to 0 (surface)
     outdoorScrollMargin    = 20,
 }

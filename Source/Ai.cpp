@@ -194,7 +194,8 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		break;
 	}
 
-	case '>': // descend stairs
+	case '<': // ascend stairs (underground toward surface)
+	case '>': // descend stairs (surface into dungeon entrance)
 		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()) {
 			engine.nextLevel();
 		} else {

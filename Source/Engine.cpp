@@ -16,7 +16,7 @@ Engine::Engine(int screenWidth, int screenHeight)
 	, fovRadius{ DEFAULT_FOV_RADIUS }
 	, screenWidth{ screenWidth }
 	, screenHeight{ screenHeight }
-	, dungeonLevel{ 1 }
+	, dungeonLevel{ 20 }
 {
 	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
 	gui = std::make_unique<Gui>();
@@ -70,26 +70,26 @@ void Engine::render()
 
 void Engine::nextLevel()
 {
-	dungeonLevel++;
 	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength.");
 	player->destructible->heal(static_cast<int>(player->destructible->maxHp / 2));
 
-	// Determine level type: outdoor every outdoorTransitionLevel levels (default 20), BSP otherwise.
-	static constexpr int DEFAULT_TRANSITION_LEVEL = 20;
-	int transitionLevel = DEFAULT_TRANSITION_LEVEL;
+	const bool onSurface = (dungeonLevel == 0);
 
-	// TODO: read transitionLevel from Config.lua (outdoorTransitionLevel) once config is loaded globally.
-
-	const bool isOutdoor = (dungeonLevel % transitionLevel == 0);
-	const bool wasOutdoor = ((dungeonLevel - 1) % transitionLevel == 0) && (dungeonLevel > 1);
-
-	if (isOutdoor) {
-		gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
-	} else if (wasOutdoor) {
-		gui->message(TCOD_red, "You descend back into the depths beneath the surface.");
+	if (onSurface) {
+		// Descending from surface into a dungeon entrance.
+		dungeonLevel = 1;
+		gui->message(TCOD_red, "You descend into the depths below the surface.");
 	} else {
-		gui->message(TCOD_red, "After a rare moment of peace you descend deeper into the dungeon.");
+		// Ascending toward surface.
+		dungeonLevel--;
+		if (dungeonLevel == 0) {
+			gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
+		} else {
+			gui->message(TCOD_red, "You ascend closer to the surface.");
+		}
 	}
+
+	const bool isOutdoor = (dungeonLevel == 0);
 
 	map.reset();
 
@@ -100,6 +100,10 @@ void Engine::nextLevel()
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
+
+	// Stairs glyph: '<' to ascend when underground, '>' to descend when on surface.
+	stairs->glyph = isOutdoor ? '>' : '<';
+
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
 	camera->update(player, isOutdoor);
@@ -196,8 +200,8 @@ void Engine::init()
 	newPlayer->container    = std::make_unique<Container>(26);
 	actors.emplace_front(std::move(newPlayer));
 
-	// Create the stairs (always visible, never blocks).
-	auto newStairs = std::make_unique<Actor>(0, 0, '>', "stairs", TCOD_white);
+	// Create the stairs (always visible, never blocks). '<' = ascend toward surface.
+	auto newStairs = std::make_unique<Actor>(0, 0, '<', "stairs", TCOD_white);
 	stairs = newStairs.get();
 	newStairs->blocks  = false;
 	newStairs->fovOnly = false;
@@ -209,7 +213,7 @@ void Engine::init()
 		map->getWidth(), map->getHeight());
 	camera->update(player, false);
 
-	gui->message(TCODColor::lightGrey, "\n \n \n Hello friend. \n Welcome to the underhive!");
+	gui->message(TCODColor::lightGrey, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 	gameStatus = STARTUP;
 }
 
