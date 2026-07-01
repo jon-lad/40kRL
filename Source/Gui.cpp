@@ -2,194 +2,200 @@
 #include <list>
 #include <memory>
 #include <string>
-#include <iostream>
 #include <sstream>
 #include <tuple>
 #include "main.h"
 
+// ─── Gui ─────────────────────────────────────────────────────────────────────
 
-
-
-Gui::Gui() {
-	con = std::make_unique<TCODConsole>(engine.screenWidth, constants::PANEL_HEIGHT);
+Gui::Gui()
+{
+	hudConsole = std::make_unique<TCODConsole>(engine.screenWidth, constants::PANEL_HEIGHT);
 }
 
-void Gui::render() {
-	//clear the gui console
-	con->setDefaultBackground(TCODColor::black);
-	con->clear();
-	//draw the health bar
-	renderBar(1, 1, constants::BAR_WIDTH, "HP", engine.player->destructible->hp, engine.player->destructible->maxHp, TCOD_light_red, TCOD_darker_red);
-	//draw xp bar
-	PlayerAi* ai = (PlayerAi*) engine.player->ai.get();
-	std::stringstream ss;
-	if (ai) {
-		ss << "XP(" << ai->xpLevel << ")";
-		renderBar(1, 5, constants::BAR_WIDTH, ss.str(), (float)engine.player->destructible->xp, (float)ai->getNextLevelXp(), TCOD_light_violet, TCOD_darker_violet);
+void Gui::render()
+{
+	hudConsole->setDefaultBackground(TCODColor::black);
+	hudConsole->clear();
+
+	renderBar(1, 1, constants::BAR_WIDTH, "HP",
+		engine.player->destructible->hp,
+		engine.player->destructible->maxHp,
+		TCOD_light_red, TCOD_darker_red);
+
+	PlayerAi* playerAi = static_cast<PlayerAi*>(engine.player->ai.get());
+	if (playerAi) {
+		std::stringstream xpLabel;
+		xpLabel << "XP(" << playerAi->xpLevel << ")";
+		renderBar(1, 5, constants::BAR_WIDTH, xpLabel.str(),
+			static_cast<float>(engine.player->destructible->xp),
+			static_cast<float>(playerAi->getNextLevelXp()),
+			TCOD_light_violet, TCOD_darker_violet);
 	}
-	// draw the message log
-	int y = 1;
-	float colorCoef = 0.4f;
-	for (const auto& message : log) {
-		con->setDefaultForeground(message->col* colorCoef);
-		con->printf(constants::MSG_X, y, message->text.c_str());
-		y++;
-		colorCoef += 0.3f;
+
+	// Draw the message log — oldest messages are dim, newest are bright.
+	int  row       = 1;
+	float dimFactor = 0.4f;
+	for (const auto& msg : log) {
+		hudConsole->setDefaultForeground(msg->col * dimFactor);
+		hudConsole->printf(constants::MSG_X, row, msg->text.c_str());
+		row++;
+		dimFactor += 0.3f;
 	}
-	//render mouse look
+
 	renderMouseLook();
-	//dungeon level
-	con->setDefaultForeground(TCOD_white);
-	ss.str(std::string());
-	ss << "Dungeon level " << engine.level;
-	con->printf(3, 3, ss.str().c_str());
-	//blit the the GUI console on the root console
-	TCODConsole::blit(con.get(), 0, 0, engine.screenWidth, constants::PANEL_HEIGHT, TCODConsole::root, 0, engine.screenHeight - constants::PANEL_HEIGHT);
-}
-void Gui::renderBar(int x, int y, int width, std::string_view name, float value, float maxValue, const TCODColor& barColor, const TCODColor& backColor) {
-	//fill the background
-	con->setDefaultBackground(backColor);
-	con->rect(x, y, width, 1, false, TCOD_BKGND_SET);
-	//compute how much of bar is filled
-	int barWidth = (int)(value / maxValue * width);
-	//draw the bar
-	con->setDefaultBackground(barColor);
-	con->rect(x, y, barWidth, 1, false, TCOD_BKGND_SET);
-	//print text on top of bar
-	con->setDefaultForeground(TCOD_white);
-	std::stringstream barText;
-	barText << name << " : " << value << "/" << maxValue;
-	con->printf(x + width / 2, y, TCOD_BKGND_NONE, TCOD_CENTER, barText.str().c_str());
+
+	hudConsole->setDefaultForeground(TCOD_white);
+	std::stringstream levelLabel;
+	levelLabel << "Dungeon level " << engine.dungeonLevel;
+	hudConsole->printf(3, 3, levelLabel.str().c_str());
+
+	TCODConsole::blit(hudConsole.get(), 0, 0, engine.screenWidth, constants::PANEL_HEIGHT,
+		TCODConsole::root, 0, engine.screenHeight - constants::PANEL_HEIGHT);
 }
 
-void Gui::renderMouseLook() {
-	if (!engine.map->isInFOV(std::get<0>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy)), std::get<1>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy)))) {
-		//if mouse is out of fov, nothing to render
-		return;
-	}
-	std::string buf = "";
-	bool first = true;
-	for (std::list<std::unique_ptr<Actor>>::iterator i = engine.actors.begin(); i != engine.actors.end(); ++i) {
-		//find actor under mouse cursor
-		if (i->get()->getX() == std::get<0>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy)) && i->get()->getY() == std::get<1>(engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy))) {
-			if (!first) {
-				buf += ", ";
-			}
-			else {
-				first = false;
-			}
-			buf += i->get()->name;
+void Gui::renderBar(int x, int y, int width, std::string_view name,
+	float value, float maxValue,
+	const TCODColor& barColor, const TCODColor& backColor)
+{
+	// Background (empty portion of the bar)
+	hudConsole->setDefaultBackground(backColor);
+	hudConsole->rect(x, y, width, 1, false, TCOD_BKGND_SET);
+
+	// Filled portion
+	const int filledWidth = static_cast<int>(value / maxValue * width);
+	hudConsole->setDefaultBackground(barColor);
+	hudConsole->rect(x, y, filledWidth, 1, false, TCOD_BKGND_SET);
+
+	// Label centred over the bar
+	hudConsole->setDefaultForeground(TCOD_white);
+	std::stringstream label;
+	label << name << " : " << value << "/" << maxValue;
+	hudConsole->printf(x + width / 2, y, TCOD_BKGND_NONE, TCOD_CENTER, label.str().c_str());
+}
+
+void Gui::renderMouseLook()
+{
+	auto [worldX, worldY] = engine.camera->getWorldLocation(engine.mouse.cx, engine.mouse.cy);
+	if (!engine.map->isInFOV(worldX, worldY)) { return; }
+
+	// Build a comma-separated list of actor names at the cursor tile.
+	std::string actorNames;
+	for (const auto& actorPtr : engine.actors) {
+		Actor* actor = actorPtr.get();
+		if (actor->getX() == worldX && actor->getY() == worldY) {
+			if (!actorNames.empty()) { actorNames += ", "; }
+			actorNames += actor->name;
 		}
 	}
-	//Display the list of actors under the mouse cursor
-	con->setDefaultForeground(TCODColor::lightGrey);
-	con->printf(1, 0, buf.c_str());
+
+	hudConsole->setDefaultForeground(TCODColor::lightGrey);
+	hudConsole->printf(1, 0, actorNames.c_str());
 }
 
-bool Gui::replace(std::string& str, const std::string& from, const std::string& to) {
-	size_t start_pos = str.find(from);
-	if (start_pos == std::string::npos) {
-		return false;
-	}
-	str.replace(start_pos, from.length(), to);
+bool Gui::replace(std::string& str, const std::string& from, const std::string& to)
+{
+	const size_t pos = str.find(from);
+	if (pos == std::string::npos) { return false; }
+	str.replace(pos, from.length(), to);
 	return true;
 }
 
-Gui::Message::Message(std::string_view text, const TCODColor& col): text{ text.data() }, col{ col } 
+Gui::Message::Message(std::string_view text, const TCODColor& col)
+	: text{ text.data() }, col{ col }
 {}
 
-
-
-
-void Gui::clear() {
+void Gui::clear()
+{
 	log.clear();
 }
 
-void Menu::clear() {
+// ─── Menu ────────────────────────────────────────────────────────────────────
+
+void Menu::clear()
+{
 	items.clear();
 }
 
-void Menu::addItem(MenuItemCode code, std::string_view label) {
-	auto item = std::make_unique<MenuItem>();
-	item -> code = code;
+void Menu::addItem(MenuItemCode code, std::string_view label)
+{
+	auto item   = std::make_unique<MenuItem>();
+	item->code  = code;
 	item->label = label;
 	items.emplace_back(std::move(item));
 }
 
-Menu::MenuItemCode Menu::pick(DisplayMode mode){
+Menu::MenuItemCode Menu::pick(DisplayMode mode)
+{
 	int selectedItem = 0;
-	int menux, menuy;
+	int menuX, menuY;
+
 	if (mode == DisplayMode::PAUSE) {
-		menux = engine.screenWidth / 2 - constants::PAUSE_MENU_WIDTH / 2;
-		menuy = engine.screenHeight / 2 - constants::PAUSE_MENU_HEIGHT / 2;
+		menuX = engine.screenWidth  / 2 - constants::PAUSE_MENU_WIDTH  / 2;
+		menuY = engine.screenHeight / 2 - constants::PAUSE_MENU_HEIGHT / 2;
 		TCODConsole::root->setDefaultForeground(TCODColor(200, 180, 50));
-		TCODConsole::root->printFrame(menux, menuy, constants::PAUSE_MENU_WIDTH, constants::PAUSE_MENU_HEIGHT, true,
-			TCOD_BKGND_ALPHA(70), "menu");
-		menux += 2;
-		menuy += 3;
+		TCODConsole::root->printFrame(menuX, menuY,
+			constants::PAUSE_MENU_WIDTH, constants::PAUSE_MENU_HEIGHT,
+			true, TCOD_BKGND_ALPHA(70), "menu");
+		menuX += 2;
+		menuY += 3;
+	} else {
+		static TCODImage backgroundImage("menu_background1.png");
+		backgroundImage.blit2x(TCODConsole::root, 0, 0);
+		menuX = 10;
+		menuY = TCODConsole::root->getHeight() / 3;
 	}
-	else {
-		static TCODImage img("menu_background1.png");
-		img.blit2x(TCODConsole::root, 0, 0);
-		menux = 10;
-		menuy = TCODConsole::root->getHeight() / 3;
-	}
+
 	while (!TCODConsole::isWindowClosed()) {
-		int currentItem = 0;
-		for (auto i = items.begin(); i != items.end(); ++i) {
-			if (currentItem == selectedItem) {
-				TCODConsole::root->setDefaultForeground(TCOD_lighter_orange);
-			}
-			else {
-				TCODConsole::root->setDefaultForeground(TCOD_light_grey);
-			}
-			TCODConsole::root->print(menux, menuy + currentItem * 3, i->get()->label.c_str());
-			currentItem++;
+		int row = 0;
+		for (const auto& item : items) {
+			TCODConsole::root->setDefaultForeground(
+				(row == selectedItem) ? TCOD_lighter_orange : TCOD_light_grey);
+			TCODConsole::root->print(menuX, menuY + row * 3, item->label.c_str());
+			row++;
 		}
 		TCODConsole::flush();
-		//check for key presses
-		auto chooseItem = items.begin();
+
 		TCOD_key_t key;
-		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS, &key, NULL);
+		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS, &key, nullptr);
 		switch (key.vk) {
 		case TCODK_UP:
-			selectedItem--;
-			if (selectedItem < 0) {
-				selectedItem = (int)items.size() - 1;
-			}
+			selectedItem = (selectedItem > 0) ? selectedItem - 1 : static_cast<int>(items.size()) - 1;
 			break;
 		case TCODK_DOWN:
-			selectedItem = selectedItem + 1 % items.size();
+			selectedItem = (selectedItem + 1) % static_cast<int>(items.size());
 			break;
-		case TCODK_ENTER:
-			advance(chooseItem, selectedItem);
-			return chooseItem->get()->code;
+		case TCODK_ENTER: {
+			auto it = items.begin();
+			std::advance(it, selectedItem);
+			return (*it)->code;
+		}
 		default: break;
 		}
 	}
 	return MenuItemCode::NONE;
 }
 
-Camera::Camera(int x, int y, int width, int height, int mapWidth, int mapHeight) : 
-	x{ x }, y{ y }, width{ width }, height{ height }, mapWidth{ mapWidth }, mapHeight{ mapHeight }{}
+// ─── Camera ──────────────────────────────────────────────────────────────────
 
-std::tuple<int, int> Camera::apply(int x, int y) {
-	x += this->x;
-	y += this->y;
-	return std::make_tuple(x, y);
+Camera::Camera(int x, int y, int width, int height, int mapWidth, int mapHeight)
+	: x{ x }, y{ y }, width{ width }, height{ height }
+	, mapWidth{ mapWidth }, mapHeight{ mapHeight }
+{}
+
+std::tuple<int, int> Camera::apply(int worldX, int worldY)
+{
+	return { worldX + x, worldY + y };
 }
 
-std::tuple<int, int> Camera::getWorldLocation(int x, int y) {
-	x -= this->x;
-	y -= this->y;
-	return std::make_tuple(x, y);
+std::tuple<int, int> Camera::getWorldLocation(int screenX, int screenY)
+{
+	return { screenX - x, screenY - y };
 }
 
-
-
-void Camera::update(Actor* actor) {
-	x = -actor->getX() + (int)(width / 2);
-	y = -actor->getY() + (int)(height / 2);
-
-	//TODO add limits to stop camera near map edges
+void Camera::update(Actor* trackedActor)
+{
+	x = -trackedActor->getX() + width  / 2;
+	y = -trackedActor->getY() + height / 2;
+	// TODO: clamp offset so the camera stops at map edges.
 }

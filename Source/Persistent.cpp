@@ -2,169 +2,175 @@
 #include <filesystem>
 #include "main.h"
 
-/*Engine*/
-void Engine::save() {
+// ─── Engine ──────────────────────────────────────────────────────────────────
+
+void Engine::save()
+{
 	if (player->destructible->isDead()) {
-		remove("game.sav");
+		// Dead players don't keep their save — clear it.
+		std::remove("game.sav");
+		return;
 	}
-	else {
-		TCODZip zip;
-		//save the map first
-		zip.putInt(map->getWidth());
-		zip.putInt(map->getHeight());
-		map->save(zip);
-		//then the camera
-		camera->save(zip);
-		//then the player
-		player->save(zip);
-		//then the stair
-		stairs->save(zip);
-		//then the rest of the actors
-		zip.putInt((int)actors.size() - 2);
-		for (auto i = actors.begin(); i != actors.end(); i++) {
-			if (i->get() != player && i->get() != stairs) {
-				i->get()->save(zip);
-			}
+
+	TCODZip zip;
+
+	// Write in a strict order that Engine::load must mirror exactly.
+	zip.putInt(map->getWidth());
+	zip.putInt(map->getHeight());
+	map->save(zip);
+	camera->save(zip);
+	player->save(zip);
+	stairs->save(zip);
+
+	// Save all actors except player and stairs (they are saved above).
+	zip.putInt(static_cast<int>(actors.size()) - 2);
+	for (const auto& actorPtr : actors) {
+		if (actorPtr.get() != player && actorPtr.get() != stairs) {
+			actorPtr->save(zip);
 		}
-		//finally the message log
-		gui->save(zip);
-		zip.saveToFile("game.sav");
 	}
+
+	gui->save(zip);
+	zip.saveToFile("game.sav");
 }
 
-void Engine::load() {
+void Engine::load()
+{
 	engine.gui->menu.clear();
 	engine.gui->menu.addItem(Menu::MenuItemCode::NEW_GAME, "New Game");
 	if (std::filesystem::exists("game.sav")) {
 		engine.gui->menu.addItem(Menu::MenuItemCode::CONTINUE, "Continue");
 	}
 	engine.gui->menu.addItem(Menu::MenuItemCode::EXIT, "Exit");
-	Menu::MenuItemCode menuItem = engine.gui->menu.pick();
-	if (menuItem == Menu::MenuItemCode::EXIT || menuItem == Menu::MenuItemCode::NONE) {
-		//Exit or window closed
+
+	const Menu::MenuItemCode choice = engine.gui->menu.pick();
+
+	if (choice == Menu::MenuItemCode::EXIT || choice == Menu::MenuItemCode::NONE) {
 		exit(0);
 	}
-	else if (menuItem == Menu::MenuItemCode::NEW_GAME) {
-		//New Game
+
+	if (choice == Menu::MenuItemCode::NEW_GAME) {
 		engine.term();
 		engine.init();
+		return;
 	}
-	else {
-		TCODZip zip;
-		//continue from saved game
-		engine.term();
-		zip.loadFromFile("game.sav");
-		//load the map
-		int width = zip.getInt();
-		int height = zip.getInt();
-		map = std::make_unique<Map>(width, height);
-		map->load(zip);
-		//then the camera
-		camera = std::make_unique<Camera>(0, 0, 80, 43, map->getWidth(), map->getHeight());
-		camera->load(zip);
-		//then the player
-		std::unique_ptr<Actor> newPlayer = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
-		player = newPlayer.get();
-		actors.emplace_front(std::move(newPlayer));
-		player->load(zip);
-		//the stairs
-		std::unique_ptr<Actor> newStair = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
-		stairs = newStair.get();
-		actors.emplace_front(std::move(newStair));
-		stairs->load(zip);
-		//then all the other actors
-		int nbActors = zip.getInt();
-		while (nbActors > 0) {
-			std::unique_ptr<Actor> actor = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
-			actor->load(zip);
-			actors.emplace_front(std::move(actor));
-			nbActors--;
-		}
-		//finaly the log
-		gui->load(zip);
-		// to force Fov recomputation
-		gameStatus = STARTUP;
+
+	// "Continue" — restore from save file.
+	TCODZip zip;
+	engine.term();
+	zip.loadFromFile("game.sav");
+
+	// Reconstruct in the same order as save().
+	const int mapWidth  = zip.getInt();
+	const int mapHeight = zip.getInt();
+	map = std::make_unique<Map>(mapWidth, mapHeight);
+	map->load(zip);
+
+	camera = std::make_unique<Camera>(0, 0, 80, 43, map->getWidth(), map->getHeight());
+	camera->load(zip);
+
+	// Player must be emplaced before loading so engine.player is valid for subsequent loads.
+	auto newPlayer = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+	player = newPlayer.get();
+	actors.emplace_front(std::move(newPlayer));
+	player->load(zip);
+
+	auto newStairs = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+	stairs = newStairs.get();
+	actors.emplace_front(std::move(newStairs));
+	stairs->load(zip);
+
+	int remainingActors = zip.getInt();
+	while (remainingActors-- > 0) {
+		auto actor = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+		actor->load(zip);
+		actors.emplace_front(std::move(actor));
 	}
-	
-	
+
+	gui->load(zip);
+	gameStatus = STARTUP; // force FOV recomputation on the first frame
 }
 
-/*Map*/
-void Map::save(TCODZip& zip) {
+// ─── Map ─────────────────────────────────────────────────────────────────────
+
+void Map::save(TCODZip& zip)
+{
 	zip.putInt(seed);
-	for (auto i = tiles.begin(); i != tiles.end(); ++i) {
-		zip.putInt(i->explored);
-		zip.putInt(i->scent);
-		
+	for (const auto& tile : tiles) {
+		zip.putInt(tile.explored);
+		zip.putInt(tile.scent);
 	}
 	zip.putInt(currentScentValue);
 }
 
-void Map::load(TCODZip& zip) {
+void Map::load(TCODZip& zip)
+{
 	seed = zip.getInt();
-	init(false);
-	for (auto i = tiles.begin(); i != tiles.end(); ++i) {
-		i->explored = (bool)zip.getInt();
-		i->scent = zip.getInt();
-		
+	init(false); // regenerate geometry from seed; tile state is overwritten below
+	for (auto& tile : tiles) {
+		tile.explored = static_cast<bool>(zip.getInt());
+		tile.scent    = zip.getInt();
 	}
 	currentScentValue = zip.getInt();
 }
 
-/*Actors*/
+// ─── Actor ───────────────────────────────────────────────────────────────────
+
 void Actor::save(TCODZip& zip)
 {
-	//basic Properties
 	zip.putInt(x);
 	zip.putInt(y);
-	zip.putInt(ch);
-	zip.putColor(&col);
+	zip.putInt(glyph);
+	zip.putColor(&color);
 	zip.putString(name.c_str());
 	zip.putInt(blocks);
 	zip.putInt(fovOnly);
-	//bool for each feature
-	zip.putInt(attacker != 0);
-	zip.putInt(destructible != 0);
-	zip.putInt(ai != 0);
-	zip.putInt(pickable != 0);
-	zip.putInt(container != 0);
-	//save the features themselves
-	if (attacker) attacker->save(zip);
+
+	// Write presence flags before payloads so load knows what to expect.
+	zip.putInt(attacker     != nullptr);
+	zip.putInt(destructible != nullptr);
+	zip.putInt(ai           != nullptr);
+	zip.putInt(pickable     != nullptr);
+	zip.putInt(container    != nullptr);
+
+	if (attacker)     attacker->save(zip);
 	if (destructible) destructible->save(zip);
-	if (ai) ai->save(zip);
-	if (pickable) pickable->save(zip);
-	if (container) container->save(zip);
+	if (ai)           ai->save(zip);
+	if (pickable)     pickable->save(zip);
+	if (container)    container->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
 {
-	//load properties
-	x = zip.getInt();
-	y = zip.getInt();
-	ch = zip.getInt();
-	col = zip.getColor();
-	name = zip.getString();
-	blocks = zip.getInt();
+	x      = zip.getInt();
+	y      = zip.getInt();
+	glyph  = zip.getInt();
+	color  = zip.getColor();
+	name   = zip.getString();
+	blocks  = zip.getInt();
 	fovOnly = zip.getInt();
-	//load feature booleans
-	bool hasAttacker = zip.getInt();
-	bool hasDestructible = zip.getInt();
-	bool hasAi = zip.getInt();
-	bool hasPickable = zip.getInt();
-	bool hasContainer = zip.getInt();
-	//load features
+
+	const bool hasAttacker     = zip.getInt();
+	const bool hasDestructible = zip.getInt();
+	const bool hasAi           = zip.getInt();
+	const bool hasPickable     = zip.getInt();
+	const bool hasContainer    = zip.getInt();
+
 	if (hasAttacker) {
 		attacker = std::make_unique<Attacker>(0.0f);
 		attacker->load(zip);
 	}
 	if (hasDestructible) {
-		destructible = std::move(Destructible::create(zip));
+		destructible = Destructible::create(zip);
 	}
 	if (hasAi) {
-		ai = std::move(Ai::create(zip));
+		ai = Ai::create(zip);
 	}
 	if (hasPickable) {
-		pickable = std::make_unique<Pickable>(std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF,0.0f), Effect::create(zip));
+		// Effect is read here by Effect::create; Pickable::load reads only the selector.
+		pickable = std::make_unique<Pickable>(
+			std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
+			Effect::create(zip));
 		pickable->load(zip);
 	}
 	if (hasContainer) {
@@ -173,18 +179,15 @@ void Actor::load(TCODZip& zip)
 	}
 }
 
-/*attacker*/
+// ─── Attacker ────────────────────────────────────────────────────────────────
 
-void Attacker::save(TCODZip& zip) {
-	zip.putFloat(power);
-}
+void Attacker::save(TCODZip& zip) { zip.putFloat(power); }
+void Attacker::load(TCODZip& zip) { power = zip.getFloat(); }
 
-void Attacker::load(TCODZip& zip) {
-	power = zip.getFloat();
-}
+// ─── Destructible ────────────────────────────────────────────────────────────
 
-/*Detructable*/
-void Destructible::save(TCODZip& zip) {
+void Destructible::save(TCODZip& zip)
+{
 	zip.putFloat(maxHp);
 	zip.putFloat(hp);
 	zip.putFloat(defense);
@@ -192,220 +195,215 @@ void Destructible::save(TCODZip& zip) {
 	zip.putInt(xp);
 }
 
-void Destructible::load(TCODZip& zip) {
-	maxHp = zip.getFloat();
-	hp = zip.getFloat();
-	defense = zip.getFloat();
+void Destructible::load(TCODZip& zip)
+{
+	maxHp      = zip.getFloat();
+	hp         = zip.getFloat();
+	defense    = zip.getFloat();
 	corpseName = zip.getString();
-	xp = zip.getInt();
+	xp         = zip.getInt();
 }
 
-std::unique_ptr<Destructible> Destructible::create(TCODZip& zip) {
-	DestructibleType type = (Destructible::DestructibleType)zip.getInt();
-	std::unique_ptr<Destructible> destructible;
-	switch (type)
-	{
-	case DestructibleType::MONSTER:
-		destructible = std::make_unique<MonsterDestructible>(0, 0.0f, "", 0);
-		break;
-	case DestructibleType::PLAYER:
-		destructible = std::make_unique<PlayerDestructible>(0, 0, "", 0);
-		break;
+std::unique_ptr<Destructible> Destructible::create(TCODZip& zip)
+{
+	const auto type = static_cast<DestructibleType>(zip.getInt());
+	std::unique_ptr<Destructible> d;
+	switch (type) {
+	case DestructibleType::MONSTER: d = std::make_unique<MonsterDestructible>(0, 0.0f, "", 0); break;
+	case DestructibleType::PLAYER:  d = std::make_unique<PlayerDestructible> (0, 0.0f, "", 0); break;
 	}
-	destructible->load(zip);
-	return std::move(destructible);
+	d->load(zip);
+	return d;
 }
 
-void PlayerDestructible::save(TCODZip& zip) {
-	zip.putInt((int)DestructibleType::PLAYER);
+void MonsterDestructible::save(TCODZip& zip)
+{
+	zip.putInt(static_cast<int>(DestructibleType::MONSTER));
 	Destructible::save(zip);
 }
 
-void MonsterDestructible::save(TCODZip& zip) {
-	zip.putInt((int)DestructibleType::MONSTER);
+void PlayerDestructible::save(TCODZip& zip)
+{
+	zip.putInt(static_cast<int>(DestructibleType::PLAYER));
 	Destructible::save(zip);
 }
 
-/*Ai*/
-std::unique_ptr<Ai> Ai::create(TCODZip& zip) {
-	const auto& type = (Ai::AiType)zip.getInt();
+// ─── Ai ──────────────────────────────────────────────────────────────────────
+
+std::unique_ptr<Ai> Ai::create(TCODZip& zip)
+{
+	const auto type = static_cast<AiType>(zip.getInt());
 	std::unique_ptr<Ai> ai;
 	switch (type) {
-	case(AiType::PLAYER):
-		ai = std::make_unique<PlayerAi>(); break;
-	case(AiType::MONSTER):
-		ai = std::make_unique<MonsterAi>(); break;
-	default: //case(AiType::CONFUSED_MONSTER):
-		ai = std::make_unique<ConfusedMonsterAi>(0); break;
+	case AiType::PLAYER:          ai = std::make_unique<PlayerAi>();         break;
+	case AiType::MONSTER:         ai = std::make_unique<MonsterAi>();        break;
+	default: /* CONFUSED_MONSTER */ ai = std::make_unique<ConfusedMonsterAi>(0); break;
 	}
 	ai->load(zip);
-	return std::move(ai);
+	return ai;
 }
 
-auto TemporaryAi::create(TCODZip& zip) {
-	const auto& type = (Ai::AiType)zip.getInt();
+auto TemporaryAi::create(TCODZip& zip)
+{
+	const auto type = static_cast<AiType>(zip.getInt());
 	std::unique_ptr<TemporaryAi> ai;
-	switch (type) {
-	case(Ai::AiType::CONFUSED_MONSTER):
-		ai = std::make_unique<ConfusedMonsterAi>(0); break;
+	if (type == AiType::CONFUSED_MONSTER) {
+		ai = std::make_unique<ConfusedMonsterAi>(0);
 	}
-	ai->load(zip);
-	return std::move(ai);
+	if (ai) { ai->load(zip); }
+	return ai;
 }
 
-void PlayerAi::save(TCODZip& zip) {
-	zip.putInt((int)AiType::PLAYER);
+void PlayerAi::save(TCODZip& zip)
+{
+	zip.putInt(static_cast<int>(AiType::PLAYER));
 	zip.putInt(xpLevel);
 }
+void PlayerAi::load(TCODZip& zip) { xpLevel = zip.getInt(); }
 
-void PlayerAi::load(TCODZip& zip) {
-	xpLevel = zip.getInt();
+void MonsterAi::save(TCODZip& zip) { zip.putInt(static_cast<int>(AiType::MONSTER)); }
+void MonsterAi::load(TCODZip& zip) {}
+
+void ConfusedMonsterAi::save(TCODZip& zip)
+{
+	zip.putInt(static_cast<int>(AiType::CONFUSED_MONSTER));
+	zip.putInt(turnsRemaining);
+	zip.putInt(oldAi != nullptr);
+	if (oldAi) { oldAi->save(zip); }
 }
 
-void MonsterAi::save(TCODZip& zip) {
-	zip.putInt((int)AiType::MONSTER);
-	
+void ConfusedMonsterAi::load(TCODZip& zip)
+{
+	turnsRemaining = zip.getInt();
+	const bool hasOldAi = zip.getInt();
+	if (hasOldAi) { oldAi = Ai::create(zip); }
 }
 
-void MonsterAi::load(TCODZip& zip) {
-	
-}
+// ─── Pickable ────────────────────────────────────────────────────────────────
 
-void ConfusedMonsterAi::save(TCODZip& zip) {
-	zip.putInt((int)Ai::AiType::CONFUSED_MONSTER);
-	zip.putInt(nbTurns);
-	zip.putInt(oldAi != 0);
-	if (oldAi) {
-		oldAi->save(zip);
-	}
-}
-
-void ConfusedMonsterAi::load(TCODZip& zip) {
-	nbTurns = zip.getInt();
-	bool hasOldAi = zip.getInt();
-	if (hasOldAi) {
-	oldAi = std::move(Ai::create(zip));
-	}
-}
-
-/*Pickable*/
-void Pickable::save(TCODZip& zip) {
+// Save order: effect (with type discriminator), hasSelector flag, selector data.
+// Load order: effect is consumed by Effect::create() in Actor::load before Pickable::load is called.
+void Pickable::save(TCODZip& zip)
+{
 	effect->save(zip);
-	zip.putInt(selector != 0);
-	if (selector) {
-		selector->save(zip);
-	}
-	
+	zip.putInt(selector != nullptr);
+	if (selector) { selector->save(zip); }
 }
 
-void Pickable::load(TCODZip& zip) {
-	bool hasSelector = zip.getInt();
+void Pickable::load(TCODZip& zip)
+{
+	// Effect was already created and loaded by Effect::create() in Actor::load.
+	const bool hasSelector = zip.getInt();
 	if (hasSelector) {
-		 
-		selector = std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0);
+		selector = std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f);
 		selector->load(zip);
 	}
-	
-
 }
 
-void TargetSelector::save(TCODZip& zip) {
-	zip.putInt((int)type);
+void TargetSelector::save(TCODZip& zip)
+{
+	zip.putInt(static_cast<int>(type));
 	zip.putFloat(range);
 }
-
-void TargetSelector::load(TCODZip& zip) {
-	type = (SelectorType)zip.getInt();
+void TargetSelector::load(TCODZip& zip)
+{
+	type  = static_cast<SelectorType>(zip.getInt());
 	range = zip.getFloat();
 }
 
-std::unique_ptr<Effect> Effect::create(TCODZip& zip) {
-	const auto& type = (EffectType)zip.getInt();
+std::unique_ptr<Effect> Effect::create(TCODZip& zip)
+{
+	const auto type = static_cast<EffectType>(zip.getInt());
 	std::unique_ptr<Effect> effect;
 	switch (type) {
 	case EffectType::HEALTH:
-		effect = std::make_unique<HealthEffect>(0, "", TCOD_light_grey);
+		effect = std::make_unique<HealthEffect>(0.0f, "", TCOD_light_grey);
 		break;
 	case EffectType::CHANGE_AI:
-		effect = std::make_unique<AiChangeEffect>(std::make_unique<TemporaryAi>(0), " ", TCOD_light_grey);
+		effect = std::make_unique<AiChangeEffect>(
+			std::make_unique<TemporaryAi>(0), " ", TCOD_light_grey);
 		break;
 	}
 	effect->load(zip);
-	return std::move(effect);
+	return effect;
 }
 
-void HealthEffect::save(TCODZip& zip) {
-	zip.putInt((int)EffectType::HEALTH);
+void HealthEffect::save(TCODZip& zip)
+{
+	zip.putInt(static_cast<int>(EffectType::HEALTH));
 	zip.putFloat(amount);
 	zip.putString(message.c_str());
 	zip.putColor(&textCol);
 }
-
-void HealthEffect::load(TCODZip& zip) {
-	amount = zip.getFloat();
+void HealthEffect::load(TCODZip& zip)
+{
+	amount  = zip.getFloat();
 	message = zip.getString();
 	textCol = zip.getColor();
 }
 
-void AiChangeEffect::save(TCODZip& zip) {
-	zip.putInt((int)EffectType::CHANGE_AI);
-	
+void AiChangeEffect::save(TCODZip& zip)
+{
+	zip.putInt(static_cast<int>(EffectType::CHANGE_AI));
 	newAi->save(zip);
 	zip.putString(message.c_str());
 	zip.putColor(&textCol);
 }
-
-void AiChangeEffect::load(TCODZip& zip) {
-	
-	newAi = std::move(TemporaryAi::create(zip));
+void AiChangeEffect::load(TCODZip& zip)
+{
+	newAi   = TemporaryAi::create(zip);
 	message = zip.getString();
 	textCol = zip.getColor();
 }
 
-/*Container*/
-void Container::save(TCODZip& zip) {
+// ─── Container ───────────────────────────────────────────────────────────────
+
+void Container::save(TCODZip& zip)
+{
 	zip.putInt(size);
-	zip.putInt((int)inventory.size());
-	for (auto i = inventory.begin(); i != inventory.end(); ++i) {
-		i->get()->save(zip);
+	zip.putInt(static_cast<int>(inventory.size()));
+	for (const auto& itemPtr : inventory) {
+		itemPtr->save(zip);
 	}
 }
 
-void Container::load(TCODZip& zip) {
+void Container::load(TCODZip& zip)
+{
 	size = zip.getInt();
-	int nbActors = zip.getInt();
-	while (nbActors > 0) {
+	int count = zip.getInt();
+	while (count-- > 0) {
 		auto actor = std::make_unique<Actor>(0, 0, 0, " ", TCOD_white);
 		actor->load(zip);
 		inventory.emplace_back(std::move(actor));
-		nbActors--;
-	}
-
-}
-
-/*Gui*/
-
-void Gui::save(TCODZip& zip) {
-	zip.putInt((int)log.size());
-	for (auto i = log.begin(); i != log.end(); i++) {
-		zip.putString(i->get()->text.c_str());
-		zip.putColor(&i->get()->col);
 	}
 }
 
-void Gui::load(TCODZip& zip) {
-	int nbMessages = zip.getInt();
-	while (nbMessages > 0) {
-		std::string text = zip.getString();
-		TCODColor col = zip.getColor();
+// ─── Gui ─────────────────────────────────────────────────────────────────────
+
+void Gui::save(TCODZip& zip)
+{
+	zip.putInt(static_cast<int>(log.size()));
+	for (const auto& msg : log) {
+		zip.putString(msg->text.c_str());
+		zip.putColor(&msg->col);
+	}
+}
+
+void Gui::load(TCODZip& zip)
+{
+	int count = zip.getInt();
+	while (count-- > 0) {
+		const std::string text = zip.getString();
+		const TCODColor   col  = zip.getColor();
 		message(col, text);
-		nbMessages--;
 	}
-
 }
 
-void Camera::save(TCODZip& zip) {
-	zip.putInt(x); 
+// ─── Camera ──────────────────────────────────────────────────────────────────
+
+void Camera::save(TCODZip& zip)
+{
+	zip.putInt(x);
 	zip.putInt(y);
 	zip.putInt(width);
 	zip.putInt(height);
@@ -413,11 +411,12 @@ void Camera::save(TCODZip& zip) {
 	zip.putInt(mapHeight);
 }
 
-void Camera::load(TCODZip& zip) {
-	x = zip.getInt();
-	y = zip.getInt();
-	width = zip.getInt(); 
-	height = zip.getInt();
-	mapWidth = zip.getInt();
+void Camera::load(TCODZip& zip)
+{
+	x         = zip.getInt();
+	y         = zip.getInt();
+	width     = zip.getInt();
+	height    = zip.getInt();
+	mapWidth  = zip.getInt();
 	mapHeight = zip.getInt();
 }

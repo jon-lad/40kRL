@@ -1,12 +1,13 @@
 #pragma once
 
 namespace constants {
+	// HUD panel at the bottom of the screen
+	inline static constexpr auto PANEL_HEIGHT     = 7;
+	inline static constexpr auto BAR_WIDTH        = 20;
+	inline static constexpr auto MSG_X            = BAR_WIDTH + 2; // message log starts after the bars
+	inline static constexpr auto MSG_HEIGHT       = PANEL_HEIGHT - 2;
 
-	//Gui Constants
-	inline static constexpr auto PANEL_HEIGHT = 7;
-	inline static constexpr auto BAR_WIDTH = 20;
-	inline static constexpr auto MSG_X = BAR_WIDTH + 2;
-	inline static constexpr auto MSG_HEIGHT = PANEL_HEIGHT - 2;
-	inline static constexpr auto PAUSE_MENU_WIDTH = 30;
+	// Pause / level-up menu overlay
+	inline static constexpr auto PAUSE_MENU_WIDTH  = 30;
 	inline static constexpr auto PAUSE_MENU_HEIGHT = 15;
 }

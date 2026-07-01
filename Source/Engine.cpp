@@ -3,168 +3,203 @@
 #include <sstream>
 #include "main.h"
 
-Engine::Engine(int screenWidth, int screenHeight) :gameStatus{ STARTUP }, player{ NULL }, FOVRadius{ 10 }, screenWidth{ screenWidth }, screenHeight{ screenHeight }, level{1}
+static constexpr int DEFAULT_FOV_RADIUS   = 10;
+static constexpr int MAP_WIDTH            = 160;
+static constexpr int MAP_HEIGHT           = 86;
+static constexpr int VIEWPORT_WIDTH       = 80;
+static constexpr int VIEWPORT_HEIGHT      = 43;
+
+Engine::Engine(int screenWidth, int screenHeight)
+	: gameStatus{ STARTUP }
+	, player{ nullptr }
+	, stairs{ nullptr }
+	, fovRadius{ DEFAULT_FOV_RADIUS }
+	, screenWidth{ screenWidth }
+	, screenHeight{ screenHeight }
+	, dungeonLevel{ 1 }
 {
-	map.reset();
-	TCODConsole::initRoot(screenWidth, screenHeight, "Rougelike", false);
+	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
 	gui = std::make_unique<Gui>();
-	
-	
 }
 
 void Engine::update()
 {
 	if (gameStatus == STARTUP) { map->computeFOV(); }
 	gameStatus = IDLE;
+
 	TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, &lastKey, &mouse);
+
 	if (lastKey.vk == TCODK_ESCAPE) {
 		save();
 		load();
 	}
+
 	player->update();
+
 	if (gameStatus == NEW_TURN) {
 		map->currentScentValue++;
-		for (std::list<std::unique_ptr<Actor>>::iterator i = actors.begin(); i != actors.end(); ) {
-			if (*i == nullptr) {
+		for (auto i = actors.begin(); i != actors.end(); ) {
+			if (i->get() == nullptr) {
 				i = actors.erase(i);
-			}
-			else if (i->get() != player) {
+			} else if (i->get() != player) {
 				i->get()->update();
 				++i;
+			} else {
+				++i;
 			}
-			else { ++i; }
 		}
 	}
 }
 
-
-void Engine::render(){
+void Engine::render()
+{
 	TCODConsole::root->clear();
 	map->render();
-	std::list<std::unique_ptr<Actor>>::iterator i;
-	for (i = actors.begin(); i != actors.end(); ++i) {
-		if (!i->get()->fovOnly && map->isExplored(i->get()->getX(), i->get()->getY() )||map->isInFOV(i->get()->getX(), i->get()->getY())) {
-			i->get()->render();
+
+	for (const auto& actorPtr : actors) {
+		Actor* actor = actorPtr.get();
+		const bool isVisible  = map->isInFOV(actor->getX(), actor->getY());
+		const bool isExplored = !actor->fovOnly && map->isExplored(actor->getX(), actor->getY());
+		if (isVisible || isExplored) {
+			actor->render();
 		}
 	}
-	// show the player's stats
+
 	gui->render();
 }
 
-void Engine::nextLevel() {
-	level++;
-	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength");
-	player->destructible->heal((int)(player->destructible->maxHp / 2));
-	gui->message(TCOD_red, " After a rare moment of peace you descend\n deeper into the dungeon");
+void Engine::nextLevel()
+{
+	dungeonLevel++;
+	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength.");
+	player->destructible->heal(static_cast<int>(player->destructible->maxHp / 2));
+	gui->message(TCOD_red, "After a rare moment of peace you descend deeper into the dungeon.");
+
 	map.reset();
+
+	// Remove all actors except the player and stairs.
 	for (auto i = actors.begin(); i != actors.end(); ) {
-		if (i->get() != player && i->get() != stairs) {
-			i = actors.erase(i);
-		}
-		else { ++i; }
+		i = (i->get() != player && i->get() != stairs) ? actors.erase(i) : std::next(i);
 	}
-	//create a new map
-	map = std::make_unique<Map>(160, 86);
+
+	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true);
-	camera->mapWidth = map->getWidth();
+	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
 	camera->update(player);
 	gameStatus = STARTUP;
 }
 
-Actor* Engine::getClosestMonster(int x, int y, float range) {
-	Actor* closest = NULL;
-	float bestDistance = 1E6f;
-	for (auto i = actors.begin(); i != actors.end(); ++i) {
-		if (i->get() != player && i->get()->destructible && !i->get()->destructible->isDead()) {
-			float distance = i->get()->getDistance(x, y);
-			if (distance < bestDistance && (distance <= range || range == 0.0f)) {
+Actor* Engine::getClosestMonster(int x, int y, float range) const
+{
+	Actor* closest     = nullptr;
+	float  bestDistance = 1e6f;
+
+	for (const auto& actorPtr : actors) {
+		Actor* actor = actorPtr.get();
+		if (actor != player && actor->destructible && !actor->destructible->isDead()) {
+			const float distance = actor->getDistance(x, y);
+			if (distance < bestDistance && (range == 0.0f || distance <= range)) {
 				bestDistance = distance;
-				closest = i->get();
+				closest      = actor;
 			}
 		}
 	}
 	return closest;
 }
 
-Actor* Engine::getActor(int x, int y)const {
-	for (auto i = actors.begin(); i != actors.end(); ++i)
-	{
-		if (i->get()->getX()== x && i->get()->getY()== y && i->get()->destructible && !i->get()->destructible->isDead()) {
-			return i->get();
+Actor* Engine::getActorAt(int x, int y) const
+{
+	for (const auto& actorPtr : actors) {
+		Actor* actor = actorPtr.get();
+		if (actor->getX() == x && actor->getY() == y
+			&& actor->destructible && !actor->destructible->isDead())
+		{
+			return actor;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
-bool Engine::pickAtTile(int* x, int* y, float maxRange) {
+bool Engine::pickAtTile(int* x, int* y, float maxRange)
+{
 	while (!TCODConsole::isWindowClosed()) {
 		render();
+
+		// Brighten all in-range, in-FOV tiles to indicate they are selectable.
 		for (int cx = 0; cx < map->getWidth(); cx++) {
-			for (int cy = 0; cy < map->getHeight(); cy++){
-				std::tuple<int, int> cameraLoc = camera->apply(cx, cy);
-				if (map->isInFOV(cx, cy) && (maxRange == 0 || player->getDistance(cx, cy) <= maxRange)) {
-					TCODColor col = TCODConsole::root->getCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc));
-					col = col*1.2f;
-					TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), col);
+			for (int cy = 0; cy < map->getHeight(); cy++) {
+				if (map->isInFOV(cx, cy) && (maxRange == 0.0f || player->getDistance(cx, cy) <= maxRange)) {
+					auto [screenX, screenY] = camera->apply(cx, cy);
+					TCODColor col = TCODConsole::root->getCharForeground(screenX, screenY);
+					TCODConsole::root->setCharForeground(screenX, screenY, col * 1.2f);
 				}
 			}
 		}
+
 		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, &lastKey, &mouse);
-		std::tuple<int, int> cameraLoc = camera->getWorldLocation(mouse.cx, mouse.cy);
-		if (map->isInFOV(std::get<0>(cameraLoc), std::get<1>(cameraLoc)) && (maxRange==0 || player->getDistance(std::get<0>(cameraLoc), std::get<1>(cameraLoc))<= maxRange)) {
+		auto [worldX, worldY] = camera->getWorldLocation(mouse.cx, mouse.cy);
+
+		if (map->isInFOV(worldX, worldY)
+			&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
+		{
 			TCODConsole::root->setCharBackground(mouse.cx, mouse.cy, TCOD_white);
 			if (mouse.lbutton_pressed) {
-				*x = std::get<0>(cameraLoc);
-				*y = std::get<1>(cameraLoc);
+				*x = worldX;
+				*y = worldY;
 				return true;
 			}
-			if (mouse.rbutton_pressed || lastKey.c != TCODK_NONE) {
+			if (mouse.rbutton_pressed || lastKey.vk != TCODK_NONE) {
 				return false;
 			}
 		}
+
 		TCODConsole::flush();
 	}
 	return false;
 }
 
-//sends actors to back of list do thst they sre rendered under other actors
-void Engine::sendToBack(Actor* actor) {
-	auto i = actors.begin(); 
-	for (i; i != actors.end(); ++i) {
-	
-		if ( actor == i->get() ) {
+void Engine::sendToBack(Actor* actor)
+{
+	for (auto i = actors.begin(); i != actors.end(); ++i) {
+		if (i->get() == actor) {
 			actors.splice(actors.begin(), actors, i);
+			return;
 		}
 	}
 }
 
-void Engine::init() {
-	std::unique_ptr<Actor>newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", TCOD_white);
+void Engine::init()
+{
+	// Create the player.
+	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", TCOD_white);
 	player = newPlayer.get();
 	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
-	newPlayer->attacker = std::make_unique<Attacker>(5.0f);
-	newPlayer->ai = std::make_unique<PlayerAi>();
-	newPlayer->container = std::make_unique<Container>(26);
+	newPlayer->attacker     = std::make_unique<Attacker>(5.0f);
+	newPlayer->ai           = std::make_unique<PlayerAi>();
+	newPlayer->container    = std::make_unique<Container>(26);
 	actors.emplace_front(std::move(newPlayer));
-	std::unique_ptr<Actor>newStair = std::make_unique<Actor>(0, 0, '>', "stairs", TCOD_white);
-	stairs = newStair.get();
-	newStair->blocks = false;
-	newStair->fovOnly = false;
-	actors.emplace_front(std::move(newStair));
-	
-	
-	map = std::make_unique<Map>(160, 86);
+
+	// Create the stairs (always visible, never blocks).
+	auto newStairs = std::make_unique<Actor>(0, 0, '>', "stairs", TCOD_white);
+	stairs = newStairs.get();
+	newStairs->blocks  = false;
+	newStairs->fovOnly = false;
+	actors.emplace_front(std::move(newStairs));
+
+	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true);
-	camera = std::make_unique<Camera>(0, 0, 80, 43, map->getWidth(), map->getHeight());
+	camera = std::make_unique<Camera>(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+		map->getWidth(), map->getHeight());
 	camera->update(player);
-	gui->message(TCODColor::lightGrey, "\n \n \n Hello friend. \n welcome to the underhive!");
+
+	gui->message(TCODColor::lightGrey, "\n \n \n Hello friend. \n Welcome to the underhive!");
 	gameStatus = STARTUP;
 }
 
-void Engine::term() {
+void Engine::term()
+{
 	actors.clear();
-	if (map) map.reset();
+	if (map) { map.reset(); }
 	gui->clear();
 }
-

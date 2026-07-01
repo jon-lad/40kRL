@@ -1,41 +1,47 @@
 #pragma once
 
-
+// An Actor is any entity that exists on the map: the player, monsters, items, corpses, stairs.
+// Capabilities are defined by which optional components are non-null.
 class Actor : public Persistent{
 private:
-	int x, y;//x and y position in world
-	int ch; //symbol for actor
-	TCODColor col; //actor color
+	int x, y;       // world position
+	int glyph;      // ASCII/libtcod character used to render this actor
+	TCODColor color;
 public:
-	std::string name; //Actors name
-	bool blocks; //does actor dtop movement
-	bool fovOnly;// can you only see the actor when in Fov (after explored)
-	std::shared_ptr<Attacker> attacker; //something which attacks
-	std::shared_ptr<Destructible> destructible; //something which can be destroyed
-	std::shared_ptr<Ai> ai;// something self updating
-	std::shared_ptr<Pickable> pickable;// something that can be picked and used
-	std::shared_ptr<Container> container;//somthing that can contain actors
-	Actor(int x, int y, int ch,std::string_view name, const TCODColor& col);
+	std::string name;
+	bool blocks;    // true if this actor prevents other actors from entering its tile
+	bool fovOnly;   // if true, only render when the tile is currently in the player's FOV
+
+	// Optional components — null means "this actor does not have this capability"
+	std::shared_ptr<Attacker>    attacker;
+	std::shared_ptr<Destructible> destructible;
+	std::shared_ptr<Ai>          ai;
+	std::shared_ptr<Pickable>    pickable;
+	std::shared_ptr<Container>   container;
+
+	Actor(int x, int y, int glyph, std::string_view name, const TCODColor& color);
+
+	// Delegates to ai->update if the ai component is present; otherwise a no-op.
 	void update();
-	
+
+	// Draws this actor at its world position, translated through the camera.
 	void render() const;
 
 	void save(TCODZip& zip);
 	void load(TCODZip& zip);
-	
 
-	float getDistance(int cx, int cy);
+	// Returns the Euclidean distance from this actor to world coordinate (cx, cy).
+	float getDistance(int cx, int cy) const;
 
 	int getX() const;
-	void setX(int x);
+	void setX(int newX);
 
 	int getY() const;
-	void setY(int y);
-	
-	int getCh() const;
-	void setCh(int ch);
+	void setY(int newY);
+
+	int getGlyph() const;
+	void setGlyph(int newGlyph);
 
 	TCODColor getColor() const;
-	void setColor(const TCODColor &col);
-
+	void setColor(const TCODColor& newColor);
 };

@@ -72,7 +72,7 @@ public:
 	void save(TCODZip& zip);
 	void clear();
 protected:
-	std::unique_ptr<TCODConsole> con;
+	std::unique_ptr<TCODConsole> hudConsole;
 
 	void renderBar(int x, int y, int width, const std::string_view name, 
 			float value, float maxValue, const TCODColor& barColor, 
@@ -88,16 +88,11 @@ protected:
 
 	template<typename...Args>
 	std::vector<std::string> makeStringList(Args&&...args) {
-		std::vector<std::string> v;
-		std::string s;
+		std::vector<std::string> result;
 		std::initializer_list<int>{
-			(s = makeString(std::move(args)),
-				std::clog << "Adding: '" << args << "' [" << typeid(std::move(args)).name() << "]",
-				v.push_back(s),
-				std::clog << " done - verify: '" << v.back() << "'\n",
-				0)...
+			(result.push_back(makeString(std::move(args))), 0)...
 		};
-		return v;
+		return result;
 	}
 
 	bool replace(std::string& str, const std::string& from, const std::string& to);
@@ -113,6 +108,10 @@ protected:
 	std::list<std::unique_ptr<Message>> log;
 };
 
+// Converts between world coordinates and screen coordinates by maintaining a
+// signed offset that keeps the player centred in the viewport.
+// Transform: screen = world + offset,  world = screen - offset
+// Offset update: x = -(player.x) + width/2,  y = -(player.y) + height/2
 class Camera : public Persistent {
 public:
 	int x, y;

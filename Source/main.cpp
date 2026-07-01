@@ -8,13 +8,15 @@ Engine engine(80, 50);
 
 int main()
 {
-	engine.load();
+	engine.load(); // show main menu; starts a new game or restores a save
+
 	while (!TCODConsole::isWindowClosed()) {
 		engine.update();
 		engine.render();
 		TCODConsole::flush();
 	}
-	engine.save();
+
+	engine.save(); // persist state on clean window-close
 	TCOD_quit();
 	return 0;
 }

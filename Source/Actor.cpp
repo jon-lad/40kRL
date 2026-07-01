@@ -6,70 +6,39 @@
 #include <cmath>
 #include "main.h"
 
-
-
-Actor::Actor(int x, int y, int ch, std::string_view name, const TCODColor& col) :
-	x{ x }, y{ y }, ch{ ch }, name{ name }, col{ col }, blocks{ true }, fovOnly{true}
+Actor::Actor(int x, int y, int glyph, std::string_view name, const TCODColor& color)
+	: x{ x }, y{ y }, glyph{ glyph }, name{ name }, color{ color }, blocks{ true }, fovOnly{ true }
 {
-	attacker.reset();
-	destructible.reset();
-	ai.reset();
-	pickable.reset();
-	container.reset();
+	// All component slots start empty; callers assign components after construction.
 }
 
 void Actor::render() const
 {
-	std::tuple<int , int> cameraLoc;
-	cameraLoc = engine.camera->apply(x, y);
-
-	TCODConsole::root->setChar(std::get<0>(cameraLoc), std::get<1>(cameraLoc), ch);
-	TCODConsole::root->setCharForeground(std::get<0>(cameraLoc), std::get<1>(cameraLoc), col);
+	auto [screenX, screenY] = engine.camera->apply(x, y);
+	TCODConsole::root->setChar(screenX, screenY, glyph);
+	TCODConsole::root->setCharForeground(screenX, screenY, color);
 }
 
-void Actor::update() 
+void Actor::update()
 {
 	if (ai) { ai->update(this); }
 }
 
-
-float Actor::getDistance(int cx, int cy){
+float Actor::getDistance(int cx, int cy) const
+{
 	int dx = x - cx;
 	int dy = y - cy;
-	return std::sqrtf((float)dx * (float)dx + (float)dy * (float)dy);
+	return std::sqrtf(static_cast<float>(dx * dx + dy * dy));
 }
 
-int Actor::getX() const
-{
-	return x;
-}
-void Actor::setX(int x) {
-	this->x = x;
-}
+int Actor::getX() const { return x; }
+void Actor::setX(int newX) { x = newX; }
 
-int Actor::getY() const
-{
-	return y;
-}
-void Actor::setY(int y)
-{
-	this->y = y;
-}
+int Actor::getY() const { return y; }
+void Actor::setY(int newY) { y = newY; }
 
-int Actor::getCh() const
-{
-	return ch;
-}
-void Actor::setCh(int ch)
-{
-	this->ch = ch;
-}
+int Actor::getGlyph() const { return glyph; }
+void Actor::setGlyph(int newGlyph) { glyph = newGlyph; }
 
-TCODColor Actor::getColor() const
-{
-	return col;
-}
-void Actor::setColor(const TCODColor &col)
-{
-	this->col = col;
-}
+TCODColor Actor::getColor() const { return color; }
+void Actor::setColor(const TCODColor& newColor) { color = newColor; }
