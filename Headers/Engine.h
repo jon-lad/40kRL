@@ -19,8 +19,7 @@ public:
 
 	// Raw-pointer aliases into actors — these actors must remain in the list for the lifetime of the pointers.
 	Actor* player;
-	Actor* stairsUp;   // '<' stairs — ascend (go toward surface)
-	Actor* stairsDown; // '>' stairs — descend (go deeper underground)
+	Actor* stairs;
 
 	int fovRadius;
 	int screenWidth;

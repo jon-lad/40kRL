@@ -314,8 +314,8 @@ void Map::placeOutdoorActors()
 	// Use the furthest tile (which satisfies ≥ 40 if possible; if no tile is ≥ 40,
 	// we still use the furthest — this IS the fallback behaviour).
 	auto [stairsX, stairsY] = outdoorRegion[bestStairsIdx];
-	engine.stairsDown->setX(stairsX);
-	engine.stairsDown->setY(stairsY);
+	engine.stairs->setX(stairsX);
+	engine.stairs->setY(stairsY);
 
 	// ── 4. Scatter enemies on unoccupied ground tiles ──
 
@@ -554,13 +554,9 @@ void Map::createRoom(bool isFirstRoom, int x1, int y1, int x2, int y2, bool with
 	if (isFirstRoom) {
 		engine.player->setX(centreX);
 		engine.player->setY(centreY);
-		// Place down-stairs in the first room (near the player — they can always go deeper).
-		engine.stairsDown->setX(centreX + 2);
-		engine.stairsDown->setY(centreY);
 	} else {
-		// Place up-stairs in subsequent rooms (last one wins — furthest from player).
-		engine.stairsUp->setX(centreX);
-		engine.stairsUp->setY(centreY);
+		engine.stairs->setX(centreX);
+		engine.stairs->setY(centreY);
 
 		TCODRandom* rng = TCODRandom::getInstance();
 		int monstersToPlace = rng->getInt(0, MAX_ROOM_MONSTERS);

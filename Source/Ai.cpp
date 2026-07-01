@@ -194,21 +194,19 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		break;
 	}
 
-	case '<': // ascend stairs (go toward surface)
-		if (engine.stairsUp->getX() == owner->getX() && engine.stairsUp->getY() == owner->getY()) {
-			if (engine.dungeonLevel == 0) {
-				engine.gui->message(TCOD_light_grey, "You are already on the surface.");
-			} else {
-				engine.nextLevel(-1);
-			}
+	case '<': // ascend stairs
+		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()
+			&& engine.stairs->glyph == '<') {
+			engine.nextLevel();
 		} else {
 			engine.gui->message(TCOD_light_grey, "There are no stairs here.");
 		}
 		break;
 
-	case '>': // descend stairs (go deeper underground)
-		if (engine.stairsDown->getX() == owner->getX() && engine.stairsDown->getY() == owner->getY()) {
-			engine.nextLevel(+1);
+	case '>': // descend stairs
+		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()
+			&& engine.stairs->glyph == '>') {
+			engine.nextLevel();
 		} else {
 			engine.gui->message(TCOD_light_grey, "There are no stairs here.");
 		}

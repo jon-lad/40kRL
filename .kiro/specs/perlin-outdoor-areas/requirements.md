@@ -67,12 +67,18 @@ so that reaching the open world feels like a meaningful achievement.
    message indicating the player is entering underground.
 8. THE Engine SHALL use the same `Map` dimensions (160×86) for both Outdoor_Level and BSP_Level
    maps.
-9. THE architecture SHALL support a future world-size system where outdoor maps tile in both
-   horizontal and vertical directions, approximating a spherical planetary surface: WHEN the
-   player reaches the edge of an outdoor map, a new adjacent outdoor map SHALL be generated;
-   WHEN the number of distinct outdoor maps in either axis reaches a configurable `worldSize`
-   limit, the world SHALL wrap (loop) back to previously visited maps. This feature is out of
-   scope for the current spec but informs the design of the outdoor generation seed strategy.
+9. THE architecture SHALL support a future tagged dungeon system: the surface world will have
+   multiple `>` dungeon entrances, each tagged with a unique dungeon ID and surface location.
+   Each tag identifies an independent dungeon chain with its own depth counter and generation
+   seed. WHEN the player descends a tagged entrance, the Engine loads or generates the dungeon
+   chain for that tag. WHEN the player ascends from depth 1, they return to the surface at the
+   entrance they used. This feature is out of scope for the current spec — the current
+   implementation uses a single linear dungeon chain with one entrance.
+10. THE architecture SHALL support a future world-tiling system where outdoor maps tile in both
+    horizontal and vertical directions, approximating a spherical planetary surface. WHEN the
+    player reaches the edge of an outdoor map, a new adjacent outdoor map SHALL be generated;
+    WHEN the world-size limit is reached in either axis, the world SHALL wrap back to previously
+    visited maps. This feature is out of scope for the current spec.
 
 ---
 
