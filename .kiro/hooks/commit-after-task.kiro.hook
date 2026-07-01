@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Commit after task",
+  "description": "After completing a spec task, stage and commit the changes with a message describing the task",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A spec task just completed. Stage all changed files with git add -A and commit with a concise message describing what the task accomplished. Use the format: 'Outdoor maps: [task description]'. Do NOT push."
+  }
+}

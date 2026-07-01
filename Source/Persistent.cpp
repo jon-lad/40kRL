@@ -31,6 +31,7 @@ void Engine::save()
 	}
 
 	gui->save(zip);
+	zip.putInt(dungeonLevel);
 	zip.saveToFile("game.sav");
 }
 
@@ -88,6 +89,11 @@ void Engine::load()
 	}
 
 	gui->load(zip);
+
+	// dungeonLevel appended at end of save stream; old saves yield 0 (archive exhausted).
+	int loadedLevel = zip.getInt();
+	dungeonLevel = (loadedLevel > 0) ? loadedLevel : 1;
+
 	gameStatus = STARTUP; // force FOV recomputation on the first frame
 }
 
@@ -108,8 +114,18 @@ void Map::save(TCODZip& zip)
 
 void Map::load(TCODZip& zip)
 {
-	seed = zip.getInt();
-	init(false); // regenerate geometry from seed; tile state is overwritten below
+	static constexpr int SAVE_VERSION_SENTINEL = 0x4F444F52;
+	int firstValue = zip.getInt();
+	if (firstValue == SAVE_VERSION_SENTINEL) {
+		// New format: sentinel followed by levelType then seed
+		levelType = static_cast<LevelType>(zip.getInt());
+		seed = zip.getInt();
+	} else {
+		// Old format: first int is the seed directly
+		levelType = LevelType::BSP;
+		seed = firstValue;
+	}
+	init(false, levelType); // regenerate geometry from seed
 	for (auto& tile : tiles) {
 		tile.explored = static_cast<bool>(zip.getInt());
 		tile.scent    = zip.getInt();
