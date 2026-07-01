@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches-ignore: [master]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        platform: [x64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install vcpkg dependencies
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '2024.01.12'
+
+      - name: Install libtcod and sol2 via vcpkg
+        run: vcpkg install libtcod:x64-windows sol2:x64-windows lua:x64-windows
+
+      - name: Build game
+        run: msbuild 40kRL.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:VcpkgEnableManifest=false
+
+      - name: Build tests
+        run: msbuild Tests\40kRL_Tests.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
+
+      - name: Run tests
+        run: |
+          $testExe = "Tests\${{ matrix.platform }}\${{ matrix.configuration }}\40kRL_Tests.exe"
+          if (Test-Path $testExe) {
+            & $testExe --reporter compact
+          } else {
+            Write-Error "Test executable not found at $testExe"
+            exit 1
+          }
