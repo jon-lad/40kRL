@@ -182,7 +182,26 @@ progress or terrain state.
 
 ---
 
-### Requirement 8: Noise Threshold Configuration
+### Requirement 8: Edge-Triggered Camera Scrolling on Outdoor Levels
+
+**User Story:** As a player, I want the camera to scroll automatically when I approach the screen
+edge on outdoor levels, so that I can see more terrain ahead without needing extra controls.
+
+#### Acceptance Criteria
+
+1. WHILE on an Outdoor_Level, WHEN the player's screen position is within 20 tiles of any viewport
+   edge after a move, THE Camera SHALL scroll by one tile in the direction the player moved.
+2. THE Camera SHALL scroll by exactly one tile per player step (matching the player's movement
+   speed), so that the viewport shifts smoothly rather than snapping to centre.
+3. THE Camera SHALL clamp to map bounds so that no out-of-bounds tiles are displayed after
+   scrolling.
+4. WHILE on a BSP_Level, THE Camera SHALL continue to use the existing centre-on-player behaviour
+   unchanged (always centred).
+5. THE scroll margin (20 tiles) SHALL be configurable via `Scripts/Config.lua`.
+
+---
+
+### Requirement 9: Noise Threshold Configuration
 
 **User Story:** As a developer tuning outdoor level generation, I want terrain thresholds to be
 configurable without recompiling, so that I can iterate on level aesthetics quickly.
