@@ -31,17 +31,24 @@ Design priorities:
 Engine::nextLevel()
 │
 ├─ dungeonLevel++
-├─ if dungeonLevel >= 20:
+├─ if dungeonLevel == 20:
 │    gui->message("You emerge onto the planet surface...")
 │    map = make_unique<Map>(MAP_WIDTH, MAP_HEIGHT)
-│    map->init(true, LevelType::OUTDOOR)   ← new overload / parameter
+│    map->init(true, LevelType::OUTDOOR)
 │  else:
-│    gui->message("...descend deeper into the dungeon.")
+│    if previous level was outdoor (dungeonLevel == 21):
+│      gui->message("You descend back into the depths...")
+│    else:
+│      gui->message("...descend deeper into the dungeon.")
 │    map = make_unique<Map>(MAP_WIDTH, MAP_HEIGHT)
 │    map->init(true, LevelType::BSP)
 │
 └─ camera->update(player), gameStatus = STARTUP
 ```
+
+Level type is determined purely by `dungeonLevel`: only level 20 is outdoor, all others are BSP.
+This means the outdoor level acts as a surface hub — descending from it leads back into dungeon
+corridors.
 
 ### Map Generation Dispatch
 

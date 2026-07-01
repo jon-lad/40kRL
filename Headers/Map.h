@@ -1,5 +1,23 @@
 #pragma once
 
+#include <cstdint>
+#include <utility>
+#include <vector>
+#include <memory>
+
+// Identifies the generation algorithm used for a map level.
+enum class LevelType : int {
+	BSP     = 0, // Binary Space Partitioning (rooms + corridors)
+	OUTDOOR = 1  // Perlin-noise open terrain (ground, trees, water)
+};
+
+// Terrain classification for outdoor tiles, derived from Perlin noise thresholds.
+enum class TerrainType : uint8_t {
+	GROUND = 0, // walkable, transparent
+	TREE   = 1, // not walkable, not transparent
+	WATER  = 2  // not walkable, transparent
+};
+
 // Tile stores per-cell state that libtcod's TCODMap doesn't track.
 struct Tile {
 	bool explored = false; // true once this tile has ever been inside the player's FOV
@@ -13,6 +31,19 @@ private:
 	int width  = 0;
 	int height = 0;
 
+	LevelType levelType = LevelType::BSP;
+	std::vector<TerrainType> terrainTypes; // only populated for OUTDOOR levels
+	std::vector<std::pair<int,int>> outdoorRegion; // largest connected ground component
+
+	// Outdoor generation and rendering (implemented in later tasks).
+	void initOutdoor(bool withActors);
+	void renderOutdoor() const;
+	void placeOutdoorActors();
+	std::vector<std::pair<int,int>> findLargestGroundRegion() const;
+
+	// BSP generation extracted from init for dispatch clarity.
+	void initBsp(bool withActors);
+
 public:
 	// Monotonically increasing counter incremented once per NEW_TURN.
 	// A tile's scent is considered fresh if: tile.scent > currentScentValue - SCENT_THRESHOLD
@@ -20,8 +51,9 @@ public:
 
 	Map(int width, int height);
 
-	// Generates the map layout using BSP. If withActors is true, populates rooms with monsters and items.
-	void init(bool withActors);
+	// Generates the map layout. If withActors is true, populates with monsters and items.
+	// The level type determines which generation algorithm is used.
+	void init(bool withActors, LevelType type = LevelType::BSP);
 
 	// Returns true if the tile is impassable (not walkable in the libtcod map).
 	bool isWall(int x, int y) const;
@@ -58,6 +90,8 @@ public:
 	void setHeight(int height);
 
 	unsigned int getScent(int x, int y) const;
+
+	LevelType getLevelType() const { return levelType; }
 
 protected:
 	mutable std::vector<Tile> tiles; // flat array indexed as x + y * width

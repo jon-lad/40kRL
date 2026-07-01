@@ -47,12 +47,16 @@ so that the game world feels larger and more varied.
 
 1. WHEN `Engine::nextLevel` increments `dungeonLevel` to 20, THE Engine SHALL generate an
    Outdoor_Level instead of a BSP_Level.
-2. WHEN `dungeonLevel` is 20 or greater, THE Engine SHALL generate an Outdoor_Level for each
-   subsequent call to `Engine::nextLevel`.
+2. WHEN the player descends stairs on an Outdoor_Level (level 20), THE Engine SHALL generate a
+   BSP_Level for level 21, returning to dungeon generation.
 3. WHEN transitioning to an Outdoor_Level, THE Engine SHALL display a narrative message indicating
    the player has reached the surface.
-4. THE Engine SHALL use the same `Map` dimensions (160×86) for Outdoor_Level maps as for BSP_Level
+4. WHEN transitioning from an Outdoor_Level back to a BSP_Level, THE Engine SHALL display a
+   narrative message indicating the player is descending underground again.
+5. THE Engine SHALL use the same `Map` dimensions (160×86) for Outdoor_Level maps as for BSP_Level
    maps.
+6. THE level type SHALL be determined solely by `dungeonLevel`: level 20 is outdoor, all other
+   levels are BSP.
 
 ---
 

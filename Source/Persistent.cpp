@@ -95,6 +95,9 @@ void Engine::load()
 
 void Map::save(TCODZip& zip)
 {
+	static constexpr int SAVE_VERSION_SENTINEL = 0x4F444F52; // "ODOR"
+	zip.putInt(SAVE_VERSION_SENTINEL);
+	zip.putInt(static_cast<int>(levelType));
 	zip.putInt(seed);
 	for (const auto& tile : tiles) {
 		zip.putInt(tile.explored);

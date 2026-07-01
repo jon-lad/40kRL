@@ -1,5 +1,7 @@
 
+#include <algorithm>
 #include <memory>
+#include <queue>
 #include <vector>
 #include <list>
 #include <sstream>
@@ -12,6 +14,8 @@ static constexpr int MAX_ROOM_MONSTERS = 3;
 static constexpr int MAX_ROOM_ITEMS    = 2;
 static constexpr int BSP_DEPTH         = 8;
 static constexpr char GROUND_GLYPH     = '.';
+static constexpr int MIN_PLAYABLE_AREA = 200;
+static constexpr int MAX_RETRIES       = 10;
 
 // ─── BspListener ─────────────────────────────────────────────────────────────
 
@@ -67,17 +71,330 @@ Map::Map(int width, int height)
 	seed = TCODRandom::getInstance()->getInt(0, 0x7FFFFFFF);
 }
 
-void Map::init(bool withActors)
+void Map::init(bool withActors, LevelType type)
 {
 	rng   = std::make_unique<TCODRandom>(seed, TCOD_RNG_CMWC);
 	tiles = std::vector<Tile>(width * height);
 	map   = std::make_unique<TCODMap>(width, height);
+	levelType = type;
 
+	if (type == LevelType::OUTDOOR) {
+		initOutdoor(withActors);
+	} else {
+		initBsp(withActors);
+	}
+}
+
+void Map::initBsp(bool withActors)
+{
 	TCODBsp bsp(0, 0, width, height);
 	bsp.splitRecursive(rng.get(), BSP_DEPTH, ROOM_MAX_SIZE, ROOM_MAX_SIZE, 1.5f, 1.5f);
 
 	BspListener listener(*this);
 	bsp.traverseInvertedLevelOrder(&listener, reinterpret_cast<void*>(withActors));
+}
+
+void Map::initOutdoor(bool withActors)
+{
+	// ── 1. Load noise/threshold parameters from Config.lua (with defaults) ──
+
+	float groundThreshold = -0.1f;
+	float waterThreshold  = -0.5f;
+	int   octaves         = 4;
+	float lacunarity      = 2.0f;
+	float noiseScale      = 0.05f;
+
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Config.lua");
+
+		sol::table cfg = lua["config"];
+		if (cfg.valid()) {
+			groundThreshold = cfg.get_or("outdoorGroundThreshold", groundThreshold);
+			waterThreshold  = cfg.get_or("outdoorWaterThreshold",  waterThreshold);
+			octaves         = cfg.get_or("outdoorOctaves",         octaves);
+			lacunarity      = cfg.get_or("outdoorLacunarity",      lacunarity);
+			noiseScale      = cfg.get_or("outdoorNoiseScale",      noiseScale);
+		}
+	} catch (const sol::error&) {
+		// Config load failed — use compiled defaults silently.
+	}
+
+	// ── 2. Clamp out-of-range values and log warnings via Gui ──
+
+	bool clamped = false;
+
+	if (groundThreshold < -1.0f || groundThreshold > 1.0f) {
+		groundThreshold = std::max(-1.0f, std::min(1.0f, groundThreshold));
+		clamped = true;
+	}
+	if (waterThreshold < -1.0f || waterThreshold > 1.0f) {
+		waterThreshold = std::max(-1.0f, std::min(1.0f, waterThreshold));
+		clamped = true;
+	}
+	if (octaves < 1 || octaves > 8) {
+		octaves = std::max(1, std::min(8, octaves));
+		clamped = true;
+	}
+	if (lacunarity < 1.0f || lacunarity > 4.0f) {
+		lacunarity = std::max(1.0f, std::min(4.0f, lacunarity));
+		clamped = true;
+	}
+	if (noiseScale <= 0.0f || noiseScale >= 1.0f) {
+		noiseScale = std::max(0.001f, std::min(0.999f, noiseScale));
+		clamped = true;
+	}
+
+	if (clamped) {
+		engine.gui->message(TCODColor::red,
+			"Warning: outdoor config values clamped to valid ranges.");
+	}
+
+	// ── 3. Create TCODNoise with 2 dimensions ──
+
+	// ── Retry loop for connectivity guarantee ──
+	for (int attempt = 0; attempt <= MAX_RETRIES; ++attempt) {
+
+		TCODNoise noise(2, lacunarity, 1.0f / lacunarity, rng.get());
+
+		// ── 4 & 5. Sample noise, classify terrain, store in terrainTypes and set TCODMap ──
+
+		terrainTypes = std::vector<TerrainType>(width * height);
+
+		for (int y = 0; y < height; ++y) {
+			for (int x = 0; x < width; ++x) {
+				float coords[2] = { x * noiseScale, y * noiseScale };
+				float value = noise.get(coords, TCOD_NOISE_PERLIN);
+
+				TerrainType terrain;
+				bool walkable;
+				bool transparent;
+
+				if (value > groundThreshold) {
+					terrain     = TerrainType::GROUND;
+					walkable    = true;
+					transparent = true;
+				} else if (value > waterThreshold) {
+					terrain     = TerrainType::TREE;
+					walkable    = false;
+					transparent = false;
+				} else {
+					terrain     = TerrainType::WATER;
+					walkable    = false;
+					transparent = true;
+				}
+
+				terrainTypes[x + y * width] = terrain;
+				map->setProperties(x, y, transparent, walkable);
+			}
+		}
+
+		// ── 4b. Connectivity guarantee: find largest connected ground region ──
+		outdoorRegion = findLargestGroundRegion();
+
+		if (static_cast<int>(outdoorRegion.size()) >= MIN_PLAYABLE_AREA) {
+			break; // Region is large enough — proceed with generation
+		}
+
+		// Region too small — increment seed and retry
+		if (attempt < MAX_RETRIES) {
+			seed++;
+			rng = std::make_unique<TCODRandom>(seed, TCOD_RNG_CMWC);
+		}
+	}
+
+	// Actor placement is handled by placeOutdoorActors (task 2.6).
+	if (withActors) {
+		placeOutdoorActors();
+	}
+}
+
+void Map::renderOutdoor() const
+{
+	static const TCODColor LIGHT_OUTDOOR_GROUND{ 100, 160, 60 };
+	static const TCODColor DARK_OUTDOOR_GROUND { 40,  80,  25 };
+	static const TCODColor LIGHT_TREE          { 0,   180, 0  };
+	static const TCODColor DARK_TREE           { 0,   90,  0  };
+	static const TCODColor LIGHT_WATER         { 60,  100, 200 };
+	static const TCODColor DARK_WATER          { 25,  50,  100 };
+
+	for (int x = 0; x < width; ++x) {
+		for (int y = 0; y < height; ++y) {
+			auto [screenX, screenY] = engine.camera->apply(x, y);
+			TerrainType terrain = terrainTypes[x + y * width];
+
+			if (isInFOV(x, y)) {
+				switch (terrain) {
+				case TerrainType::GROUND:
+					TCODConsole::root->setChar(screenX, screenY, '.');
+					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_OUTDOOR_GROUND);
+					break;
+				case TerrainType::TREE:
+					TCODConsole::root->setChar(screenX, screenY, TCOD_CHAR_SPADE);
+					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_TREE);
+					break;
+				case TerrainType::WATER:
+					TCODConsole::root->setChar(screenX, screenY, '~');
+					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_WATER);
+					break;
+				}
+			} else if (isExplored(x, y)) {
+				switch (terrain) {
+				case TerrainType::GROUND:
+					TCODConsole::root->setChar(screenX, screenY, '.');
+					TCODConsole::root->setCharForeground(screenX, screenY, DARK_OUTDOOR_GROUND);
+					break;
+				case TerrainType::TREE:
+					TCODConsole::root->setChar(screenX, screenY, TCOD_CHAR_SPADE);
+					TCODConsole::root->setCharForeground(screenX, screenY, DARK_TREE);
+					break;
+				case TerrainType::WATER:
+					TCODConsole::root->setChar(screenX, screenY, '~');
+					TCODConsole::root->setCharForeground(screenX, screenY, DARK_WATER);
+					break;
+				}
+			}
+		}
+	}
+}
+
+void Map::placeOutdoorActors()
+{
+	if (outdoorRegion.empty()) { return; }
+
+	// ── 1. Load actor-count config from Config.lua ──
+
+	int minMonsters = 6;
+	int maxMonsters = 12;
+	int minItems    = 2;
+	int maxItems    = 5;
+
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Config.lua");
+
+		sol::table cfg = lua["config"];
+		if (cfg.valid()) {
+			minMonsters = cfg.get_or("outdoorMinMonsters", minMonsters);
+			maxMonsters = cfg.get_or("outdoorMaxMonsters", maxMonsters);
+			minItems    = cfg.get_or("outdoorMinItems",    minItems);
+			maxItems    = cfg.get_or("outdoorMaxItems",    maxItems);
+		}
+	} catch (const sol::error&) {
+		// Config load failed — use compiled defaults.
+	}
+
+	// ── 2. Place player on a random ground tile in the largest connected component ──
+
+	int playerIdx = rng->getInt(0, static_cast<int>(outdoorRegion.size()) - 1);
+	auto [playerX, playerY] = outdoorRegion[playerIdx];
+	engine.player->setX(playerX);
+	engine.player->setY(playerY);
+
+	// ── 3. Place stairs on a ground tile at Euclidean distance ≥ 40 from player ──
+	//       Fallback: furthest ground tile in the region.
+
+	int bestStairsIdx = 0;
+	float bestDist    = 0.0f;
+
+	for (int i = 0; i < static_cast<int>(outdoorRegion.size()); ++i) {
+		auto [tx, ty] = outdoorRegion[i];
+		float dx = static_cast<float>(tx - playerX);
+		float dy = static_cast<float>(ty - playerY);
+		float dist = std::sqrt(dx * dx + dy * dy);
+		if (dist > bestDist) {
+			bestDist = dist;
+			bestStairsIdx = i;
+		}
+	}
+
+	// Use the furthest tile (which satisfies ≥ 40 if possible; if no tile is ≥ 40,
+	// we still use the furthest — this IS the fallback behaviour).
+	auto [stairsX, stairsY] = outdoorRegion[bestStairsIdx];
+	engine.stairs->setX(stairsX);
+	engine.stairs->setY(stairsY);
+
+	// ── 4. Scatter enemies on unoccupied ground tiles ──
+
+	int monsterCount = rng->getInt(minMonsters, maxMonsters);
+	static constexpr int MAX_PLACEMENT_ATTEMPTS = 100;
+
+	for (int m = 0; m < monsterCount; ++m) {
+		for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; ++attempt) {
+			int idx = rng->getInt(0, static_cast<int>(outdoorRegion.size()) - 1);
+			auto [mx, my] = outdoorRegion[idx];
+			if (canWalk(mx, my)) {
+				addMonster(mx, my);
+				break;
+			}
+		}
+	}
+
+	// ── 5. Scatter items on unoccupied ground tiles ──
+
+	int itemCount = rng->getInt(minItems, maxItems);
+
+	for (int i = 0; i < itemCount; ++i) {
+		for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; ++attempt) {
+			int idx = rng->getInt(0, static_cast<int>(outdoorRegion.size()) - 1);
+			auto [ix, iy] = outdoorRegion[idx];
+			if (canWalk(ix, iy)) {
+				addItem(ix, iy);
+				break;
+			}
+		}
+	}
+}
+
+// BFS flood-fill over ground tiles using 4-connectivity (cardinal directions).
+// Returns the largest connected component as a vector of (x,y) coordinate pairs.
+std::vector<std::pair<int,int>> Map::findLargestGroundRegion() const
+{
+	std::vector<bool> visited(width * height, false);
+	std::vector<std::pair<int,int>> largestComponent;
+
+	static constexpr int dx[4] = { 0, 0, -1, 1 };
+	static constexpr int dy[4] = { -1, 1, 0, 0 };
+
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			int idx = x + y * width;
+			if (visited[idx] || terrainTypes[idx] != TerrainType::GROUND) {
+				continue;
+			}
+
+			// BFS from this unvisited ground tile
+			std::vector<std::pair<int,int>> component;
+			std::queue<std::pair<int,int>> frontier;
+			frontier.push({ x, y });
+			visited[idx] = true;
+
+			while (!frontier.empty()) {
+				auto [cx, cy] = frontier.front();
+				frontier.pop();
+				component.push_back({ cx, cy });
+
+				for (int d = 0; d < 4; ++d) {
+					int nx = cx + dx[d];
+					int ny = cy + dy[d];
+					if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+					int nIdx = nx + ny * width;
+					if (!visited[nIdx] && terrainTypes[nIdx] == TerrainType::GROUND) {
+						visited[nIdx] = true;
+						frontier.push({ nx, ny });
+					}
+				}
+			}
+
+			if (component.size() > largestComponent.size()) {
+				largestComponent = std::move(component);
+			}
+		}
+	}
+
+	return largestComponent;
 }
 
 bool Map::isWall(int x, int y) const
@@ -179,6 +496,11 @@ static void renderWallTile(int screenX, int screenY, int worldX, int worldY,
 
 void Map::render() const
 {
+	if (levelType == LevelType::OUTDOOR) {
+		renderOutdoor();
+		return;
+	}
+
 	static const TCODColor DARK_WALL   { 0,   0,   100 };
 	static const TCODColor DARK_GROUND { 50,  50,  150 };
 	static const TCODColor LIGHT_WALL  { 130, 110, 50  };

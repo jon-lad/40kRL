@@ -23,4 +23,21 @@ config = {
     -- Level-up costs
     levelUpBase   = 200,
     levelUpFactor = 150,
+
+    -- Outdoor generation (Perlin noise parameters)
+    outdoorGroundThreshold = -0.1,
+    outdoorWaterThreshold  = -0.5,
+    outdoorOctaves         = 4,
+    outdoorLacunarity      = 2.0,
+    outdoorNoiseScale      = 0.05,
+
+    -- Outdoor actor counts
+    outdoorMinMonsters = 6,
+    outdoorMaxMonsters = 12,
+    outdoorMinItems    = 2,
+    outdoorMaxItems    = 5,
+
+    -- Outdoor level transition and camera
+    outdoorTransitionLevel = 20,
+    outdoorScrollMargin    = 20,
 }
