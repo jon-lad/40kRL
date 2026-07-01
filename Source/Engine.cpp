@@ -72,7 +72,7 @@ void Engine::nextLevel()
 {
 	// Direction is determined by the stairs glyph on the current level.
 	// '<' stairs = ascend (depth decreases), '>' stairs = descend (depth increases).
-	if (stairs->glyph == '<') {
+	if (stairs->getGlyph() == '<') {
 		dungeonLevel--;
 	} else {
 		dungeonLevel++;
@@ -85,7 +85,7 @@ void Engine::nextLevel()
 
 	if (isOutdoor) {
 		gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
-	} else if (stairs->glyph == '<') {
+	} else if (stairs->getGlyph() == '<') {
 		gui->message(TCOD_red, "You ascend closer to the surface.");
 	} else {
 		gui->message(TCOD_red, "You descend deeper underground.");
@@ -102,7 +102,7 @@ void Engine::nextLevel()
 	map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
 
 	// On the surface: stairs go down (dungeon entrance). Underground: stairs go up (toward surface).
-	stairs->glyph = isOutdoor ? '>' : '<';
+	stairs->setGlyph(isOutdoor ? '>' : '<');
 
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
