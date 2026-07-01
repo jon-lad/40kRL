@@ -9,7 +9,18 @@
 -- Fields: chance (cumulative %), glyph, name, color, hp, defense, corpse, xp, power
 local enemies = {
     {
-        chance  = 80,
+        chance  = 60,
+        glyph   = string.byte("g"),
+        name    = "Gretchin",
+        color   = "desaturatedGreen",
+        hp      = 5.0,
+        defense = 0.0,
+        corpse  = "dead Gretchin",
+        xp      = 15,
+        power   = 2.0,
+    },
+    {
+        chance  = 90,
         glyph   = string.byte("o"),
         name    = "Ork",
         color   = "desaturatedGreen",
@@ -20,7 +31,7 @@ local enemies = {
         power   = 3.0,
     },
     {
-        chance  = 100,   -- catches everything above 80
+        chance  = 100,
         glyph   = string.byte("N"),
         name    = "Nob",
         color   = "darkerGreen",
