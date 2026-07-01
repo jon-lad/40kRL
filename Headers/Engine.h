@@ -19,7 +19,8 @@ public:
 
 	// Raw-pointer aliases into actors — these actors must remain in the list for the lifetime of the pointers.
 	Actor* player;
-	Actor* stairs;
+	Actor* stairsUp;   // '<' stairs — ascend (go toward surface)
+	Actor* stairsDown; // '>' stairs — descend (go deeper underground)
 
 	int fovRadius;
 	int screenWidth;
@@ -54,8 +55,8 @@ public:
 	// Returns true if a tile was selected, false if cancelled.
 	bool pickAtTile(int* x, int* y, float maxRange = 0.0f);
 
-	// Increments the dungeon level, heals the player, clears all non-player actors, and generates a new map.
-	void nextLevel();
+	// Changes depth and generates a new level. direction: -1 = ascend, +1 = descend.
+	void nextLevel(int direction);
 
 	// Creates the player actor, stairs, and initial map for a new game.
 	void init();

@@ -68,25 +68,19 @@ void Engine::render()
 	gui->render();
 }
 
-void Engine::nextLevel()
+void Engine::nextLevel(int direction)
 {
+	dungeonLevel += direction;
+
 	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength.");
 	player->destructible->heal(static_cast<int>(player->destructible->maxHp / 2));
 
-	const bool onSurface = (dungeonLevel == 0);
-
-	if (onSurface) {
-		// Descending from surface into a dungeon entrance.
-		dungeonLevel = 1;
-		gui->message(TCOD_red, "You descend into the depths below the surface.");
+	if (dungeonLevel == 0) {
+		gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
+	} else if (direction < 0) {
+		gui->message(TCOD_red, "You ascend closer to the surface.");
 	} else {
-		// Ascending toward surface.
-		dungeonLevel--;
-		if (dungeonLevel == 0) {
-			gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
-		} else {
-			gui->message(TCOD_red, "You ascend closer to the surface.");
-		}
+		gui->message(TCOD_red, "You descend deeper underground.");
 	}
 
 	const bool isOutdoor = (dungeonLevel == 0);
@@ -95,14 +89,32 @@ void Engine::nextLevel()
 
 	// Remove all actors except the player and stairs.
 	for (auto i = actors.begin(); i != actors.end(); ) {
-		i = (i->get() != player && i->get() != stairs) ? actors.erase(i) : std::next(i);
+		if (i->get() != player && i->get() != stairsUp && i->get() != stairsDown) {
+			i = actors.erase(i);
+		} else {
+			++i;
+		}
 	}
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
 
-	// Stairs glyph: '<' to ascend when underground, '>' to descend when on surface.
-	stairs->glyph = isOutdoor ? '>' : '<';
+	// The stairs you came from should be at the player's starting position.
+	// If you ascended (direction -1), the down-stairs align with the player.
+	// If you descended (direction +1), the up-stairs align with the player.
+	if (direction < 0) {
+		stairsDown->setX(player->getX());
+		stairsDown->setY(player->getY());
+	} else {
+		stairsUp->setX(player->getX());
+		stairsUp->setY(player->getY());
+	}
+
+	// Hide stairsUp on surface (depth 0 — can't go higher) by moving off-map.
+	if (isOutdoor) {
+		stairsUp->setX(-1);
+		stairsUp->setY(-1);
+	}
 
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
@@ -200,12 +212,19 @@ void Engine::init()
 	newPlayer->container    = std::make_unique<Container>(26);
 	actors.emplace_front(std::move(newPlayer));
 
-	// Create the stairs (always visible, never blocks). '<' = ascend toward surface.
-	auto newStairs = std::make_unique<Actor>(0, 0, '<', "stairs", TCOD_white);
-	stairs = newStairs.get();
-	newStairs->blocks  = false;
-	newStairs->fovOnly = false;
-	actors.emplace_front(std::move(newStairs));
+	// Create up-stairs (ascend toward surface). Always visible, never blocks.
+	auto newStairsUp = std::make_unique<Actor>(0, 0, '<', "stairs up", TCOD_white);
+	stairsUp = newStairsUp.get();
+	newStairsUp->blocks  = false;
+	newStairsUp->fovOnly = false;
+	actors.emplace_front(std::move(newStairsUp));
+
+	// Create down-stairs (descend deeper). Always visible, never blocks.
+	auto newStairsDown = std::make_unique<Actor>(0, 0, '>', "stairs down", TCOD_white);
+	stairsDown = newStairsDown.get();
+	newStairsDown->blocks  = false;
+	newStairsDown->fovOnly = false;
+	actors.emplace_front(std::move(newStairsDown));
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true, LevelType::BSP);

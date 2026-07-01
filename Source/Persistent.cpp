@@ -20,12 +20,13 @@ void Engine::save()
 	map->save(zip);
 	camera->save(zip);
 	player->save(zip);
-	stairs->save(zip);
+	stairsUp->save(zip);
+	stairsDown->save(zip);
 
 	// Save all actors except player and stairs (they are saved above).
-	zip.putInt(static_cast<int>(actors.size()) - 2);
+	zip.putInt(static_cast<int>(actors.size()) - 3);
 	for (const auto& actorPtr : actors) {
-		if (actorPtr.get() != player && actorPtr.get() != stairs) {
+		if (actorPtr.get() != player && actorPtr.get() != stairsUp && actorPtr.get() != stairsDown) {
 			actorPtr->save(zip);
 		}
 	}
@@ -76,10 +77,15 @@ void Engine::load()
 	actors.emplace_front(std::move(newPlayer));
 	player->load(zip);
 
-	auto newStairs = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
-	stairs = newStairs.get();
-	actors.emplace_front(std::move(newStairs));
-	stairs->load(zip);
+	auto newStairsUp = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+	stairsUp = newStairsUp.get();
+	actors.emplace_front(std::move(newStairsUp));
+	stairsUp->load(zip);
+
+	auto newStairsDown = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+	stairsDown = newStairsDown.get();
+	actors.emplace_front(std::move(newStairsDown));
+	stairsDown->load(zip);
 
 	int remainingActors = zip.getInt();
 	while (remainingActors-- > 0) {
