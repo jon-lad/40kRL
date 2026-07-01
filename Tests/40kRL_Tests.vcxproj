@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
+    <RootNamespace>40kRL_Tests</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+
+  <!-- Include paths: game headers, libtcod, test lib folder -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>
+      C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;
+      C:\Users\jonat\Documents\Projects\40kRL\Headers;
+      $(ProjectDir)lib;
+      $(IncludePath)
+    </IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>
+      C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;
+      C:\Users\jonat\Documents\Projects\40kRL\Headers;
+      $(ProjectDir)lib;
+      $(IncludePath)
+    </IncludePath>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <!-- Catch2 amalgamated header is large; bump PCH threshold -->
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+        C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\lib
+      </AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <!-- Copy libtcod.dll next to the test binary so it can find it at runtime -->
+      <Command>
+        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\libtcod.dll" "$(OutDir)libtcod.dll"
+        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\SDL2.dll"    "$(OutDir)SDL2.dll"
+      </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+        C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\lib
+      </AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\libtcod.dll" "$(OutDir)libtcod.dll"
+        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\SDL2.dll"    "$(OutDir)SDL2.dll"
+      </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+
+  <!-- Catch2 implementation (compiled once) -->
+  <ItemGroup>
+    <ClCompile Include="catch_main.cpp" />
+    <ClCompile Include="lib\catch_amalgamated.cpp" />
+  </ItemGroup>
+
+  <!-- Test files -->
+  <ItemGroup>
+    <ClCompile Include="test_attacker.cpp" />
+    <ClCompile Include="test_camera.cpp" />
+    <ClCompile Include="test_container.cpp" />
+    <ClCompile Include="test_destructible.cpp" />
+  </ItemGroup>
+
+  <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
+  <ItemGroup>
+    <ClCompile Include="..\Source\Actor.cpp" />
+    <ClCompile Include="..\Source\Ai.cpp" />
+    <ClCompile Include="..\Source\Attacker.cpp" />
+    <ClCompile Include="..\Source\Container.cpp" />
+    <ClCompile Include="..\Source\Destructible.cpp" />
+    <ClCompile Include="..\Source\Engine.cpp" />
+    <ClCompile Include="..\Source\Gui.cpp" />
+    <ClCompile Include="..\Source\Map.cpp" />
+    <ClCompile Include="..\Source\Persistent.cpp" />
+    <ClCompile Include="..\Source\Pickable.cpp" />
+  </ItemGroup>
+
+  <!-- Headers (for IDE browsing) -->
+  <ItemGroup>
+    <ClInclude Include="..\Headers\Actor.h" />
+    <ClInclude Include="..\Headers\Ai.h" />
+    <ClInclude Include="..\Headers\Attacker.h" />
+    <ClInclude Include="..\Headers\Constants.h" />
+    <ClInclude Include="..\Headers\Container.h" />
+    <ClInclude Include="..\Headers\Destructible.h" />
+    <ClInclude Include="..\Headers\Engine.h" />
+    <ClInclude Include="..\Headers\Gui.h" />
+    <ClInclude Include="..\Headers\main.h" />
+    <ClInclude Include="..\Headers\Map.h" />
+    <ClInclude Include="..\Headers\Persistent.h" />
+    <ClInclude Include="..\Headers\Pickable.h" />
+    <ClInclude Include="lib\catch_amalgamated.hpp" />
+    <ClInclude Include="lib\rapidcheck_catch.h" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
