@@ -28,28 +28,32 @@ Design priorities:
 ### Level-Type Routing
 
 ```
-Engine::nextLevel()
+Engine::nextLevel()  (renamed conceptually — now handles both ascend and descend)
 │
-├─ dungeonLevel++
-├─ if (dungeonLevel % outdoorTransitionLevel) == 0:
-│    gui->message("You emerge onto the planet surface...")
-│    map = make_unique<Map>(MAP_WIDTH, MAP_HEIGHT)
-│    map->init(true, LevelType::OUTDOOR)
-│  else:
-│    if previous level was outdoor ((dungeonLevel - 1) % outdoorTransitionLevel == 0):
-│      gui->message("You descend back into the depths...")
+├─ Ascending (current depth > 0, player used '<' stairs):
+│    depth--
+│    if depth == 0:
+│      gui->message("You emerge onto the planet surface.")
+│      map->init(true, LevelType::OUTDOOR)
 │    else:
-│      gui->message("...descend deeper into the dungeon.")
-│    map = make_unique<Map>(MAP_WIDTH, MAP_HEIGHT)
+│      gui->message("You ascend closer to the surface.")
+│      map->init(true, LevelType::BSP)
+│
+├─ Descending (current depth == 0, player used '>' dungeon entrance):
+│    depth = 1
+│    gui->message("You descend into the depths below...")
 │    map->init(true, LevelType::BSP)
 │
 └─ camera->update(player), gameStatus = STARTUP
 ```
 
-Level type is determined by `dungeonLevel % outdoorTransitionLevel == 0` (default
-`outdoorTransitionLevel = 20` from Config.lua). This means outdoor levels appear at 20, 40, 60,
-etc. — the world loops through dungeon corridors and surface areas indefinitely. The
-`outdoorTransitionLevel` effectively represents the world size (depth of each dungeon segment).
+The `dungeonLevel` field is renamed to `depth` conceptually (though the code variable name may
+remain for now). Depth 0 = surface (outdoor). Depth 1–20 = underground (BSP). The player starts
+at depth 20 and ascends. The stairs glyph flips: `<` underground (ascend), `>` on surface
+(descend into dungeon entrance).
+
+Future: from the surface, multiple dungeon entrances at different locations can each lead to
+independent dungeon chains with their own depth counters. For now, there's one linear chain.
 
 ### Map Generation Dispatch
 

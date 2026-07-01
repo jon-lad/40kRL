@@ -3,22 +3,27 @@
 ## Introduction
 
 This document specifies the requirements for adding Perlin-noise-based outdoor map areas to 40kRL.
-When the player reaches dungeon level 20, the game transitions from BSP-generated dungeon floors to
-open outdoor terrain generated using libtcod's built-in Perlin noise (`TCODNoise`). The outdoor area
-features varied terrain types — walkable ground, impassable trees/walls, and impassable water —
-determined by noise thresholds. All existing systems (FOV, scent, camera, rendering, Lua-driven
-enemy/item spawning) continue to function on outdoor levels.
+The player begins at dungeon depth 20 (deepest underground) and ascends through BSP-generated
+dungeon floors toward the surface. When the player reaches depth 0, the game transitions to an
+open outdoor terrain generated using libtcod's built-in Perlin noise (`TCODNoise`). The outdoor
+area features varied terrain types — walkable ground, impassable trees/walls, and impassable
+water — determined by noise thresholds. From the surface, the player can find dungeon entrances
+leading to new underground areas where they descend. All existing systems (FOV, scent, camera,
+rendering, Lua-driven enemy/item spawning) continue to function on all level types.
 
 ## Glossary
 
 - **Engine**: The global singleton that owns the game loop, the actor list, the map, the camera, and
-  the current dungeon level counter.
+  the current depth counter.
 - **Map**: The class that owns tile data, the libtcod FOV/walkability map, and the seeded RNG; it
   generates level layouts and handles spatial queries.
 - **Outdoor_Level**: A map level generated using Perlin noise instead of BSP trees; characterised by
-  open terrain, natural obstacles (trees, water), and outdoor enemy encounters.
+  open terrain, natural obstacles (trees, water), and outdoor enemy encounters. Exists at depth 0
+  (the planet surface).
 - **BSP_Level**: A map level generated using Binary Space Partitioning, producing rooms connected by
-  corridors; the default generation method for dungeon levels 1–19.
+  corridors; the generation method for all underground dungeon depths (1–20+).
+- **Depth**: The player's current underground level. Depth 0 is the surface; depth 20 is the
+  starting point (deepest). Ascending reduces depth; descending increases it.
 - **Perlin_Generator**: The subsystem that uses `TCODNoise` with a deterministic seed to produce a
   2D noise field, which is then mapped to terrain types via configurable thresholds.
 - **Terrain_Type**: A classification of a map tile based on its Perlin noise value. Types include
@@ -31,38 +36,38 @@ enemy/item spawning) continue to function on outdoor levels.
   player.
 - **FOV**: Field-of-View, computed by libtcod's `TCODMap::computeFov`.
 - **Scent**: The per-tile tracking value used by MonsterAi to follow the player when out of FOV.
-- **Outdoor_Enemies**: A set of enemy definitions loaded from Lua, distinct from dungeon enemy
-  tables, spawned on Outdoor_Level maps.
+- **Dungeon_Entrance**: A location on the surface (outdoor) map that leads to a new dungeon chain
+  where the player descends.
 
 ---
 
 ## Requirements
 
-### Requirement 1: Level Transition Trigger
+### Requirement 1: Level Progression and Surface Transition
 
-**User Story:** As a player, I want to emerge into an outdoor area after clearing dungeon level 19,
-so that the game world feels larger and more varied.
+**User Story:** As a player, I want to start deep underground and ascend toward the planet surface,
+so that reaching the open world feels like a meaningful achievement.
 
 #### Acceptance Criteria
 
-1. WHEN `Engine::nextLevel` increments `dungeonLevel` to 20, THE Engine SHALL generate an
-   Outdoor_Level instead of a BSP_Level.
-2. WHEN the player descends stairs on an Outdoor_Level (level 20), THE Engine SHALL generate a
-   BSP_Level for level 21, returning to dungeon generation.
-3. WHEN transitioning to an Outdoor_Level, THE Engine SHALL display a narrative message indicating
-   the player has reached the surface.
-4. WHEN transitioning from an Outdoor_Level back to a BSP_Level, THE Engine SHALL display a
-   narrative message indicating the player is descending underground again.
-5. THE Engine SHALL use the same `Map` dimensions (160×86) for Outdoor_Level maps as for BSP_Level
+1. THE Engine SHALL track the player's current position as a `depth` value. The player starts at
+   depth 20 (configurable via `startingDepth` in `Scripts/Config.lua`).
+2. WHEN the player uses stairs to ascend, THE Engine SHALL decrement `depth` by 1 and generate a
+   new BSP_Level for the resulting depth, provided depth > 0.
+3. WHEN `depth` reaches 0, THE Engine SHALL generate an Outdoor_Level (the planet surface) instead
+   of a BSP_Level.
+4. WHILE on the Outdoor_Level (depth 0), THE stairs glyph SHALL be displayed as `>` (descend) at
+   dungeon entrances. WHILE on a BSP_Level (depth > 0), THE stairs glyph SHALL be displayed as
+   `<` (ascend toward surface).
+5. WHEN the player uses a dungeon entrance on the Outdoor_Level (depth 0), THE Engine SHALL set
+   depth to 1 and generate a new BSP_Level, beginning a new underground descent.
+6. WHEN transitioning to depth 0 (Outdoor_Level), THE Engine SHALL display a narrative message
+   indicating the player has reached the surface.
+7. WHEN descending from the surface into a new dungeon, THE Engine SHALL display a narrative
+   message indicating the player is entering underground.
+8. THE Engine SHALL use the same `Map` dimensions (160×86) for both Outdoor_Level and BSP_Level
    maps.
-6. THE level type SHALL be determined solely by `dungeonLevel`: level 20 is outdoor, all other
-   levels are BSP.
-7. THE outdoor transition level (20) SHALL be configurable via `outdoorTransitionLevel` in
-   `Scripts/Config.lua`, representing the depth of each dungeon segment. WHEN `dungeonLevel` is
-   a multiple of `outdoorTransitionLevel`, THE Engine SHALL generate an Outdoor_Level; all other
-   levels SHALL be BSP. This causes the dungeon/outdoor pattern to loop every
-   `outdoorTransitionLevel` levels.
-8. THE architecture SHALL support a future world-size system where outdoor maps tile in both
+9. THE architecture SHALL support a future world-size system where outdoor maps tile in both
    horizontal and vertical directions, approximating a spherical planetary surface: WHEN the
    player reaches the edge of an outdoor map, a new adjacent outdoor map SHALL be generated;
    WHEN the number of distinct outdoor maps in either axis reaches a configurable `worldSize`
