@@ -45,20 +45,20 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
 
-  <!-- Include paths: game headers, libtcod, test lib folder -->
+  <!-- Include paths: game headers, libtcod (via vcpkg or local), test lib folder -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>
-      C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;
-      C:\Users\jonat\Documents\Projects\40kRL\Headers;
+      $(SolutionDir)Headers;
       $(ProjectDir)lib;
+      C:\vcpkg\installed\x64-windows\include;
       $(IncludePath)
     </IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>
-      C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;
-      C:\Users\jonat\Documents\Projects\40kRL\Headers;
+      $(SolutionDir)Headers;
       $(ProjectDir)lib;
+      C:\vcpkg\installed\x64-windows\include;
       $(IncludePath)
     </IncludePath>
   </PropertyGroup>
@@ -78,14 +78,15 @@
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
-        C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\lib
+        C:\vcpkg\installed\x64-windows\lib;$(SolutionDir)
       </AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <!-- Copy libtcod.dll next to the test binary so it can find it at runtime -->
       <Command>
-        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\libtcod.dll" "$(OutDir)libtcod.dll"
-        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\SDL2.dll"    "$(OutDir)SDL2.dll"
+        if exist "C:\vcpkg\installed\x64-windows\bin\libtcod.dll" copy /Y "C:\vcpkg\installed\x64-windows\bin\libtcod.dll" "$(OutDir)"
+        if exist "C:\vcpkg\installed\x64-windows\bin\SDL2.dll" copy /Y "C:\vcpkg\installed\x64-windows\bin\SDL2.dll" "$(OutDir)"
+        if exist "$(SolutionDir)libtcod.dll" copy /Y "$(SolutionDir)libtcod.dll" "$(OutDir)"
+        if exist "$(SolutionDir)SDL2.dll" copy /Y "$(SolutionDir)SDL2.dll" "$(OutDir)"
       </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -103,13 +104,15 @@
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
-        C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\lib
+        C:\vcpkg\installed\x64-windows\lib;$(SolutionDir)
       </AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
-        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\libtcod.dll" "$(OutDir)libtcod.dll"
-        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\SDL2.dll"    "$(OutDir)SDL2.dll"
+        if exist "C:\vcpkg\installed\x64-windows\bin\libtcod.dll" copy /Y "C:\vcpkg\installed\x64-windows\bin\libtcod.dll" "$(OutDir)"
+        if exist "C:\vcpkg\installed\x64-windows\bin\SDL2.dll" copy /Y "C:\vcpkg\installed\x64-windows\bin\SDL2.dll" "$(OutDir)"
+        if exist "$(SolutionDir)libtcod.dll" copy /Y "$(SolutionDir)libtcod.dll" "$(OutDir)"
+        if exist "$(SolutionDir)SDL2.dll" copy /Y "$(SolutionDir)SDL2.dll" "$(OutDir)"
       </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
