@@ -73,7 +73,17 @@ void Engine::nextLevel()
 	dungeonLevel++;
 	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength.");
 	player->destructible->heal(static_cast<int>(player->destructible->maxHp / 2));
-	gui->message(TCOD_red, "After a rare moment of peace you descend deeper into the dungeon.");
+
+	// Determine level type: only level 20 is outdoor, all others are BSP.
+	const bool isOutdoor = (dungeonLevel == 20);
+
+	if (isOutdoor) {
+		gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
+	} else if (dungeonLevel == 21) {
+		gui->message(TCOD_red, "You descend back into the depths beneath the surface.");
+	} else {
+		gui->message(TCOD_red, "After a rare moment of peace you descend deeper into the dungeon.");
+	}
 
 	map.reset();
 
@@ -83,10 +93,10 @@ void Engine::nextLevel()
 	}
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
-	map->init(true);
+	map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
-	camera->update(player, map->getLevelType() == LevelType::OUTDOOR);
+	camera->update(player, isOutdoor);
 	gameStatus = STARTUP;
 }
 
@@ -188,7 +198,7 @@ void Engine::init()
 	actors.emplace_front(std::move(newStairs));
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
-	map->init(true);
+	map->init(true, LevelType::BSP);
 	camera = std::make_unique<Camera>(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
 		map->getWidth(), map->getHeight());
 	camera->update(player, false);
