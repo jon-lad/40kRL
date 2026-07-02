@@ -51,7 +51,19 @@ jobs:
       - name: Build tests
         run: msbuild Tests\40kRL_Tests.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
 
+      - name: Copy runtime DLLs to test output
+        run: |
+          $outDir = "${{ matrix.platform }}\${{ matrix.configuration }}"
+          $vcpkgBin = "C:\vcpkg\installed\x64-windows\bin"
+          $vcpkgDbgBin = "C:\vcpkg\installed\x64-windows\debug\bin"
+          if ("${{ matrix.configuration }}" -eq "Debug") {
+            Copy-Item "$vcpkgDbgBin\*.dll" "$outDir\" -Force -ErrorAction SilentlyContinue
+          }
+          Copy-Item "$vcpkgBin\*.dll" "$outDir\" -Force -ErrorAction SilentlyContinue
+
       - name: Run tests
+        env:
+          SDL_VIDEODRIVER: dummy
         run: |
           $testExe = "${{ matrix.platform }}\${{ matrix.configuration }}\40kRL_Tests.exe"
           if (Test-Path $testExe) {
