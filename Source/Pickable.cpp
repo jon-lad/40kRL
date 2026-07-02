@@ -60,7 +60,7 @@ void Pickable::drop(Actor* owner, Actor* wearer)
 
 	std::stringstream msg;
 	msg << wearer->name << " drops a " << owner->name << ".";
-	engine.gui->message(TCOD_light_grey, msg.str());
+	engine.gui->message(Colors::uiText, msg.str());
 
 	for (auto i = wearer->container->inventory.begin();
 		 i != wearer->container->inventory.end(); )
@@ -109,7 +109,7 @@ bool HealthEffect::applyTo(Actor* actor)
 				return true;
 			}
 		} catch (const sol::error& e) {
-			engine.gui->message(TCOD_red, "Lua error in Effects.lua: #", std::string(e.what()));
+			engine.gui->message(Colors::damage, "Lua error in Effects.lua: #", std::string(e.what()));
 			lua.collect_garbage();
 		}
 		return false;
@@ -162,7 +162,7 @@ void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list)
 
 	case SelectorType::SELECTED_MONSTER: {
 		int x, y;
-		engine.gui->message(TCOD_cyan, "Left-click to select an enemy, or right-click to cancel.");
+		engine.gui->message(Colors::cyan, "Left-click to select an enemy, or right-click to cancel.");
 		if (engine.pickAtTile(&x, &y, range)) {
 			Actor* target = engine.getActorAt(x, y);
 			if (target) { list.push(target); }
@@ -183,7 +183,7 @@ void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list)
 
 	case SelectorType::SELECTED_RANGE: {
 		int x, y;
-		engine.gui->message(TCOD_cyan, "Left-click to select a tile, or right-click to cancel.");
+		engine.gui->message(Colors::cyan, "Left-click to select a tile, or right-click to cancel.");
 		if (engine.pickAtTile(&x, &y)) {
 			for (const auto& actorPtr : engine.actors) {
 				Actor* actor = actorPtr.get();
@@ -199,6 +199,6 @@ void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list)
 	}
 
 	if (list.isEmpty()) {
-		engine.gui->message(TCOD_light_grey, "No enemy is close enough.");
+		engine.gui->message(Colors::uiText, "No enemy is close enough.");
 	}
 }

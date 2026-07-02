@@ -147,7 +147,7 @@ void Map::initOutdoor(bool withActors)
 	}
 
 	if (clamped) {
-		engine.gui->message(TCODColor::red,
+		engine.gui->message(Colors::damage,
 			"Warning: outdoor config values clamped to valid ranges.");
 	}
 
@@ -227,31 +227,25 @@ void Map::renderOutdoor() const
 			if (isInFOV(x, y)) {
 				switch (terrain) {
 				case TerrainType::GROUND:
-					TCODConsole::root->setChar(screenX, screenY, '.');
-					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_OUTDOOR_GROUND);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '.', {LIGHT_OUTDOOR_GROUND.r, LIGHT_OUTDOOR_GROUND.g, LIGHT_OUTDOOR_GROUND.b});
 					break;
 				case TerrainType::TREE:
-					TCODConsole::root->setChar(screenX, screenY, TCOD_CHAR_SPADE);
-					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_TREE);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, CharConst::SPADE, {LIGHT_TREE.r, LIGHT_TREE.g, LIGHT_TREE.b});
 					break;
 				case TerrainType::WATER:
-					TCODConsole::root->setChar(screenX, screenY, '~');
-					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_WATER);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '~', {LIGHT_WATER.r, LIGHT_WATER.g, LIGHT_WATER.b});
 					break;
 				}
 			} else if (isExplored(x, y)) {
 				switch (terrain) {
 				case TerrainType::GROUND:
-					TCODConsole::root->setChar(screenX, screenY, '.');
-					TCODConsole::root->setCharForeground(screenX, screenY, DARK_OUTDOOR_GROUND);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '.', {DARK_OUTDOOR_GROUND.r, DARK_OUTDOOR_GROUND.g, DARK_OUTDOOR_GROUND.b});
 					break;
 				case TerrainType::TREE:
-					TCODConsole::root->setChar(screenX, screenY, TCOD_CHAR_SPADE);
-					TCODConsole::root->setCharForeground(screenX, screenY, DARK_TREE);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, CharConst::SPADE, {DARK_TREE.r, DARK_TREE.g, DARK_TREE.b});
 					break;
 				case TerrainType::WATER:
-					TCODConsole::root->setChar(screenX, screenY, '~');
-					TCODConsole::root->setCharForeground(screenX, screenY, DARK_WATER);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '~', {DARK_WATER.r, DARK_WATER.g, DARK_WATER.b});
 					break;
 				}
 			}
@@ -467,20 +461,20 @@ bool Map::canWalk(int x, int y) const
 
 // Selects the appropriate double-line box-drawing character for a wall tile
 // based on which of its four cardinal neighbours are also wall tiles.
-static TCOD_chars_t chooseWallGlyph(bool top, bool bottom, bool left, bool right)
+static int chooseWallGlyph(bool top, bool bottom, bool left, bool right)
 {
-	if ( top &&  bottom &&  left &&  right) return TCOD_CHAR_DCROSS;
-	if (!top &&  bottom &&  left &&  right) return TCOD_CHAR_DTEES;
-	if ( top && !bottom &&  left &&  right) return TCOD_CHAR_DTEEN;
-	if ( top &&  bottom && !left &&  right) return TCOD_CHAR_DTEEE;
-	if ( top &&  bottom &&  left && !right) return TCOD_CHAR_DTEEW;
-	if (!top &&  bottom &&  left && !right) return TCOD_CHAR_DNE;
-	if (!top &&  bottom && !left &&  right) return TCOD_CHAR_DNW;
-	if ( top && !bottom &&  left && !right) return TCOD_CHAR_DSE;
-	if ( top && !bottom && !left &&  right) return TCOD_CHAR_DSW;
-	if ( top &&  bottom && !left && !right) return TCOD_CHAR_DVLINE;
-	if (!top && !bottom &&  left &&  right) return TCOD_CHAR_DHLINE;
-	return TCOD_CHAR_RADIO_UNSET;
+	if ( top &&  bottom &&  left &&  right) return CharConst::DCROSS;
+	if (!top &&  bottom &&  left &&  right) return CharConst::DTEES;
+	if ( top && !bottom &&  left &&  right) return CharConst::DTEEN;
+	if ( top &&  bottom && !left &&  right) return CharConst::DTEEE;
+	if ( top &&  bottom &&  left && !right) return CharConst::DTEEW;
+	if (!top &&  bottom &&  left && !right) return CharConst::DNE;
+	if (!top &&  bottom && !left &&  right) return CharConst::DNW;
+	if ( top && !bottom &&  left && !right) return CharConst::DSE;
+	if ( top && !bottom && !left &&  right) return CharConst::DSW;
+	if ( top &&  bottom && !left && !right) return CharConst::DVLINE;
+	if (!top && !bottom &&  left &&  right) return CharConst::DHLINE;
+	return CharConst::RADIO_UNSET;
 }
 
 static void renderWallTile(int screenX, int screenY, int worldX, int worldY,
@@ -491,8 +485,7 @@ static void renderWallTile(int screenX, int screenY, int worldX, int worldY,
 	const bool left   = mapPtr->isWall(worldX - 1, worldY) && mapPtr->isExplorable(worldX - 1, worldY);
 	const bool right  = mapPtr->isWall(worldX + 1, worldY) && mapPtr->isExplorable(worldX + 1, worldY);
 
-	TCODConsole::root->setChar(screenX, screenY, chooseWallGlyph(top, bottom, left, right));
-	TCODConsole::root->setCharForeground(screenX, screenY, wallColor);
+	renderPutChar(TCODConsole::root->get_data(), screenX, screenY, chooseWallGlyph(top, bottom, left, right), {wallColor.r, wallColor.g, wallColor.b});
 }
 
 void Map::render() const
@@ -515,15 +508,13 @@ void Map::render() const
 				if (isWall(x, y)) {
 					renderWallTile(screenX, screenY, x, y, LIGHT_WALL, this);
 				} else {
-					TCODConsole::root->setChar(screenX, screenY, GROUND_GLYPH);
-					TCODConsole::root->setCharForeground(screenX, screenY, LIGHT_GROUND);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, GROUND_GLYPH, {LIGHT_GROUND.r, LIGHT_GROUND.g, LIGHT_GROUND.b});
 				}
 			} else if (isExplored(x, y)) {
 				if (isWall(x, y)) {
 					renderWallTile(screenX, screenY, x, y, DARK_WALL, this);
 				} else {
-					TCODConsole::root->setChar(screenX, screenY, GROUND_GLYPH);
-					TCODConsole::root->setCharForeground(screenX, screenY, DARK_GROUND);
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, GROUND_GLYPH, {DARK_GROUND.r, DARK_GROUND.g, DARK_GROUND.b});
 				}
 			}
 		}
@@ -580,14 +571,14 @@ void Map::createRoom(bool isFirstRoom, int x1, int y1, int x2, int y2, bool with
 // Maps Lua colour names to TCODColor values.
 static TCODColor colorFromName(const std::string& name)
 {
-	if (name == "desaturatedGreen") return TCODColor::desaturatedGreen;
-	if (name == "darkerGreen")      return TCODColor::darkerGreen;
-	if (name == "lightBlue")        return TCODColor::lightBlue;
-	if (name == "orange")           return TCODColor::orange;
-	if (name == "lightGreen")       return TCODColor::lightGreen;
-	if (name == "violet")           return TCOD_violet;
-	if (name == "lightYellow")      return TCOD_light_yellow;
-	return TCODColor::white;
+	if (name == "desaturatedGreen") return Colors::orkSkin;
+	if (name == "darkerGreen")      return Colors::nobArmour;
+	if (name == "lightBlue")        return Colors::lightBlue;
+	if (name == "orange")           return Colors::orange;
+	if (name == "lightGreen")       return Colors::surfaceMsg;
+	if (name == "violet")           return Colors::healthPotion;
+	if (name == "lightYellow")      return Colors::scroll;
+	return Colors::white;
 }
 
 // Maps Lua selector-type strings to the enum.
@@ -629,13 +620,13 @@ void Map::addMonster(int x, int y)
 	} catch (const sol::error& e) {
 		// Lua script failed — fall back to hard-coded spawn so the game still works.
 		if (roll < 80) {
-			auto ork = std::make_unique<Actor>(x, y, 'o', "Ork", TCODColor::desaturatedGreen);
+			auto ork = std::make_unique<Actor>(x, y, 'o', "Ork", Colors::orkSkin);
 			ork->destructible = std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35);
 			ork->attacker     = std::make_unique<Attacker>(3.0f);
 			ork->ai           = std::make_unique<MonsterAi>();
 			engine.actors.push_back(std::move(ork));
 		} else {
-			auto nob = std::make_unique<Actor>(x, y, 'N', "Nob", TCODColor::darkerGreen);
+			auto nob = std::make_unique<Actor>(x, y, 'N', "Nob", Colors::nobArmour);
 			nob->destructible = std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100);
 			nob->attacker     = std::make_unique<Attacker>(4.0f);
 			nob->ai           = std::make_unique<MonsterAi>();
@@ -655,11 +646,11 @@ void Map::addItem(int x, int y)
 
 		// Inject C++ factory callbacks that Lua's spawnItem function will call.
 		lua["spawnHealthPotion"] = [](int ix, int iy, float healAmount) {
-			auto potion = std::make_unique<Actor>(ix, iy, '!', "health potion", TCOD_violet);
+			auto potion = std::make_unique<Actor>(ix, iy, '!', "health potion", Colors::healthPotion);
 			potion->blocks   = false;
 			potion->pickable = std::make_unique<Pickable>(
 				std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
-				std::make_unique<HealthEffect>(healAmount, "", TCODColor::lightGrey));
+				std::make_unique<HealthEffect>(healAmount, "", Colors::uiText));
 			engine.actors.emplace_front(std::move(potion));
 		};
 
@@ -668,7 +659,7 @@ void Map::addItem(int x, int y)
 			const std::string& selectorName, float range)
 		{
 			TCODColor col = colorFromName(colorName);
-			auto scroll = std::make_unique<Actor>(ix, iy, '#', name, TCOD_light_yellow);
+			auto scroll = std::make_unique<Actor>(ix, iy, '#', name, Colors::scroll);
 			scroll->blocks   = false;
 			scroll->pickable = std::make_unique<Pickable>(
 				std::make_unique<TargetSelector>(selectorFromName(selectorName), range),
@@ -680,7 +671,7 @@ void Map::addItem(int x, int y)
 			const std::string& message, const std::string& colorName, float range)
 		{
 			TCODColor col = colorFromName(colorName);
-			auto scroll = std::make_unique<Actor>(ix, iy, '#', name, TCOD_light_yellow);
+			auto scroll = std::make_unique<Actor>(ix, iy, '#', name, Colors::scroll);
 			scroll->blocks   = false;
 			scroll->pickable = std::make_unique<Pickable>(
 				std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_MONSTER, range),
@@ -694,11 +685,11 @@ void Map::addItem(int x, int y)
 
 	} catch (const sol::error& e) {
 		// Lua script failed — fall back to a simple health potion.
-		auto potion = std::make_unique<Actor>(x, y, '!', "health potion", TCOD_violet);
+		auto potion = std::make_unique<Actor>(x, y, '!', "health potion", Colors::healthPotion);
 		potion->blocks   = false;
 		potion->pickable = std::make_unique<Pickable>(
 			std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
-			std::make_unique<HealthEffect>(4.0f, "", TCODColor::lightGrey));
+			std::make_unique<HealthEffect>(4.0f, "", Colors::uiText));
 		engine.actors.emplace_front(std::move(potion));
 	}
 }

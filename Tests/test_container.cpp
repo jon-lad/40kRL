@@ -8,9 +8,9 @@ TEST_CASE("Container::add accepts items up to capacity", "[container]")
 {
     Container c(2);
 
-    auto a1 = std::make_unique<Actor>(0, 0, '!', "potion", TCOD_white);
-    auto a2 = std::make_unique<Actor>(0, 0, '!', "scroll", TCOD_white);
-    auto a3 = std::make_unique<Actor>(0, 0, '!', "bomb",   TCOD_white);
+    auto a1 = std::make_unique<Actor>(0, 0, '!', "potion", Colors::white);
+    auto a2 = std::make_unique<Actor>(0, 0, '!', "scroll", Colors::white);
+    auto a3 = std::make_unique<Actor>(0, 0, '!', "bomb",   Colors::white);
 
     REQUIRE(c.add(std::move(a1)) == true);
     REQUIRE(c.add(std::move(a2)) == true);
@@ -22,7 +22,7 @@ TEST_CASE("Container with size 0 is unlimited", "[container]")
 {
     Container c(0);
     for (int i = 0; i < 50; ++i) {
-        auto actor = std::make_unique<Actor>(0, 0, 'x', "item", TCOD_white);
+        auto actor = std::make_unique<Actor>(0, 0, 'x', "item", Colors::white);
         REQUIRE(c.add(std::move(actor)) == true);
     }
     REQUIRE(c.inventory.size() == 50);
@@ -31,8 +31,8 @@ TEST_CASE("Container with size 0 is unlimited", "[container]")
 TEST_CASE("Container::remove erases the correct item by pointer identity", "[container]")
 {
     Container c(10);
-    auto a1 = std::make_unique<Actor>(0, 0, '!', "keep",   TCOD_white);
-    auto a2 = std::make_unique<Actor>(0, 0, '!', "remove", TCOD_white);
+    auto a1 = std::make_unique<Actor>(0, 0, '!', "keep",   Colors::white);
+    auto a2 = std::make_unique<Actor>(0, 0, '!', "remove", Colors::white);
 
     Actor* rawA2 = a2.get();
     c.add(std::move(a1));
@@ -54,7 +54,7 @@ TEST_CASE("PBT: inventory size never exceeds capacity", "[container][pbt]")
 
         Container c(capacity);
         for (int i = 0; i < attempts; ++i) {
-            c.add(std::make_unique<Actor>(0, 0, 'x', "i", TCOD_white));
+            c.add(std::make_unique<Actor>(0, 0, 'x', "i", Colors::white));
         }
         RC_ASSERT(static_cast<int>(c.inventory.size()) <= capacity);
     });

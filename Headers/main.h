@@ -1,7 +1,11 @@
 #pragma once
 
 #include "Constants.h"
+#include "CharConstants.h"
 #include "libtcod.hpp"
+#include "RenderUtils.h"
+#include "Colors.h"
+#include "InputHandler.h"
 class Actor;
 #include "Persistent.h"
 #include "Destructible.h"

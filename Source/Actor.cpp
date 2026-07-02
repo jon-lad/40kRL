@@ -15,8 +15,7 @@ Actor::Actor(int x, int y, int glyph, std::string_view name, const TCODColor& co
 void Actor::render() const
 {
 	auto [screenX, screenY] = engine.camera->apply(x, y);
-	TCODConsole::root->setChar(screenX, screenY, glyph);
-	TCODConsole::root->setCharForeground(screenX, screenY, color);
+	renderPutChar(TCODConsole::root->get_data(), screenX, screenY, glyph, {color.r, color.g, color.b});
 }
 
 void Actor::update()

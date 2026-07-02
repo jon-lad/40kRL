@@ -15,18 +15,19 @@
     <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
     <RootNamespace>40kRL_Tests</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <SolutionDir Condition="'$(SolutionDir)' == '' OR '$(SolutionDir)' == '*Undefined*'">$(MSBuildThisFileDirectory)..\</SolutionDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -34,35 +35,19 @@
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
-            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
-            Label="LocalAppDataPlatform" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
-            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
-            Label="LocalAppDataPlatform" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-
-  <!-- Include paths: game headers, libtcod, test lib folder -->
+  <!-- Include paths: game headers, libtcod (via vcpkg or local), test lib folder -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>
-      C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;
-      C:\Users\jonat\Documents\Projects\40kRL\Headers;
-      $(ProjectDir)lib;
-      $(IncludePath)
-    </IncludePath>
+    <IncludePath>$(SolutionDir)Headers;$(ProjectDir)lib;C:\vcpkg\installed\x64-windows\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>
-      C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\include;
-      C:\Users\jonat\Documents\Projects\40kRL\Headers;
-      $(ProjectDir)lib;
-      $(IncludePath)
-    </IncludePath>
+    <IncludePath>$(SolutionDir)Headers;$(ProjectDir)lib;C:\vcpkg\installed\x64-windows\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
-
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -71,6 +56,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <PreprocessorDefinitions>CATCH_AMALGAMATED_CUSTOM_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <!-- Catch2 amalgamated header is large; bump PCH threshold -->
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -78,14 +64,13 @@
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
-        C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\lib
+        C:\vcpkg\installed\x64-windows\lib;$(SolutionDir)
       </AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <!-- Copy libtcod.dll next to the test binary so it can find it at runtime -->
       <Command>
-        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\libtcod.dll" "$(OutDir)libtcod.dll"
-        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\SDL2.dll"    "$(OutDir)SDL2.dll"
+        if exist "C:\vcpkg\installed\x64-windows\bin\libtcod.dll" copy /Y "C:\vcpkg\installed\x64-windows\bin\libtcod.dll" "$(OutDir)"
+        if exist "C:\vcpkg\installed\x64-windows\bin\SDL3.dll" copy /Y "C:\vcpkg\installed\x64-windows\bin\SDL3.dll" "$(OutDir)"
       </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -97,29 +82,28 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <PreprocessorDefinitions>CATCH_AMALGAMATED_CUSTOM_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>libtcod.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
-        C:\Users\jonat\Documents\Projects\libtcod-1.15.0-x86-msvc\lib
+        C:\vcpkg\installed\x64-windows\lib;$(SolutionDir)
       </AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
-        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\libtcod.dll" "$(OutDir)libtcod.dll"
-        copy /Y "C:\Users\jonat\Documents\Projects\40kRL\SDL2.dll"    "$(OutDir)SDL2.dll"
+        if exist "C:\vcpkg\installed\x64-windows\bin\libtcod.dll" copy /Y "C:\vcpkg\installed\x64-windows\bin\libtcod.dll" "$(OutDir)"
+        if exist "C:\vcpkg\installed\x64-windows\bin\SDL3.dll" copy /Y "C:\vcpkg\installed\x64-windows\bin\SDL3.dll" "$(OutDir)"
       </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-
   <!-- Catch2 implementation (compiled once) -->
   <ItemGroup>
     <ClCompile Include="catch_main.cpp" />
     <ClCompile Include="lib\catch_amalgamated.cpp" />
   </ItemGroup>
-
   <!-- Test files -->
   <ItemGroup>
     <ClCompile Include="test_attacker.cpp" />
@@ -127,8 +111,8 @@
     <ClCompile Include="test_container.cpp" />
     <ClCompile Include="test_destructible.cpp" />
     <ClCompile Include="test_outdoor_map.cpp" />
+    <ClCompile Include="test_rapidcheck_smoke.cpp" />
   </ItemGroup>
-
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
     <ClCompile Include="..\Source\Actor.cpp" />
@@ -138,28 +122,30 @@
     <ClCompile Include="..\Source\Destructible.cpp" />
     <ClCompile Include="..\Source\Engine.cpp" />
     <ClCompile Include="..\Source\Gui.cpp" />
+    <ClCompile Include="..\Source\InputHandler.cpp" />
     <ClCompile Include="..\Source\Map.cpp" />
     <ClCompile Include="..\Source\Persistent.cpp" />
     <ClCompile Include="..\Source\Pickable.cpp" />
   </ItemGroup>
-
   <!-- Headers (for IDE browsing) -->
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
     <ClInclude Include="..\Headers\Ai.h" />
     <ClInclude Include="..\Headers\Attacker.h" />
     <ClInclude Include="..\Headers\Constants.h" />
+    <ClInclude Include="..\Headers\Colors.h" />
     <ClInclude Include="..\Headers\Container.h" />
     <ClInclude Include="..\Headers\Destructible.h" />
     <ClInclude Include="..\Headers\Engine.h" />
     <ClInclude Include="..\Headers\Gui.h" />
+    <ClInclude Include="..\Headers\InputHandler.h" />
     <ClInclude Include="..\Headers\main.h" />
     <ClInclude Include="..\Headers\Map.h" />
     <ClInclude Include="..\Headers\Persistent.h" />
     <ClInclude Include="..\Headers\Pickable.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
+    <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
   </ItemGroup>
-
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

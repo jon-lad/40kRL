@@ -71,19 +71,19 @@ void Engine::load()
 	camera->load(zip);
 
 	// Player must be emplaced before loading so engine.player is valid for subsequent loads.
-	auto newPlayer = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+	auto newPlayer = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
 	player = newPlayer.get();
 	actors.emplace_front(std::move(newPlayer));
 	player->load(zip);
 
-	auto newStairs = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+	auto newStairs = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
 	stairs = newStairs.get();
 	actors.emplace_front(std::move(newStairs));
 	stairs->load(zip);
 
 	int remainingActors = zip.getInt();
 	while (remainingActors-- > 0) {
-		auto actor = std::make_unique<Actor>(0, 0, 0, "", TCOD_white);
+		auto actor = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
 		actor->load(zip);
 		actors.emplace_front(std::move(actor));
 	}
@@ -336,11 +336,11 @@ std::unique_ptr<Effect> Effect::create(TCODZip& zip)
 	std::unique_ptr<Effect> effect;
 	switch (type) {
 	case EffectType::HEALTH:
-		effect = std::make_unique<HealthEffect>(0.0f, "", TCOD_light_grey);
+		effect = std::make_unique<HealthEffect>(0.0f, "", Colors::uiText);
 		break;
 	case EffectType::CHANGE_AI:
 		effect = std::make_unique<AiChangeEffect>(
-			std::make_unique<TemporaryAi>(0), " ", TCOD_light_grey);
+			std::make_unique<TemporaryAi>(0), " ", Colors::uiText);
 		break;
 	}
 	effect->load(zip);
@@ -391,7 +391,7 @@ void Container::load(TCODZip& zip)
 	size = zip.getInt();
 	int count = zip.getInt();
 	while (count-- > 0) {
-		auto actor = std::make_unique<Actor>(0, 0, 0, " ", TCOD_white);
+		auto actor = std::make_unique<Actor>(0, 0, 0, " ", Colors::white);
 		actor->load(zip);
 		inventory.emplace_back(std::move(actor));
 	}

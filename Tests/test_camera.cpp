@@ -49,7 +49,7 @@ TEST_CASE("PBT: Camera centres on player after update (BSP mode)", "[camera][pbt
         const int vpH     = *rc::gen::inRange(10, 60);
 
         Camera cam(0, 0, vpW, vpH, mapW, mapH);
-        Actor player(playerX, playerY, '@', "Player", TCOD_white);
+        Actor player(playerX, playerY, '@', "Player", Colors::white);
         cam.update(&player, false);
 
         // Expected: centred then clamped

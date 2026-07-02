@@ -23,7 +23,7 @@ TEST_CASE("takeDamage reduces HP by damage minus defence", "[destructible]")
     {
         // power=5, defence=2 → effective=3
         // We need an Actor to call takeDamage, use a dummy
-        Actor dummy(0, 0, 'x', "dummy", TCOD_white);
+        Actor dummy(0, 0, 'x', "dummy", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
         d.takeDamage(&dummy, 5.0f);
         REQUIRE(d.hp == Catch::Approx(7.0f));
@@ -31,7 +31,7 @@ TEST_CASE("takeDamage reduces HP by damage minus defence", "[destructible]")
 
     SECTION("damage equal to defence deals zero HP loss")
     {
-        Actor dummy(0, 0, 'x', "dummy", TCOD_white);
+        Actor dummy(0, 0, 'x', "dummy", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
         d.takeDamage(&dummy, 2.0f);
         REQUIRE(d.hp == Catch::Approx(10.0f));
@@ -39,7 +39,7 @@ TEST_CASE("takeDamage reduces HP by damage minus defence", "[destructible]")
 
     SECTION("damage less than defence deals zero HP loss")
     {
-        Actor dummy(0, 0, 'x', "dummy", TCOD_white);
+        Actor dummy(0, 0, 'x', "dummy", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
         d.takeDamage(&dummy, 1.0f);
         REQUIRE(d.hp == Catch::Approx(10.0f));
@@ -107,7 +107,7 @@ TEST_CASE("PBT: takeDamage with power <= defence never reduces HP", "[destructib
         const float power   = *rc::gen::inRange(0, static_cast<int>(defence));
 
         MonsterDestructible d(100.0f, defence, "c", 0);
-        Actor dummy(0, 0, 'x', "d", TCOD_white);
+        Actor dummy(0, 0, 'x', "d", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
 
         const float hpBefore = d.hp;

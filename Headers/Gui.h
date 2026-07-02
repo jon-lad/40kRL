@@ -37,13 +37,13 @@ public:
 
 	void render();
 	
-	template<typename TCODColor, typename T, typename...Args>
-	void message(const TCODColor& col, const T& text, const Args&&...args) {
+	template<typename Color, typename T, typename...Args>
+	void message(const Color& col, const T& text, Args&&...args) {
 
 		std::vector<std::string> splitString;
 		std::string input = text;
 		std::string token;
-		std::vector<std::string> stringSubs = makeStringList(args...);
+		std::vector<std::string> stringSubs = makeStringList(std::forward<Args>(args)...);
 		bool x = true;
 		int i = 0;
 		while(x){
@@ -86,12 +86,10 @@ protected:
 		return ss.str().data();
 	}
 
-	template<typename...Args>
-	std::vector<std::string> makeStringList(Args&&...args) {
+	template<typename... Args>
+	std::vector<std::string> makeStringList(Args&&... args) {
 		std::vector<std::string> result;
-		std::initializer_list<int>{
-			(result.push_back(makeString(std::move(args))), 0)...
-		};
+		(result.push_back(makeString(std::forward<Args>(args))), ...);
 		return result;
 	}
 

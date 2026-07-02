@@ -28,9 +28,13 @@ ipch/
 *.exp
 *.lib
 *.dll
-!libtcod.dll
-!SDL2.dll
 *.exe
+
+# Bundled DLLs (provided by vcpkg at build time)
+libtcod.dll
+libtcod.lib
+SDL2.dll
+SDL3.dll
 
 # ───── C/C++ ─────
 *.o

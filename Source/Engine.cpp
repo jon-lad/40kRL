@@ -27,9 +27,9 @@ void Engine::update()
 	if (gameStatus == STARTUP) { map->computeFOV(); }
 	gameStatus = IDLE;
 
-	TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, &lastKey, &mouse);
+	pollInput(inputState);
 
-	if (lastKey.vk == TCODK_ESCAPE) {
+	if (inputState.key.key == SDLK_ESCAPE) {
 		save();
 		load();
 	}
@@ -72,23 +72,23 @@ void Engine::nextLevel()
 {
 	// Direction is determined by the stairs glyph on the current level.
 	// '<' stairs = ascend (depth decreases), '>' stairs = descend (depth increases).
-	if (stairs->glyph == '<') {
+	if (stairs->getGlyph() == '<') {
 		dungeonLevel--;
 	} else {
 		dungeonLevel++;
 	}
 
-	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength.");
+	gui->message(Colors::healing, "You take a moment to rest and recover your strength.");
 	player->destructible->heal(static_cast<int>(player->destructible->maxHp / 2));
 
 	const bool isOutdoor = (dungeonLevel == 0);
 
 	if (isOutdoor) {
-		gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
-	} else if (stairs->glyph == '<') {
-		gui->message(TCOD_red, "You ascend closer to the surface.");
+		gui->message(Colors::surfaceMsg, "You emerge from the depths onto the planet surface.");
+	} else if (stairs->getGlyph() == '<') {
+		gui->message(Colors::damage, "You ascend closer to the surface.");
 	} else {
-		gui->message(TCOD_red, "You descend deeper underground.");
+		gui->message(Colors::damage, "You descend deeper underground.");
 	}
 
 	map.reset();
@@ -102,7 +102,7 @@ void Engine::nextLevel()
 	map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
 
 	// On the surface: stairs go down (dungeon entrance). Underground: stairs go up (toward surface).
-	stairs->glyph = isOutdoor ? '>' : '<';
+	stairs->setGlyph(isOutdoor ? '>' : '<');
 
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
@@ -152,24 +152,29 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 				if (map->isInFOV(cx, cy) && (maxRange == 0.0f || player->getDistance(cx, cy) <= maxRange)) {
 					auto [screenX, screenY] = camera->apply(cx, cy);
 					TCODColor col = TCODConsole::root->getCharForeground(screenX, screenY);
-					TCODConsole::root->setCharForeground(screenX, screenY, col * 1.2f);
+					TCOD_ColorRGB bright = {
+						static_cast<uint8_t>(std::min(255, col.r * 6 / 5)),
+						static_cast<uint8_t>(std::min(255, col.g * 6 / 5)),
+						static_cast<uint8_t>(std::min(255, col.b * 6 / 5))
+					};
+					TCOD_console_put_rgb(TCODConsole::root->get_data(), screenX, screenY, 0, &bright, nullptr, TCOD_BKGND_NONE);
 				}
 			}
 		}
 
-		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, &lastKey, &mouse);
-		auto [worldX, worldY] = camera->getWorldLocation(mouse.cx, mouse.cy);
+		pollInput(inputState);
+		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
 
 		if (map->isInFOV(worldX, worldY)
 			&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
 		{
-			TCODConsole::root->setCharBackground(mouse.cx, mouse.cy, TCOD_white);
-			if (mouse.lbutton_pressed) {
+			renderSetBg(TCODConsole::root->get_data(), inputState.mouse.cellX, inputState.mouse.cellY, {255, 255, 255});
+			if (inputState.mouse.lbutton_pressed) {
 				*x = worldX;
 				*y = worldY;
 				return true;
 			}
-			if (mouse.rbutton_pressed || lastKey.vk != TCODK_NONE) {
+			if (inputState.mouse.rbutton_pressed || inputState.key.key != SDLK_UNKNOWN) {
 				return false;
 			}
 		}
@@ -192,7 +197,7 @@ void Engine::sendToBack(Actor* actor)
 void Engine::init()
 {
 	// Create the player.
-	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", TCOD_white);
+	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", Colors::white);
 	player = newPlayer.get();
 	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
 	newPlayer->attacker     = std::make_unique<Attacker>(5.0f);
@@ -201,7 +206,7 @@ void Engine::init()
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create the stairs (always visible, never blocks). '<' = ascend toward surface.
-	auto newStairs = std::make_unique<Actor>(0, 0, '<', "stairs", TCOD_white);
+	auto newStairs = std::make_unique<Actor>(0, 0, '<', "stairs", Colors::white);
 	stairs = newStairs.get();
 	newStairs->blocks  = false;
 	newStairs->fovOnly = false;
@@ -213,7 +218,7 @@ void Engine::init()
 		map->getWidth(), map->getHeight());
 	camera->update(player, false);
 
-	gui->message(TCODColor::lightGrey, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
+	gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 	gameStatus = STARTUP;
 }
 
