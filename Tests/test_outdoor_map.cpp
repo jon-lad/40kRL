@@ -389,7 +389,7 @@ TEST_CASE("Level progression: stairs '<' decrements depth", "[outdoor][engine]")
 
     // Save original state
     int originalLevel = engine.dungeonLevel;
-    engine.stairs->glyph = '<';
+    engine.stairs->setGlyph('<');
 
     engine.nextLevel();
 
@@ -401,7 +401,7 @@ TEST_CASE("Level progression: stairs '<' decrements depth", "[outdoor][engine]")
 TEST_CASE("Level progression: stairs '>' increments depth", "[outdoor][engine]")
 {
     int originalLevel = engine.dungeonLevel;
-    engine.stairs->glyph = '>';
+    engine.stairs->setGlyph('>');
 
     engine.nextLevel();
 
@@ -412,7 +412,7 @@ TEST_CASE("Level progression: depth 0 generates outdoor map", "[outdoor][engine]
 {
     // Set engine to depth 1 with '<' stairs so nextLevel goes to 0
     engine.dungeonLevel = 1;
-    engine.stairs->glyph = '<';
+    engine.stairs->setGlyph('<');
 
     engine.nextLevel();
 

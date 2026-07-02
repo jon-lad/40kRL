@@ -199,7 +199,7 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 
 	case '<': // ascend stairs
 		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()
-			&& engine.stairs->glyph == '<') {
+			&& engine.stairs->getGlyph() == '<') {
 			engine.nextLevel();
 		} else {
 			engine.gui->message(Colors::uiText, "There are no stairs here.");
@@ -208,7 +208,7 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 
 	case '>': // descend stairs
 		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()
-			&& engine.stairs->glyph == '>') {
+			&& engine.stairs->getGlyph() == '>') {
 			engine.nextLevel();
 		} else {
 			engine.gui->message(Colors::uiText, "There are no stairs here.");

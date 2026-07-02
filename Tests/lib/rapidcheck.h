@@ -101,12 +101,18 @@ inline void printResultMessage(const TestResult& result, std::ostream& os) {
 
 } // namespace detail
 
+// Forward declaration — defined below, used by Gen::operator*
+inline std::mt19937& currentRng();
+
 // Minimal generator type
 template<typename T>
 struct Gen {
     std::function<T(std::mt19937&)> generate;
 
     T operator()(std::mt19937& rng) const { return generate(rng); }
+
+    // Dereference operator — matches real RapidCheck's *gen syntax for generating values
+    T operator*() const { return generate(currentRng()); }
 };
 
 namespace gen {
@@ -227,4 +233,11 @@ inline void RC_ASSERT(bool condition, const std::string& msg = "Assertion failed
 #ifndef RC_ASSERT
 #define RC_ASSERT(expr) \
     do { if (!(expr)) throw std::runtime_error("RC_ASSERT failed: " #expr); } while(false)
+#endif
+
+// RC_PRE — precondition: discard this iteration if not met (no-op in our stub,
+// just skip the rest of the lambda via early return if you want strict behaviour).
+#ifndef RC_PRE
+#define RC_PRE(expr) \
+    do { if (!(expr)) return; } while(false)
 #endif

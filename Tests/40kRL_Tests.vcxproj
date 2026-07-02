@@ -21,13 +21,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -35,35 +35,19 @@
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
-            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
-            Label="LocalAppDataPlatform" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
-            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
-            Label="LocalAppDataPlatform" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-
   <!-- Include paths: game headers, libtcod (via vcpkg or local), test lib folder -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>
-      $(SolutionDir)Headers;
-      $(ProjectDir)lib;
-      C:\vcpkg\installed\x64-windows\include;
-      $(IncludePath)
-    </IncludePath>
+    <IncludePath>$(SolutionDir)Headers;$(ProjectDir)lib;C:\vcpkg\installed\x64-windows\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>
-      $(SolutionDir)Headers;
-      $(ProjectDir)lib;
-      C:\vcpkg\installed\x64-windows\include;
-      $(IncludePath)
-    </IncludePath>
+    <IncludePath>$(SolutionDir)Headers;$(ProjectDir)lib;C:\vcpkg\installed\x64-windows\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
-
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -113,13 +97,11 @@
       </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-
   <!-- Catch2 implementation (compiled once) -->
   <ItemGroup>
     <ClCompile Include="catch_main.cpp" />
     <ClCompile Include="lib\catch_amalgamated.cpp" />
   </ItemGroup>
-
   <!-- Test files -->
   <ItemGroup>
     <ClCompile Include="test_attacker.cpp" />
@@ -129,7 +111,6 @@
     <ClCompile Include="test_outdoor_map.cpp" />
     <ClCompile Include="test_rapidcheck_smoke.cpp" />
   </ItemGroup>
-
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
     <ClCompile Include="..\Source\Actor.cpp" />
@@ -144,7 +125,6 @@
     <ClCompile Include="..\Source\Persistent.cpp" />
     <ClCompile Include="..\Source\Pickable.cpp" />
   </ItemGroup>
-
   <!-- Headers (for IDE browsing) -->
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -165,6 +145,5 @@
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
   </ItemGroup>
-
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

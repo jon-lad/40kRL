@@ -21,7 +21,7 @@ void pollInput(InputState& state, int cellWidth, int cellHeight) {
                 state.key.key = event.key.key;
                 // Derive a printable character from the keycode if it maps
                 // to a basic ASCII character (a-z, 0-9, punctuation).
-                if (event.key.key >= SDLK_SPACE && event.key.key <= SDLK_z) {
+                if (event.key.key >= SDLK_SPACE && event.key.key <= SDLK_Z) {
                     state.key.c = static_cast<char>(event.key.key & 0xFF);
                 } else {
                     state.key.c = 0;
