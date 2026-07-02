@@ -468,10 +468,10 @@ static int chooseWallGlyph(bool top, bool bottom, bool left, bool right)
 	if ( top && !bottom &&  left &&  right) return CharConst::DTEEN;
 	if ( top &&  bottom && !left &&  right) return CharConst::DTEEE;
 	if ( top &&  bottom &&  left && !right) return CharConst::DTEEW;
-	if (!top &&  bottom &&  left && !right) return CharConst::DNE;
-	if (!top &&  bottom && !left &&  right) return CharConst::DNW;
-	if ( top && !bottom &&  left && !right) return CharConst::DSE;
-	if ( top && !bottom && !left &&  right) return CharConst::DSW;
+	if ( top && !bottom && !left &&  right) return CharConst::DNE;
+	if ( top && !bottom &&  left && !right) return CharConst::DNW;
+	if (!top &&  bottom &&  left && !right) return CharConst::DSE;
+	if (!top &&  bottom && !left &&  right) return CharConst::DSW;
 	if ( top &&  bottom && !left && !right) return CharConst::DVLINE;
 	if (!top && !bottom &&  left &&  right) return CharConst::DHLINE;
 	return CharConst::RADIO_UNSET;
