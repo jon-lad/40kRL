@@ -19,7 +19,7 @@ public:
 
 	// Restores up to amount HP, capped at maxHp.
 	// Returns the actual amount healed.
-	float heal(int amount);
+	float heal(float amount);
 
 	// Transforms owner into a corpse (changes glyph, disables blocking, resets AI).
 	virtual void die(Actor* owner);
