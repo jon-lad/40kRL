@@ -44,7 +44,10 @@ jobs:
 
       - name: Copy runtime DLLs
         shell: cmd
-        run: copy C:\vcpkg\installed\x64-windows\bin\*.dll x64\${{ inputs.configuration }}\
+        run: |
+          for %%f in (C:\vcpkg\installed\x64-windows\bin\*.dll) do (
+            echo %%~nxf | findstr /i "SDL2" >nul || copy "%%f" x64\${{ inputs.configuration }}\
+          )
 
       - name: Run tests
         shell: cmd
@@ -61,7 +64,9 @@ jobs:
         run: |
           mkdir release
           copy x64\${{ inputs.configuration }}\40kRL.exe release\
-          copy x64\${{ inputs.configuration }}\*.dll release\
+          for %%f in (x64\${{ inputs.configuration }}\*.dll) do (
+            echo %%~nxf | findstr /i "SDL2" >nul || copy "%%f" release\
+          )
           xcopy Scripts release\Scripts\ /E /I /Y
           copy menu_background1.png release\
           copy terminal.png release\
