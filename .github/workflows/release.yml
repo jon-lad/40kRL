@@ -12,6 +12,10 @@ on:
           - Debug
           - Release
 
+env:
+  VCPKG_DEFAULT_TRIPLET: x64-windows
+  VCPKG_ROOT: C:\vcpkg
+
 jobs:
   build-and-test:
     runs-on: windows-latest
@@ -23,13 +27,27 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Build game
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-x64-windows-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: vcpkg-x64-windows-
+
+      - name: Install dependencies via vcpkg
+        shell: cmd
+        run: vcpkg install libtcod lua sol2 sdl2
+
+      - name: Build solution
+        shell: cmd
         run: msbuild 40kRL.sln /p:Configuration=${{ inputs.configuration }} /p:Platform=x64
 
-      - name: Build tests
-        run: msbuild Tests\40kRL_Tests.vcxproj /p:Configuration=${{ inputs.configuration }} /p:Platform=x64
+      - name: Copy runtime DLLs
+        shell: cmd
+        run: copy C:\vcpkg\installed\x64-windows\bin\*.dll x64\${{ inputs.configuration }}\
 
       - name: Run tests
+        shell: cmd
         run: x64\${{ inputs.configuration }}\40kRL_Tests.exe --reporter console
 
       - name: Upload build artifacts
