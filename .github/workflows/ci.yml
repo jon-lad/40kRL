@@ -40,6 +40,14 @@ jobs:
       - name: Build game
         run: msbuild 40kRL.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
 
+      - name: Verify SDL3 runtime
+        run: |
+          $outDir = "${{ matrix.platform }}\${{ matrix.configuration }}"
+          if (-not (Test-Path "$outDir\SDL3.dll")) {
+            Write-Error "SDL3.dll not found in $outDir"
+            exit 1
+          }
+
       - name: Build tests
         run: msbuild Tests\40kRL_Tests.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
 
