@@ -127,6 +127,7 @@
     <ClCompile Include="test_container.cpp" />
     <ClCompile Include="test_destructible.cpp" />
     <ClCompile Include="test_outdoor_map.cpp" />
+    <ClCompile Include="test_rapidcheck_smoke.cpp" />
   </ItemGroup>
 
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
@@ -161,6 +162,7 @@
     <ClInclude Include="..\Headers\Persistent.h" />
     <ClInclude Include="..\Headers\Pickable.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
+    <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
   </ItemGroup>
 
