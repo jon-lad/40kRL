@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]*.*']
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+
+      - name: Install dependencies via vcpkg
+        run: |
+          C:\vcpkg\vcpkg.exe install libtcod:x64-windows sol2:x64-windows lua:x64-windows --overlay-ports=${{ github.workspace }}/vcpkg-overlay/ports
+
+      - name: Integrate vcpkg
+        run: C:\vcpkg\vcpkg.exe integrate install
+
+      - name: Build Release
+        run: msbuild 40kRL.sln /p:Configuration=Release /p:Platform=x64
+
+      - name: Copy runtime DLLs
+        run: |
+          Copy-Item "C:\vcpkg\installed\x64-windows\bin\*.dll" "x64\Release\" -Force
+
+      - name: Package release
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $dir = "40kRL-$tag"
+          New-Item -ItemType Directory -Path $dir
+          Copy-Item "x64\Release\40kRL.exe" "$dir\"
+          Copy-Item "x64\Release\*.dll" "$dir\"
+          Copy-Item "terminal.png" "$dir\"
+          Copy-Item "menu_background1.png" "$dir\"
+          Copy-Item -Recurse "Scripts" "$dir\Scripts"
+          Compress-Archive -Path "$dir\*" -DestinationPath "40kRL-$tag-win64.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "40kRL ${{ github.ref_name }}"
+          body: "Release build of 40kRL version ${{ github.ref_name }}."
+          files: 40kRL-${{ github.ref_name }}-win64.zip
