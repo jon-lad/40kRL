@@ -28,9 +28,12 @@ namespace Colors {
     constexpr TCODColor damage{255, 0, 0};           // damage / danger (red)
     constexpr TCODColor damageLight{255, 63, 63};    // light damage flash
     constexpr TCODColor damageDark{127, 0, 0};       // dark damage backdrop
+    constexpr TCODColor darkRed{95, 0, 0};           // corpse tint (dark red)
     constexpr TCODColor confusion{63, 0, 127};       // confusion effect (darker violet)
     constexpr TCODColor levelUp{255, 191, 127};      // level-up message (lighter orange)
     constexpr TCODColor surfaceMsg{63, 255, 63};     // surface/outdoor message (light green)
+    constexpr TCODColor yellow{255, 255, 0};         // level-up announcement
+    constexpr TCODColor menuFrame{200, 180, 50};     // menu frame/title colour
 
     // ─── Map rendering ──────────────────────────────────────────────────
     constexpr TCODColor lightBlue{63, 63, 255};      // generic light blue (if needed)

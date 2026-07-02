@@ -12,7 +12,7 @@ TEST_CASE("Damage formula: power - defence", "[attacker]")
     SECTION("standard hit")
     {
         MonsterDestructible d(20.0f, 3.0f, "c", 0);
-        Actor dummy(0, 0, 'x', "d", TCOD_white);
+        Actor dummy(0, 0, 'x', "d", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
 
         d.takeDamage(&dummy, 8.0f); // effective = 8 - 3 = 5
@@ -22,7 +22,7 @@ TEST_CASE("Damage formula: power - defence", "[attacker]")
     SECTION("blocked hit (power <= defence)")
     {
         MonsterDestructible d(20.0f, 5.0f, "c", 0);
-        Actor dummy(0, 0, 'x', "d", TCOD_white);
+        Actor dummy(0, 0, 'x', "d", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
 
         d.takeDamage(&dummy, 3.0f); // effective = 3 - 5 = -2 → 0
@@ -40,7 +40,7 @@ TEST_CASE("PBT: effective damage is always non-negative", "[attacker][pbt]")
         const float maxHp   = 1000.0f;
 
         MonsterDestructible d(maxHp, defence, "c", 0);
-        Actor dummy(0, 0, 'x', "d", TCOD_white);
+        Actor dummy(0, 0, 'x', "d", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
 
         const float hpBefore = d.hp;

@@ -78,17 +78,17 @@ void Engine::nextLevel()
 		dungeonLevel++;
 	}
 
-	gui->message(TCOD_light_violet, "You take a moment to rest and recover your strength.");
+	gui->message(Colors::healing, "You take a moment to rest and recover your strength.");
 	player->destructible->heal(static_cast<int>(player->destructible->maxHp / 2));
 
 	const bool isOutdoor = (dungeonLevel == 0);
 
 	if (isOutdoor) {
-		gui->message(TCOD_light_green, "You emerge from the depths onto the planet surface.");
+		gui->message(Colors::surfaceMsg, "You emerge from the depths onto the planet surface.");
 	} else if (stairs->getGlyph() == '<') {
-		gui->message(TCOD_red, "You ascend closer to the surface.");
+		gui->message(Colors::damage, "You ascend closer to the surface.");
 	} else {
-		gui->message(TCOD_red, "You descend deeper underground.");
+		gui->message(Colors::damage, "You descend deeper underground.");
 	}
 
 	map.reset();
@@ -197,7 +197,7 @@ void Engine::sendToBack(Actor* actor)
 void Engine::init()
 {
 	// Create the player.
-	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", TCOD_white);
+	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", Colors::white);
 	player = newPlayer.get();
 	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
 	newPlayer->attacker     = std::make_unique<Attacker>(5.0f);
@@ -206,7 +206,7 @@ void Engine::init()
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create the stairs (always visible, never blocks). '<' = ascend toward surface.
-	auto newStairs = std::make_unique<Actor>(0, 0, '<', "stairs", TCOD_white);
+	auto newStairs = std::make_unique<Actor>(0, 0, '<', "stairs", Colors::white);
 	stairs = newStairs.get();
 	newStairs->blocks  = false;
 	newStairs->fovOnly = false;
@@ -218,7 +218,7 @@ void Engine::init()
 		map->getWidth(), map->getHeight());
 	camera->update(player, false);
 
-	gui->message(TCODColor::lightGrey, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
+	gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 	gameStatus = STARTUP;
 }
 

@@ -32,7 +32,7 @@ void Destructible::die(Actor* owner)
 {
 	owner->setGlyph('%');
 	owner->ai.reset();
-	owner->setColor(TCOD_dark_red);
+	owner->setColor(Colors::darkRed);
 	owner->name   = corpseName;
 	owner->blocks = false;
 	engine.sendToBack(owner); // draw corpses beneath living actors
@@ -48,7 +48,7 @@ void MonsterDestructible::die(Actor* owner)
 {
 	std::stringstream ss;
 	ss << owner->name << " is dead! You gain " << xp << " xp.";
-	engine.gui->message(TCOD_light_grey, ss.str());
+	engine.gui->message(Colors::uiText, ss.str());
 	engine.player->destructible->xp += xp;
 	Destructible::die(owner);
 }
@@ -61,7 +61,7 @@ PlayerDestructible::PlayerDestructible(float maxHp, float defense, std::string_v
 
 void PlayerDestructible::die(Actor* owner)
 {
-	engine.gui->message(TCOD_red, "You died!");
+	engine.gui->message(Colors::damage, "You died!");
 	Destructible::die(owner);
 	engine.gameStatus = Engine::DEFEAT;
 }

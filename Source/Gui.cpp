@@ -15,13 +15,13 @@ Gui::Gui()
 
 void Gui::render()
 {
-	hudConsole->setDefaultBackground(TCODColor::black);
+	hudConsole->setDefaultBackground(Colors::black);
 	hudConsole->clear();
 
 	renderBar(1, 1, constants::BAR_WIDTH, "HP",
 		engine.player->destructible->hp,
 		engine.player->destructible->maxHp,
-		TCOD_light_red, TCOD_darker_red);
+		Colors::damageLight, Colors::damageDark);
 
 	PlayerAi* playerAi = static_cast<PlayerAi*>(engine.player->ai.get());
 	if (playerAi) {
@@ -30,7 +30,7 @@ void Gui::render()
 		renderBar(1, 5, constants::BAR_WIDTH, xpLabel.str(),
 			static_cast<float>(engine.player->destructible->xp),
 			static_cast<float>(playerAi->getNextLevelXp()),
-			TCOD_light_violet, TCOD_darker_violet);
+			Colors::healing, Colors::confusion);
 	}
 
 	// Draw the message log — oldest messages are dim, newest are bright.
@@ -45,7 +45,7 @@ void Gui::render()
 
 	renderMouseLook();
 
-	hudConsole->setDefaultForeground(TCOD_white);
+	hudConsole->setDefaultForeground(Colors::white);
 	std::stringstream levelLabel;
 	levelLabel << "Dungeon level " << engine.dungeonLevel;
 	hudConsole->printf(3, 3, levelLabel.str().c_str());
@@ -68,7 +68,7 @@ void Gui::renderBar(int x, int y, int width, std::string_view name,
 	hudConsole->rect(x, y, filledWidth, 1, false, TCOD_BKGND_SET);
 
 	// Label centred over the bar
-	hudConsole->setDefaultForeground(TCOD_white);
+	hudConsole->setDefaultForeground(Colors::white);
 	std::stringstream label;
 	label << name << " : " << value << "/" << maxValue;
 	hudConsole->printf(x + width / 2, y, TCOD_BKGND_NONE, TCOD_CENTER, label.str().c_str());
@@ -89,7 +89,7 @@ void Gui::renderMouseLook()
 		}
 	}
 
-	hudConsole->setDefaultForeground(TCODColor::lightGrey);
+	hudConsole->setDefaultForeground(Colors::uiText);
 	hudConsole->printf(1, 0, actorNames.c_str());
 }
 
@@ -133,7 +133,7 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode)
 	if (mode == DisplayMode::PAUSE) {
 		menuX = engine.screenWidth  / 2 - constants::PAUSE_MENU_WIDTH  / 2;
 		menuY = engine.screenHeight / 2 - constants::PAUSE_MENU_HEIGHT / 2;
-		TCODConsole::root->setDefaultForeground(TCODColor(200, 180, 50));
+		TCODConsole::root->setDefaultForeground(Colors::menuFrame);
 		TCODConsole::root->printFrame(menuX, menuY,
 			constants::PAUSE_MENU_WIDTH, constants::PAUSE_MENU_HEIGHT,
 			true, TCOD_BKGND_ALPHA(70), "menu");
@@ -150,7 +150,7 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode)
 		int row = 0;
 		for (const auto& item : items) {
 			TCODConsole::root->setDefaultForeground(
-				(row == selectedItem) ? TCOD_lighter_orange : TCOD_light_grey);
+				(row == selectedItem) ? Colors::levelUp : Colors::uiText);
 			TCODConsole::root->print(menuX, menuY + row * 3, item->label.c_str());
 			row++;
 		}

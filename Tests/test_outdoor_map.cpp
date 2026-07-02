@@ -290,7 +290,7 @@ TEST_CASE("Camera: BSP mode centres on player", "[outdoor][camera]")
     const int vpH  = 43;
 
     Camera cam(0, 0, vpW, vpH, mapW, mapH);
-    Actor player(40, 20, '@', "Player", TCOD_white);
+    Actor player(40, 20, '@', "Player", Colors::white);
 
     cam.update(&player, false);
 
@@ -321,7 +321,7 @@ TEST_CASE("Camera: outdoor mode scrolls left when player near left edge", "[outd
 
     // Player at world x=50: screenX = 50 + (-40) = 10, which is < scrollMargin(20)
     // Should scroll x += 1 (scroll left to reveal more on left)
-    Actor player(50, 40, '@', "Player", TCOD_white);
+    Actor player(50, 40, '@', "Player", Colors::white);
     cam.update(&player, true);
 
     REQUIRE(cam.x == -39); // -40 + 1 = -39
@@ -340,7 +340,7 @@ TEST_CASE("Camera: outdoor mode scrolls right when player near right edge", "[ou
 
     // Player at world x=100: screenX = 100 + (-40) = 60, viewport width = 80
     // 60 >= (80 - 20) = 60 → should scroll x -= 1
-    Actor player(100, 40, '@', "Player", TCOD_white);
+    Actor player(100, 40, '@', "Player", Colors::white);
     cam.update(&player, true);
 
     REQUIRE(cam.x == -41); // -40 - 1 = -41
@@ -359,7 +359,7 @@ TEST_CASE("Camera: clamps to map bounds after scroll", "[outdoor][camera]")
 
     // Player at far right: screenX = 150 + (-80) = 70, which is >= (80-20)=60 → scroll x -= 1
     // x would become -81, but clamp to -(160-80) = -80
-    Actor player(150, 80, '@', "Player", TCOD_white);
+    Actor player(150, 80, '@', "Player", Colors::white);
     cam.update(&player, true);
 
     REQUIRE(cam.x == -80); // clamped

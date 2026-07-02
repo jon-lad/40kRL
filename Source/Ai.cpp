@@ -28,7 +28,7 @@ void PlayerAi::update(Actor* owner)
 
 		std::stringstream ss;
 		ss << "Your battle skills grow stronger! You reached level " << xpLevel << ".";
-		engine.gui->message(TCOD_yellow, ss.str());
+		engine.gui->message(Colors::yellow, ss.str());
 
 		engine.gui->menu.clear();
 		engine.gui->menu.addItem(Menu::MenuItemCode::CONSTITUTION, "Constitution (+20HP)");
@@ -92,7 +92,7 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 		const bool isCorpse = actor->destructible && actor->destructible->isDead();
 		const bool isItem   = actor->pickable != nullptr;
 		if ((isCorpse || isItem) && actor->getX() == targetX && actor->getY() == targetY) {
-			engine.gui->message(TCODColor::lightGrey, "Theres a # here", actor->name);
+			engine.gui->message(Colors::uiText, "Theres a # here", actor->name);
 		}
 	}
 
@@ -108,10 +108,10 @@ Actor* PlayerAi::chooseFromInventory(Actor* owner)
 	static constexpr int INVENTORY_HEIGHT = 28;
 	static TCODConsole inventoryConsole(INVENTORY_WIDTH, INVENTORY_HEIGHT);
 
-	inventoryConsole.setDefaultForeground(TCODColor(200, 180, 50));
+	inventoryConsole.setDefaultForeground(Colors::menuFrame);
 	inventoryConsole.printFrame(0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT, true, TCOD_BKGND_DEFAULT, "inventory");
 
-	inventoryConsole.setDefaultForeground(TCOD_white);
+	inventoryConsole.setDefaultForeground(Colors::white);
 	int shortcutKey = 'a';
 	int row = 1;
 	for (const auto& itemPtr : owner->container->inventory) {
@@ -152,7 +152,7 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			if (item->pickable && item->getX() == owner->getX() && item->getY() == owner->getY()) {
 				if (item->pickable->pick(std::move(*actor), owner)) {
 					pickedUp = true;
-					engine.gui->message(TCODColor::lightGrey, "You pick up the #.", item->name);
+					engine.gui->message(Colors::uiText, "You pick up the #.", item->name);
 					// Erase the now-null slot left by the move.
 					auto i = engine.actors.begin();
 					while (i != engine.actors.end()) {
@@ -161,12 +161,12 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 					break;
 				} else if (!pickedUp) {
 					pickedUp = true; // suppress the "nothing here" message
-					engine.gui->message(TCOD_red, "Your inventory is full!");
+					engine.gui->message(Colors::damage, "Your inventory is full!");
 				}
 			}
 		}
 		if (!pickedUp) {
-			engine.gui->message(TCODColor::lightGrey, "There is nothing here to pick up.");
+			engine.gui->message(Colors::uiText, "There is nothing here to pick up.");
 		}
 		engine.gameStatus = Engine::NEW_TURN;
 		break;
@@ -202,7 +202,7 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			&& engine.stairs->glyph == '<') {
 			engine.nextLevel();
 		} else {
-			engine.gui->message(TCOD_light_grey, "There are no stairs here.");
+			engine.gui->message(Colors::uiText, "There are no stairs here.");
 		}
 		break;
 
@@ -211,7 +211,7 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			&& engine.stairs->glyph == '>') {
 			engine.nextLevel();
 		} else {
-			engine.gui->message(TCOD_light_grey, "There are no stairs here.");
+			engine.gui->message(Colors::uiText, "There are no stairs here.");
 		}
 		break;
 	}
