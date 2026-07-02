@@ -56,13 +56,18 @@ jobs:
           REF_SAFE=$(echo "${{ github.ref_name }}" | tr '/' '-')
           echo "ARTIFACT_NAME=40kRL-${REF_SAFE}-${{ inputs.configuration }}" >> $GITHUB_ENV
 
+      - name: Stage release files
+        shell: cmd
+        run: |
+          mkdir release
+          copy x64\${{ inputs.configuration }}\40kRL.exe release\
+          copy x64\${{ inputs.configuration }}\*.dll release\
+          xcopy Scripts release\Scripts\ /E /I /Y
+          copy menu_background1.png release\
+          copy terminal.png release\
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
-          path: |
-            x64/${{ inputs.configuration }}/40kRL.exe
-            x64/${{ inputs.configuration }}/*.dll
-            Scripts/
-            menu_background1.png
-            terminal.png
+          path: release/
