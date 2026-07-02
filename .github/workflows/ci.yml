@@ -53,7 +53,7 @@ jobs:
 
       - name: Run tests
         run: |
-          $testExe = "Tests\${{ matrix.platform }}\${{ matrix.configuration }}\40kRL_Tests.exe"
+          $testExe = "${{ matrix.platform }}\${{ matrix.configuration }}\40kRL_Tests.exe"
           if (Test-Path $testExe) {
             & $testExe --reporter compact
           } else {
