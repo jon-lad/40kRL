@@ -17,7 +17,7 @@ env:
   VCPKG_ROOT: C:\vcpkg
 
 jobs:
-  build-and-test:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
