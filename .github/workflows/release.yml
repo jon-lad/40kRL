@@ -36,7 +36,7 @@ jobs:
 
       - name: Install dependencies via vcpkg
         shell: cmd
-        run: vcpkg install libtcod lua sol2 sdl2
+        run: vcpkg install libtcod lua sol2 sdl3
 
       - name: Build solution
         shell: cmd
