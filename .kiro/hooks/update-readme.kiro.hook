@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Update README on changes",
+  "description": "When source or header files are edited, prompts the agent to review and update README.md if the changes affect build instructions, features, or project structure.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "*.h",
+      "*.cpp",
+      "*.vcxproj",
+      "*.yml"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file, project file, or CI workflow was just edited. Check if README.md needs updating to reflect changes in build instructions, dependencies, features, project structure, or controls. If it does, update it. If not, do nothing."
+  }
+}
