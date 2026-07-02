@@ -50,10 +50,16 @@ jobs:
         shell: cmd
         run: x64\${{ inputs.configuration }}\40kRL_Tests.exe --reporter console
 
+      - name: Set artifact name
+        shell: bash
+        run: |
+          REF_SAFE=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          echo "ARTIFACT_NAME=40kRL-${REF_SAFE}-${{ inputs.configuration }}" >> $GITHUB_ENV
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: 40kRL-${{ github.ref_name }}-${{ inputs.configuration }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: |
             x64/${{ inputs.configuration }}/40kRL.exe
             x64/${{ inputs.configuration }}/*.dll
