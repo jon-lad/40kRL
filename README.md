@@ -22,23 +22,35 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 
 ### Requirements
 
-- Visual Studio 2019+ (MSVC v142 toolset)
+- Visual Studio 2022+ (MSVC v145 toolset, C++17)
 - Windows 10 SDK
-- [libtcod 1.15.0](https://github.com/libtcod/libtcod/releases) (x86 MSVC build)
-- [sol2](https://github.com/ThePhD/sol2) (header-only Lua binding)
-- Lua 5.x
+- [vcpkg](https://github.com/microsoft/vcpkg) (C++ package manager)
 
 ### Steps
 
 1. Clone the repository
-2. Download libtcod 1.15.0 and place it so the include path is accessible (the project expects it at a sibling directory — adjust `IncludePath` in the `.vcxproj` if needed)
-3. Open `40kRL.sln` in Visual Studio
-4. Build the `40kRL` project (Debug or Release, x86 or x64)
-5. Ensure `libtcod.dll`, `SDL2.dll`, and `terminal.png` are in the output directory alongside the executable
+2. Install and bootstrap vcpkg:
+   ```powershell
+   git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+   C:\vcpkg\bootstrap-vcpkg.bat
+   ```
+3. Install dependencies with the overlay port:
+   ```powershell
+   C:\vcpkg\vcpkg.exe install libtcod:x64-windows sol2:x64-windows lua:x64-windows --overlay-ports=vcpkg-overlay/ports
+   C:\vcpkg\vcpkg.exe integrate install
+   ```
+4. Open `40kRL.sln` in Visual Studio
+5. Build the `40kRL` project (Debug or Release, x64)
+6. Run from the project root directory (so `Scripts/` and `terminal.png` are found)
 
 ### Running Tests
 
-The solution includes a `40kRL_Tests` project using [Catch2](https://github.com/catchorg/Catch2) and [RapidCheck](https://github.com/emil-e/rapidcheck) for property-based testing. Build and run the test project from Visual Studio's Test Explorer.
+The solution includes a `40kRL_Tests` project using [Catch2](https://github.com/catchorg/Catch2) and a minimal [RapidCheck](https://github.com/emil-e/rapidcheck)-compatible stub for property-based testing.
+
+```powershell
+msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
+& .\x64\Debug\40kRL_Tests.exe --reporter compact
+```
 
 ## Project Structure
 
