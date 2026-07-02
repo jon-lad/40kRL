@@ -65,6 +65,12 @@ jobs:
           xcopy Scripts release\Scripts\ /E /I /Y
           copy menu_background1.png release\
           copy terminal.png release\
+          REM Copy MSVC runtime redistributable DLLs
+          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\vcruntime140.dll") do copy "%%f" release\ 2>nul
+          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\vcruntime140_1.dll") do copy "%%f" release\ 2>nul
+          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\msvcp140.dll") do copy "%%f" release\ 2>nul
+          REM Copy any libtcod data files (fonts, etc.)
+          if exist "C:\vcpkg\installed\x64-windows\share\libtcod\data" xcopy "C:\vcpkg\installed\x64-windows\share\libtcod\data" release\ /E /I /Y 2>nul
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
