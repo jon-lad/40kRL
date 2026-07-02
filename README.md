@@ -9,6 +9,7 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 ## Features
 
 - Procedural dungeon generation via BSP (Binary Space Partitioning)
+- Perlin noise outdoor terrain (ground, trees, water) with connectivity guarantee
 - Turn-based movement and combat with melee attacks
 - FOV (field of view) with libtcod's shadow-casting algorithm
 - Scent-tracking monster AI that follows the player even outside line of sight
@@ -17,6 +18,7 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 - Save/load via binary archives (TCODZip)
 - Scrolling camera with a 160×86 map viewed through an 80×43 viewport
 - Level-up system with XP rewards
+- Ascending/descending stairs between dungeon levels and the planet surface
 
 ## Building
 
@@ -77,6 +79,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | `g` | Pick up item |
 | `i` | Open inventory |
 | `d` | Drop item |
+| `<` | Ascend stairs |
 | `>` | Descend stairs |
 | `Esc` | Save and return to menu |
 
