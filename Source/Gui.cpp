@@ -156,16 +156,15 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode)
 		}
 		TCODConsole::flush();
 
-		TCOD_key_t key;
-		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS, &key, nullptr);
-		switch (key.vk) {
-		case TCODK_UP:
+		pollInput(engine.inputState);
+		switch (engine.inputState.key.key) {
+		case SDLK_UP:
 			selectedItem = (selectedItem > 0) ? selectedItem - 1 : static_cast<int>(items.size()) - 1;
 			break;
-		case TCODK_DOWN:
+		case SDLK_DOWN:
 			selectedItem = (selectedItem + 1) % static_cast<int>(items.size());
 			break;
-		case TCODK_ENTER: {
+		case SDLK_RETURN: {
 			auto it = items.begin();
 			std::advance(it, selectedItem);
 			return (*it)->code;

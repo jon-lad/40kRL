@@ -27,7 +27,6 @@ void Engine::update()
 	if (gameStatus == STARTUP) { map->computeFOV(); }
 	gameStatus = IDLE;
 
-	TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, nullptr, nullptr);
 	pollInput(inputState);
 
 	if (inputState.key.key == SDLK_ESCAPE) {
@@ -153,19 +152,23 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 				if (map->isInFOV(cx, cy) && (maxRange == 0.0f || player->getDistance(cx, cy) <= maxRange)) {
 					auto [screenX, screenY] = camera->apply(cx, cy);
 					TCODColor col = TCODConsole::root->getCharForeground(screenX, screenY);
-					TCODConsole::root->setCharForeground(screenX, screenY, col * 1.2f);
+					TCOD_ColorRGB bright = {
+						static_cast<uint8_t>(std::min(255, col.r * 6 / 5)),
+						static_cast<uint8_t>(std::min(255, col.g * 6 / 5)),
+						static_cast<uint8_t>(std::min(255, col.b * 6 / 5))
+					};
+					TCOD_console_put_rgb(TCODConsole::root->get_data(), screenX, screenY, 0, &bright, nullptr, TCOD_BKGND_NONE);
 				}
 			}
 		}
 
-		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS | TCOD_EVENT_MOUSE, nullptr, nullptr);
 		pollInput(inputState);
 		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
 
 		if (map->isInFOV(worldX, worldY)
 			&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
 		{
-			TCODConsole::root->setCharBackground(inputState.mouse.cellX, inputState.mouse.cellY, TCOD_white);
+			renderSetBg(TCODConsole::root->get_data(), inputState.mouse.cellX, inputState.mouse.cellY, {255, 255, 255});
 			if (inputState.mouse.lbutton_pressed) {
 				*x = worldX;
 				*y = worldY;
