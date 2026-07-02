@@ -98,7 +98,7 @@ Enemy and item definitions live in `Scripts/` as Lua tables. You can add new ene
 
 ## Releases
 
-Tagged commits (e.g. `1.0.0`) automatically build a Release via GitHub Actions and publish a `40kRL-<version>-win64.zip` containing the executable, runtime DLLs, scripts, and assets. Download the latest from the [Releases](../../releases) page.
+The repository includes a manual **Release Build** workflow (Actions → Release Build → Run workflow) that builds and tests the project in either Debug or Release configuration. Build artifacts (exe, DLLs, scripts, assets) are uploaded as workflow artifacts for download.
 
 ## License
 

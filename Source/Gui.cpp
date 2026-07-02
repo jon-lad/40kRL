@@ -147,6 +147,8 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode)
 	}
 
 	while (!TCODConsole::isWindowClosed()) {
+		pollInput(engine.inputState);
+
 		int row = 0;
 		for (const auto& item : items) {
 			TCODConsole::root->setDefaultForeground(
@@ -156,20 +158,25 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode)
 		}
 		TCODConsole::flush();
 
-		pollInput(engine.inputState);
-		switch (engine.inputState.key.key) {
-		case SDLK_UP:
-			selectedItem = (selectedItem > 0) ? selectedItem - 1 : static_cast<int>(items.size()) - 1;
-			break;
-		case SDLK_DOWN:
-			selectedItem = (selectedItem + 1) % static_cast<int>(items.size());
-			break;
-		case SDLK_RETURN: {
-			auto it = items.begin();
-			std::advance(it, selectedItem);
-			return (*it)->code;
+		if (engine.inputState.key.pressed) {
+			switch (engine.inputState.key.key) {
+			case SDLK_UP:
+				selectedItem = (selectedItem > 0) ? selectedItem - 1 : static_cast<int>(items.size()) - 1;
+				break;
+			case SDLK_DOWN:
+				selectedItem = (selectedItem + 1) % static_cast<int>(items.size());
+				break;
+			case SDLK_RETURN: {
+				auto it = items.begin();
+				std::advance(it, selectedItem);
+				return (*it)->code;
+			}
+			default: break;
+			}
 		}
-		default: break;
+
+		if (engine.inputState.windowClosed) {
+			return MenuItemCode::NONE;
 		}
 	}
 	return MenuItemCode::NONE;

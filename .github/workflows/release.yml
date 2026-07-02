@@ -12,8 +12,12 @@ on:
           - Debug
           - Release
 
+env:
+  VCPKG_DEFAULT_TRIPLET: x64-windows
+  VCPKG_ROOT: C:\vcpkg
+
 jobs:
-  build-and-test:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
@@ -23,22 +27,58 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Build game
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-x64-windows-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: vcpkg-x64-windows-
+
+      - name: Install dependencies via vcpkg
+        shell: cmd
+        run: vcpkg install libtcod lua sol2 sdl3
+
+      - name: Build solution
+        shell: cmd
         run: msbuild 40kRL.sln /p:Configuration=${{ inputs.configuration }} /p:Platform=x64
 
-      - name: Build tests
-        run: msbuild Tests\40kRL_Tests.vcxproj /p:Configuration=${{ inputs.configuration }} /p:Platform=x64
+      - name: Copy runtime DLLs
+        shell: cmd
+        run: |
+          for %%f in (C:\vcpkg\installed\x64-windows\bin\*.dll) do (
+            echo %%~nxf | findstr /i "SDL2" >nul || copy "%%f" x64\${{ inputs.configuration }}\
+          )
 
       - name: Run tests
+        shell: cmd
         run: x64\${{ inputs.configuration }}\40kRL_Tests.exe --reporter console
+
+      - name: Set artifact name
+        shell: bash
+        run: |
+          REF_SAFE=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          echo "ARTIFACT_NAME=40kRL-${REF_SAFE}-${{ inputs.configuration }}" >> $GITHUB_ENV
+
+      - name: Stage release files
+        shell: cmd
+        run: |
+          mkdir release
+          copy x64\${{ inputs.configuration }}\40kRL.exe release\
+          for %%f in (x64\${{ inputs.configuration }}\*.dll) do (
+            echo %%~nxf | findstr /i "SDL2" >nul || copy "%%f" release\
+          )
+          xcopy Scripts release\Scripts\ /E /I /Y
+          copy menu_background1.png release\
+          copy terminal.png release\
+          REM Copy MSVC runtime redistributable DLLs
+          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\vcruntime140.dll") do copy "%%f" release\ 2>nul
+          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\vcruntime140_1.dll") do copy "%%f" release\ 2>nul
+          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\msvcp140.dll") do copy "%%f" release\ 2>nul
+          REM Copy any libtcod data files (fonts, etc.)
+          if exist "C:\vcpkg\installed\x64-windows\share\libtcod\data" xcopy "C:\vcpkg\installed\x64-windows\share\libtcod\data" release\ /E /I /Y 2>nul
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: 40kRL-${{ github.ref_name }}-${{ inputs.configuration }}
-          path: |
-            x64/${{ inputs.configuration }}/40kRL.exe
-            x64/${{ inputs.configuration }}/*.dll
-            Scripts/
-            menu_background1.png
-            terminal.png
+          name: ${{ env.ARTIFACT_NAME }}
+          path: release/

@@ -1,0 +1,20 @@
+<Project>
+  <!-- 
+    On CI (where VCPKG_ROOT is set), add vcpkg include/lib paths.
+    On local dev machines this file does nothing because the vcxproj 
+    already has the local libtcod/sol2 paths configured.
+  -->
+  <PropertyGroup Condition="'$(VCPKG_ROOT)' != ''">
+    <VcpkgInstalled>$(VCPKG_ROOT)\installed\x64-windows</VcpkgInstalled>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Condition="'$(VcpkgInstalled)' != ''">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(VcpkgInstalled)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(VcpkgInstalled)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>lua.lib;SDL3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>
