@@ -22,6 +22,7 @@ public:
 	Actor* stairs;
 
 	int fovRadius;
+	float carryingCapacity = 50.0f;
 	int screenWidth;
 	int screenHeight;
 

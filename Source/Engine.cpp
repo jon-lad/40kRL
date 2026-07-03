@@ -222,6 +222,20 @@ void Engine::init()
 		// Classes.lua missing or malformed — use defaults above.
 	}
 
+	// Load global config from Config.lua.
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Config.lua");
+
+		sol::table config = lua["config"];
+		if (config.valid()) {
+			carryingCapacity = config.get_or("carryingCapacity", 50.0f);
+		}
+	} catch (const sol::error&) {
+		// Config.lua missing or malformed — use defaults.
+	}
+
 	// Create the player.
 	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", Colors::white);
 	player = newPlayer.get();
@@ -229,6 +243,7 @@ void Engine::init()
 	newPlayer->attacker     = std::make_unique<Attacker>(playerPower, playerSkill);
 	newPlayer->ai           = std::make_unique<PlayerAi>();
 	newPlayer->container    = std::make_unique<Container>(playerInvSize);
+	newPlayer->equipment    = std::make_unique<Equipment>();
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create the stairs (always visible, never blocks). '<' = ascend toward surface.

@@ -12,7 +12,20 @@ Pickable::Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr<Eff
 
 bool Pickable::pick(std::unique_ptr<Actor> owner, Actor* wearer)
 {
-	if (wearer->container && wearer->container->add(std::move(owner))) {
+	if (!wearer->container) return false;
+
+	// Check carrying capacity
+	float totalWeight = 0.0f;
+	for (const auto& item : wearer->container->inventory) {
+		totalWeight += item->getWeight();
+	}
+	float itemWeight = owner->getWeight();
+	if (engine.carryingCapacity > 0 && totalWeight + itemWeight > engine.carryingCapacity) {
+		engine.gui->message(Colors::uiText, "Too heavy to carry.");
+		return false;
+	}
+
+	if (wearer->container->add(std::move(owner))) {
 		return true;
 	}
 	return false; // inventory full

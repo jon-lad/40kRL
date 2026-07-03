@@ -34,4 +34,7 @@ config = {
     -- Outdoor level transition and camera
     startingDepth          = 20,   -- player starts at this depth, ascends to 0 (surface)
     outdoorScrollMargin    = 20,
+
+    -- Carrying capacity (max total weight the player can carry; 0 = unlimited)
+    carryingCapacity = 50.0,
 }

@@ -159,6 +159,7 @@
     <ClCompile Include="Source\Persistent.cpp" />
     <ClCompile Include="Source\Pickable.cpp" />
     <ClCompile Include="Source\Equippable.cpp" />
+    <ClCompile Include="Source\Equipment.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
