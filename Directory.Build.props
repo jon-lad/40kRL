@@ -1,5 +1,22 @@
 <Project>
   <!-- 
+    Strict warnings for all builds. Treats warnings as errors so code
+    that compiles cleanly stays clean.
+  -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <!-- Suppress noisy warnings from third-party headers (libtcod, sol2) -->
+      <DisableSpecificWarnings>4996;4100;4189;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <!-- Treat vcpkg/external includes as system headers — warnings from them are silenced -->
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <!-- Also treat MSVC standard library headers as external -->
+      <TreatAngleIncludeAsExternal>true</TreatAngleIncludeAsExternal>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- 
     On CI (where VCPKG_ROOT is set), add vcpkg include/lib paths.
     On local dev machines this file does nothing because the vcxproj 
     already has the local libtcod/sol2 paths configured.
@@ -11,6 +28,8 @@
   <ItemDefinitionGroup Condition="'$(VcpkgInstalled)' != ''">
     <ClCompile>
       <AdditionalIncludeDirectories>$(VcpkgInstalled)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- Mark vcpkg headers as external so /external:W0 applies to them -->
+      <ExternalIncludePath>$(VcpkgInstalled)\include;%(ExternalIncludePath)</ExternalIncludePath>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(VcpkgInstalled)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

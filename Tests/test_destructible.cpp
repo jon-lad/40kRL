@@ -89,9 +89,9 @@ TEST_CASE("isDead returns true iff hp <= 0", "[destructible]")
 TEST_CASE("PBT: heal(amount) never exceeds maxHp", "[destructible][pbt]")
 {
     rc::prop("hp after heal is always <= maxHp", []() {
-        const float maxHp  = *rc::gen::inRange(1, 1000);
-        const float startHp = *rc::gen::inRange(0, static_cast<int>(maxHp));
-        const int   amount  = *rc::gen::inRange(0, 2000);
+        const float maxHp  = static_cast<float>(*rc::gen::inRange(1, 1000));
+        const float startHp = static_cast<float>(*rc::gen::inRange(0, static_cast<int>(maxHp)));
+        const float amount  = static_cast<float>(*rc::gen::inRange(0, 2000));
 
         MonsterDestructible d(maxHp, 0.0f, "c", 0);
         d.hp = startHp;
@@ -103,8 +103,8 @@ TEST_CASE("PBT: heal(amount) never exceeds maxHp", "[destructible][pbt]")
 TEST_CASE("PBT: takeDamage with power <= defence never reduces HP", "[destructible][pbt]")
 {
     rc::prop("damage <= defence leaves HP unchanged", []() {
-        const float defence = *rc::gen::inRange(0, 20);
-        const float power   = *rc::gen::inRange(0, static_cast<int>(defence));
+        const float defence = static_cast<float>(*rc::gen::inRange(0, 20));
+        const float power   = static_cast<float>(*rc::gen::inRange(0, static_cast<int>(defence)));
 
         MonsterDestructible d(100.0f, defence, "c", 0);
         Actor dummy(0, 0, 'x', "d", Colors::white);

@@ -79,7 +79,7 @@ void Engine::nextLevel()
 	}
 
 	gui->message(Colors::healing, "You take a moment to rest and recover your strength.");
-	player->destructible->heal(static_cast<int>(player->destructible->maxHp / 2));
+	player->destructible->heal(player->destructible->maxHp / 2.0f);
 
 	const bool isOutdoor = (dungeonLevel == 0);
 
