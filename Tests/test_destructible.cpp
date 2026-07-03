@@ -91,7 +91,7 @@ TEST_CASE("PBT: heal(amount) never exceeds maxHp", "[destructible][pbt]")
     rc::prop("hp after heal is always <= maxHp", []() {
         const float maxHp  = static_cast<float>(*rc::gen::inRange(1, 1000));
         const float startHp = static_cast<float>(*rc::gen::inRange(0, static_cast<int>(maxHp)));
-        const int   amount  = *rc::gen::inRange(0, 2000);
+        const float amount  = static_cast<float>(*rc::gen::inRange(0, 2000));
 
         MonsterDestructible d(maxHp, 0.0f, "c", 0);
         d.hp = startHp;
