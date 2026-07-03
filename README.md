@@ -83,6 +83,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | `<` | Ascend stairs |
 | `>` | Descend stairs |
 | `Esc` | Save and return to menu |
+| `F12` | Toggle debug mode (level-skip and dev tools) |
 
 ## Scripting
 

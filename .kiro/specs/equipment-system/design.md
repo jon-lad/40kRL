@@ -4,7 +4,7 @@
 
 The equipment system extends the existing component-based Actor architecture with an `Equippable` component that enables items to be worn or wielded in designated body slots. When equipped, items apply stat modifiers (power, defense, maxHp) to the player. The system integrates with the existing `Container` (inventory), `Attacker` (damage), `Destructible` (defense/HP), and `Persistent` (save/load) subsystems.
 
-Phase 1 targets melee weapons that increase attack power. The architecture accommodates future armor slots and a shop system by storing item weight and gold value on all items from the outset.
+Phase 1 targets melee weapons that increase attack power. The architecture accommodates future armor slots and a shop system by storing item weight and gold value on all items from the outset. Equipment can also modify the wielder's hit chance via the `Attacker` modifier system — positive skill modifiers (e.g., weapon optics) improve accuracy, while negative modifiers (e.g., heavy armor) reduce it.
 
 ### Design Goals
 
@@ -36,6 +36,9 @@ graph TD
         AT -->|base power| EPC[EffectivePowerCalc]
         E -->|power modifier| EPC
         EPC -->|effective power| DMG[Damage Formula]
+        E -->|skill modifier| ATTMOD[Attacker::addModifier/removeModifier]
+        ATTMOD -->|modifiers vector| THR[computeThreshold]
+        THR -->|effective skill| HIT[Hit Check d100]
     end
 
     C -->|inventory items| ES
@@ -46,6 +49,19 @@ graph TD
 The player Actor gains an `EquipmentSlots` structure (not a separate component — it lives inside `Container` or as a peer pointer set on the player). Each slot holds a raw pointer to an Actor that is **also** stored in the player's inventory list (equipped items remain owned by the Container). This avoids ownership ambiguity — the Container continues to own all item Actors; the EquipmentSlots merely track which inventory item occupies each slot.
 
 **Rationale:** Keeping equipped items in the Container's `inventory` list simplifies save/load (they serialize with the container) and weight calculations (all carried items are in one place). The slot pointers are lightweight metadata serialized alongside.
+
+### Skill Modifier Integration with Attacker
+
+When an item is equipped that has a non-zero `skill` modifier, the `Equipment::equip()` method calls `owner->attacker->addModifier(skill)` to push the value onto the Attacker's transient `modifiers` vector. This modifier is then included in `computeThreshold()` (which sums all modifiers and clamps to [1, 99]) for all subsequent hit checks.
+
+When that item is unequipped, `Equipment::unequip()` calls `owner->attacker->removeModifier(skill)` to erase the first occurrence of that value from the vector.
+
+**Key behaviors:**
+- If `skill == 0`, no modifier is added or removed (avoids polluting the vector with zero-value entries)
+- Multiple equipped items with skill modifiers each add their own entry independently
+- Positive values (e.g., weapon optics: +10) increase hit chance
+- Negative values (e.g., heavy armor: -5) decrease hit chance
+- The Attacker's `computeThreshold()` handles clamping, so equipment cannot push effective skill below 1 or above 99
 
 ## Components and Interfaces
 
@@ -68,6 +84,7 @@ struct StatModifiers {
     float power   = 0.0f;
     float defense = 0.0f;
     float maxHp   = 0.0f;
+    int   skill   = 0;      // hit chance modifier (signed), applied to Attacker::modifiers
 };
 
 class Equippable : public Persistent {
@@ -113,16 +130,21 @@ public:
     // Equips item into its target slot. Returns the previously equipped item
     // (which has been moved back to inventory), or nullptr if slot was empty.
     // Returns nullptr and does nothing if item has no equippable component.
-    Actor* equip(Actor* item, class Container& inventory);
+    // If the item has a non-zero skill modifier, calls owner->attacker->addModifier(skill).
+    // If swapping out an old item with a non-zero skill modifier, calls
+    // owner->attacker->removeModifier(oldSkill) before adding the new one.
+    Actor* equip(Actor* item, class Container& inventory, class Attacker* attacker);
 
     // Unequips the item in the given slot, moving it back to inventory.
+    // If the item has a non-zero skill modifier, calls owner->attacker->removeModifier(skill).
     // Returns false if inventory is full or slot is already empty.
-    bool unequip(EquipmentSlot slot, Container& inventory);
+    bool unequip(EquipmentSlot slot, Container& inventory, Attacker* attacker);
 
     // Returns the sum of all equipped modifiers for a given stat.
     float getTotalPowerModifier() const;
     float getTotalDefenseModifier() const;
     float getTotalMaxHpModifier() const;
+    int   getTotalSkillModifier() const;
 
     // Returns the total weight of all equipped items.
     float getEquippedWeight() const;
@@ -188,6 +210,51 @@ This replaces the raw `power` value in the damage formula. Defense modifiers fro
 
 **Design Decision:** Stat modifiers are computed on-the-fly from currently-equipped items rather than cached. The equipment set is at most 4 items — iterating them each attack is negligible. This avoids stale-cache bugs.
 
+### Skill Modifier Application Flow
+
+Unlike power/defense/maxHp modifiers (which are summed on-the-fly during combat), skill modifiers integrate with the existing `Attacker::modifiers` vector via push/erase semantics. This is because `computeThreshold()` already sums that vector — equipment simply participates as another modifier source.
+
+```cpp
+// In Equipment::equip():
+Actor* Equipment::equip(Actor* item, Container& inventory, Attacker* attacker) {
+    if (!item || !item->equippable) return nullptr;
+
+    EquipmentSlot targetSlot = item->equippable->slot;
+    Actor* previous = slots[static_cast<int>(targetSlot)];
+
+    // Remove old item's skill modifier if present
+    if (previous && previous->equippable->modifiers.skill != 0 && attacker) {
+        attacker->removeModifier(previous->equippable->modifiers.skill);
+    }
+
+    // ... swap logic (return previous to inventory) ...
+
+    // Apply new item's skill modifier if non-zero
+    if (item->equippable->modifiers.skill != 0 && attacker) {
+        attacker->addModifier(item->equippable->modifiers.skill);
+    }
+
+    slots[static_cast<int>(targetSlot)] = item;
+    return previous;
+}
+
+// In Equipment::unequip():
+bool Equipment::unequip(EquipmentSlot slot, Container& inventory, Attacker* attacker) {
+    Actor* item = slots[static_cast<int>(slot)];
+    if (!item) return false;
+    // ... inventory full check ...
+
+    // Remove skill modifier if non-zero
+    if (item->equippable->modifiers.skill != 0 && attacker) {
+        attacker->removeModifier(item->equippable->modifiers.skill);
+    }
+
+    slots[static_cast<int>(slot)] = nullptr;
+    // ... move item back to inventory ...
+    return true;
+}
+```
+
 ### Equipment Menu
 
 A new UI state in the game loop, triggered by a configurable key (default: `e`). The menu displays:
@@ -223,6 +290,19 @@ equipment = {
         power   = 3.0,
         defense = 0.0,
         maxHp   = 0.0,
+        skill   = 0,      -- optional, defaults to 0
+    },
+    {
+        name    = "Scoped Bolter",
+        glyph   = "}",
+        color   = "lightGrey",
+        slot    = "weapon",
+        weight  = 5.0,
+        value   = 80,
+        power   = 4.0,
+        defense = 0.0,
+        maxHp   = 0.0,
+        skill   = 10,     -- weapon optics improve hit chance
     },
     {
         name    = "Flak Armor",
@@ -234,16 +314,18 @@ equipment = {
         power   = 0.0,
         defense = 2.0,
         maxHp   = 0.0,
+        skill   = -5,     -- heavy armor reduces accuracy
     },
 }
 ```
 
-At initialization, the engine loads this file via sol2, iterates the `equipment` table, validates each entry (required fields: name, glyph, color, slot, weight; optional: value defaults to 0, modifiers default to 0), and registers each as a spawnable equipment template.
+At initialization, the engine loads this file via sol2, iterates the `equipment` table, validates each entry (required fields: name, glyph, color, slot, weight; optional: value defaults to 0, power/defense/maxHp default to 0.0, skill defaults to 0), and registers each as a spawnable equipment template.
 
 **Validation rules:**
 - `slot` must be one of: "weapon", "offhand", "head", "body"
 - `weight` must be >= 0
 - `name` and `glyph` must be non-empty
+- `skill` must be an integer (if present); defaults to 0 if absent
 - Invalid entries log a warning and are skipped
 
 ### Persistence
@@ -280,20 +362,23 @@ player_equipment->save(zip);
 
 ### StatModifiers Struct
 
-| Field   | Type  | Default | Description                |
-|---------|-------|---------|----------------------------|
-| power   | float | 0.0     | Added to attack power      |
-| defense | float | 0.0     | Added to damage reduction  |
-| maxHp   | float | 0.0     | Added to maximum hit points|
+| Field   | Type  | Default | Description                                    |
+|---------|-------|---------|------------------------------------------------|
+| power   | float | 0.0     | Added to attack power                          |
+| defense | float | 0.0     | Added to damage reduction                      |
+| maxHp   | float | 0.0     | Added to maximum hit points                    |
+| skill   | int   | 0       | Added to Attacker modifiers vector (hit chance)|
 
 ### Equippable Component Fields
 
-| Field     | Type           | Constraints      | Description                  |
-|-----------|----------------|------------------|------------------------------|
-| slot      | EquipmentSlot  | one of 4 values  | Target body slot             |
-| modifiers | StatModifiers  | any float values | Stat bonuses when equipped   |
-| weight    | float          | >= 0.0           | Item weight in abstract units|
-| value     | int            | >= 0             | Gold worth                   |
+| Field     | Type           | Constraints      | Description                          |
+|-----------|----------------|------------------|--------------------------------------|
+| slot      | EquipmentSlot  | one of 4 values  | Target body slot                     |
+| modifiers | StatModifiers  | any values       | Stat bonuses when equipped           |
+| weight    | float          | >= 0.0           | Item weight in abstract units        |
+| value     | int            | >= 0             | Gold worth                           |
+
+Note: `modifiers.skill` is an int (positive or negative) that integrates with `Attacker::addModifier`/`removeModifier` on equip/unequip.
 
 ### Carrying Capacity Model
 
@@ -308,9 +393,9 @@ player_equipment->save(zip);
 
 ### Property 1: Equippable component field storage
 
-*For any* valid EquipmentSlot, StatModifiers (power, defense, maxHp), non-negative weight, and non-negative integer value, constructing an Equippable component and reading back its fields SHALL yield the same values.
+*For any* valid EquipmentSlot, StatModifiers (power, defense, maxHp, skill), non-negative weight, and non-negative integer value, constructing an Equippable component and reading back its fields SHALL yield the same values.
 
-**Validates: Requirements 1.1, 1.3, 8.1**
+**Validates: Requirements 1.1, 1.3, 8.1, 11.5**
 
 ### Property 2: Equippable item identification
 
@@ -332,9 +417,9 @@ player_equipment->save(zip);
 
 ### Property 5: Stat modifier round-trip
 
-*For any* equippable item with arbitrary stat modifiers, equipping and then unequipping that item SHALL return the player's effective stats (power, defense, maxHp) to their pre-equip values.
+*For any* equippable item with arbitrary stat modifiers (power, defense, maxHp, skill), equipping and then unequipping that item SHALL return the player's effective stats (power, defense, maxHp) and the Attacker's modifiers vector to their pre-equip values.
 
-**Validates: Requirements 3.2, 4.2**
+**Validates: Requirements 3.2, 4.2, 5.4, 5.5, 11.1, 11.2**
 
 ### Property 6: Effective power formula
 
@@ -368,7 +453,7 @@ player_equipment->save(zip);
 
 ### Property 11: Lua equipment definition loading round-trip
 
-*For any* valid Lua equipment table with name, glyph, color, slot, weight, value, and stat modifiers, loading that definition SHALL produce an Actor whose fields (name, glyph, color, equippable.slot, equippable.weight, equippable.value, equippable.modifiers) match the Lua source values.
+*For any* valid Lua equipment table with name, glyph, color, slot, weight, value, and stat modifiers (power, defense, maxHp, skill), loading that definition SHALL produce an Actor whose fields (name, glyph, color, equippable.slot, equippable.weight, equippable.value, equippable.modifiers including skill) match the Lua source values. If `skill` is absent from the Lua table, it SHALL default to 0.
 
 **Validates: Requirements 9.2, 9.3**
 
@@ -380,9 +465,27 @@ player_equipment->save(zip);
 
 ### Property 13: Save/load equipment round-trip
 
-*For any* equipment state (items in slots with various modifiers, weights, values), saving and then loading SHALL produce an equivalent equipment state where all slot assignments, stat modifiers, item weights, and item values match the pre-save state.
+*For any* equipment state (items in slots with various modifiers, weights, values), saving and then loading SHALL produce an equivalent equipment state where all slot assignments, stat modifiers (including skill), item weights, and item values match the pre-save state.
 
 **Validates: Requirements 10.1, 10.2, 10.3**
+
+### Property 14: Skill modifier application round-trip
+
+*For any* equippable item with a non-zero skill modifier value (positive or negative), equipping the item SHALL add that value to the Attacker's modifiers vector (increasing its length by one), and subsequently unequipping the same item SHALL remove that value (restoring the vector to its previous state), such that `computeThreshold()` returns the same value before equip and after unequip.
+
+**Validates: Requirements 11.1, 11.2, 11.5**
+
+### Property 15: Multiple skill modifiers are additive
+
+*For any* set of 1–4 equippable items each with non-zero skill modifiers, equipping all items SHALL result in the Attacker's `computeThreshold()` returning `clamp(baseSkill + sum(allSkillModifiers), 1, 99)`, and the modifiers vector SHALL contain one entry per equipped item's skill value.
+
+**Validates: Requirements 11.3**
+
+### Property 16: Zero skill modifier is a no-op
+
+*For any* equippable item with skill modifier equal to zero, equipping or unequipping that item SHALL NOT change the Attacker's modifiers vector length or contents.
+
+**Validates: Requirements 11.4**
 
 ## Error Handling
 
@@ -412,6 +515,11 @@ Specific examples and edge cases:
 - Default item value is 0 when unspecified
 - All four slot types can be equipped independently
 - Equipment menu shows "empty" for unoccupied slots
+- Equip item with skill=0, verify Attacker modifiers unchanged
+- Equip item with skill=+10, verify Attacker modifiers contains 10
+- Equip item with skill=-5, verify computeThreshold decreased by 5
+- Swap weapon with different skill modifier, verify old removed and new added
+- Unequip all skill items, verify modifiers vector is empty
 
 ### Property-Based Tests (RapidCheck stub)
 
@@ -423,19 +531,23 @@ Each correctness property maps to a property-based test using the project's exis
 
 **Generators needed:**
 - `genEquipmentSlot()` — random slot from {WEAPON, OFFHAND, HEAD, BODY}
-- `genStatModifiers()` — random power/defense/maxHp in range [0, 20]
+- `genStatModifiers()` — random power/defense/maxHp in range [0, 20], skill in [-20, 20]
 - `genWeight()` — random float in [0.0, 25.0]
 - `genValue()` — random int in [0, 500]
 - `genEquippableActor()` — actor with Pickable + Equippable using above generators
 - `genEquipmentState()` — random subset of slots filled with valid items
+- `genSkillModifier()` — random int in [-50, 50] (non-zero variants for modifier tests)
+- `genAttacker()` — Attacker with random base skillValue in [1, 99]
 
 **Property test file:** `Tests/test_equipment.cpp`
 
 ### Integration Tests
 
-- Load `Scripts/Equipment.lua` with real sol2, verify items are created correctly
+- Load `Scripts/Equipment.lua` with real sol2, verify items are created correctly (including skill field)
 - Save game with equipment, reload, verify equipment state matches
 - Full equip → attack → verify effective damage includes modifier
+- Equip weapon with skill=+10, verify computeThreshold returns baseSkill + 10
+- Equip weapon with skill=+10 and armor with skill=-5, verify computeThreshold returns baseSkill + 5
 
 ### Test Dependencies
 

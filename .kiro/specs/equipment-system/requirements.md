@@ -9,7 +9,8 @@ This document specifies requirements for an equipment system in 40kRL. The syste
 - **Equipment_System**: The subsystem responsible for managing equipment slots, equip/unequip actions, and stat modifier calculations.
 - **Equippable_Component**: A component attached to an Actor that marks the item as equippable, defining its target slot and stat modifiers.
 - **Equipment_Slot**: A named position on the player where one item can be worn or wielded. Valid slots are: weapon, offhand, head, body.
-- **Stat_Modifier**: A numeric bonus or penalty applied to a base stat (power, defense, maxHp) while an item is equipped.
+- **Stat_Modifier**: A numeric bonus or penalty applied to a base stat (power, defense, maxHp, skill) while an item is equipped.
+- **Skill_Modifier**: An integer bonus or penalty applied to the Attacker's hit chance modifier vector. Positive values increase hit chance; negative values decrease it. The modifier is added via addModifier() on equip and removed via removeModifier() on unequip.
 - **Carrying_Capacity**: The maximum total weight the player can carry across all inventory and equipped items.
 - **Item_Weight**: A non-negative float representing how heavy an item is in abstract weight units.
 - **Item_Value**: A non-negative integer representing the gold worth of an item (used by future shop system).
@@ -27,7 +28,7 @@ This document specifies requirements for an equipment system in 40kRL. The syste
 
 1. THE Equippable_Component SHALL store a target Equipment_Slot, a list of Stat_Modifiers, an Item_Weight, and an Item_Value.
 2. WHEN an Actor has both a Pickable_Component and an Equippable_Component, THE Equipment_System SHALL treat that Actor as an equippable item.
-3. THE Equippable_Component SHALL support Stat_Modifiers for power, defense, and maxHp properties.
+3. THE Equippable_Component SHALL support Stat_Modifiers for power, defense, maxHp, and skill properties.
 
 ### Requirement 2: Equipment Slots
 
@@ -68,6 +69,8 @@ This document specifies requirements for an equipment system in 40kRL. The syste
 1. WHEN the player attacks a target, THE Attacker component SHALL calculate Effective_Power as base power plus the sum of all power Stat_Modifiers from equipped items.
 2. WHEN no weapon is equipped, THE Attacker component SHALL use the base power value with no modifier.
 3. THE Equipment_System SHALL recalculate Effective_Power immediately when any item is equipped or unequipped.
+4. WHEN an item with a skill Stat_Modifier is equipped, THE Equipment_System SHALL add that modifier to the Attacker's modifiers vector using addModifier.
+5. WHEN an item with a skill Stat_Modifier is unequipped, THE Equipment_System SHALL remove that modifier from the Attacker's modifiers vector using removeModifier.
 
 ### Requirement 6: Equipment Menu
 
@@ -108,7 +111,7 @@ This document specifies requirements for an equipment system in 40kRL. The syste
 
 1. THE Equipment_System SHALL load equippable item definitions from a Lua script file at game initialization.
 2. WHEN a Lua_Equipment_Definition is loaded, THE Equipment_System SHALL create an item Actor with the specified glyph, name, color, Equipment_Slot, Item_Weight, Item_Value, and Stat_Modifiers.
-3. THE Lua_Equipment_Definition SHALL support specifying any combination of power, defense, and maxHp Stat_Modifiers.
+3. THE Lua_Equipment_Definition SHALL support specifying any combination of power, defense, maxHp, and skill Stat_Modifiers.
 4. WHEN a Lua_Equipment_Definition contains invalid data (missing required fields, unknown slot name, negative weight), THE Equipment_System SHALL log a warning and skip that definition.
 
 ### Requirement 10: Equipment Persistence
@@ -120,3 +123,15 @@ This document specifies requirements for an equipment system in 40kRL. The syste
 1. WHEN the game is saved, THE Equipment_System SHALL serialize all equipped items and their slot assignments to the save file.
 2. WHEN the game is loaded, THE Equipment_System SHALL restore all equipped items to their correct Equipment_Slots and reapply Stat_Modifiers.
 3. WHEN the game is loaded, THE Equipment_System SHALL restore Item_Weight and Item_Value for all items in the inventory and equipment.
+
+### Requirement 11: Skill Modifier Integration
+
+**User Story:** As a player, I want equipment to affect my hit chance so that weapon optics and heavy armor create meaningful trade-offs in combat accuracy.
+
+#### Acceptance Criteria
+
+1. WHEN an item with a skill Stat_Modifier is equipped, THE Equipment_System SHALL call addModifier on the player's Attacker component with the skill modifier value.
+2. WHEN an item with a skill Stat_Modifier is unequipped, THE Equipment_System SHALL call removeModifier on the player's Attacker component with the skill modifier value.
+3. WHEN multiple items with skill Stat_Modifiers are equipped simultaneously, THE Equipment_System SHALL add each modifier independently to the Attacker's modifiers vector.
+4. WHEN an item with a skill Stat_Modifier value of zero is equipped, THE Equipment_System SHALL not add a modifier to the Attacker's modifiers vector.
+5. THE Equipment_System SHALL support both positive skill Stat_Modifiers (accuracy bonus) and negative skill Stat_Modifiers (accuracy penalty) on equippable items.
