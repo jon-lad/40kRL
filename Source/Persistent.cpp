@@ -20,6 +20,15 @@ void Engine::save()
 	map->save(zip);
 	camera->save(zip);
 	player->save(zip);
+
+	// Save player equipment slot assignments (after player save, since items are in inventory)
+	if (player->equipment) {
+		zip.putInt(1); // has equipment
+		player->equipment->save(zip, *player->container);
+	} else {
+		zip.putInt(0);
+	}
+
 	stairs->save(zip);
 
 	// Save all actors except player and stairs (they are saved above).
@@ -75,6 +84,22 @@ void Engine::load()
 	player = newPlayer.get();
 	actors.emplace_front(std::move(newPlayer));
 	player->load(zip);
+
+	// Load player equipment slot assignments
+	int hasEquipment = zip.getInt();
+	if (hasEquipment) {
+		player->equipment = std::make_unique<Equipment>();
+		player->equipment->load(zip, *player->container);
+		// Reapply skill modifiers from equipped items
+		for (int i = 0; i < static_cast<int>(EquipmentSlot::COUNT); i++) {
+			Actor* equipped = player->equipment->getSlot(static_cast<EquipmentSlot>(i));
+			if (equipped && equipped->equippable && equipped->equippable->modifiers.skill != 0) {
+				player->attacker->addModifier(equipped->equippable->modifiers.skill);
+			}
+		}
+	} else {
+		player->equipment = std::make_unique<Equipment>();
+	}
 
 	auto newStairs = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
 	stairs = newStairs.get();
@@ -151,12 +176,14 @@ void Actor::save(TCODZip& zip)
 	zip.putInt(ai           != nullptr);
 	zip.putInt(pickable     != nullptr);
 	zip.putInt(container    != nullptr);
+	zip.putInt(equippable   != nullptr);  // NOTE: breaks old save format
 
 	if (attacker)     attacker->save(zip);
 	if (destructible) destructible->save(zip);
 	if (ai)           ai->save(zip);
 	if (pickable)     pickable->save(zip);
 	if (container)    container->save(zip);
+	if (equippable)   equippable->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -174,6 +201,7 @@ void Actor::load(TCODZip& zip)
 	const bool hasAi           = zip.getInt();
 	const bool hasPickable     = zip.getInt();
 	const bool hasContainer    = zip.getInt();
+	const bool hasEquippable   = zip.getInt();  // NOTE: breaks old save format
 
 	if (hasAttacker) {
 		attacker = std::make_unique<Attacker>(0.0f);
@@ -195,6 +223,10 @@ void Actor::load(TCODZip& zip)
 	if (hasContainer) {
 		container = std::make_unique<Container>(0);
 		container->load(zip);
+	}
+	if (hasEquippable) {
+		equippable = std::make_shared<Equippable>(EquipmentSlot::WEAPON, StatModifiers{}, 0.0f, 0);
+		equippable->load(zip);
 	}
 }
 

@@ -43,7 +43,7 @@ public:
 	// Returns true if the given actor is currently equipped in any slot.
 	bool isEquipped(const Actor* item) const;
 
-	void save(TCODZip& zip);
+	void save(TCODZip& zip, const Container& inventory);
 	void load(TCODZip& zip, Container& inventory);
 
 private:

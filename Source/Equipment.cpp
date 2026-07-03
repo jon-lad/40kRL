@@ -114,17 +114,16 @@ bool Equipment::isEquipped(const Actor* item) const {
 	return false;
 }
 
-void Equipment::save(TCODZip& zip) {
+void Equipment::save(TCODZip& zip, const Container& inventory) {
 	for (int i = 0; i < static_cast<int>(EquipmentSlot::COUNT); i++) {
 		if (slots[i]) {
 			zip.putInt(1); // slot occupied
-			// Write position of this item in the inventory list
-			// (slots hold pointers into the Container's inventory)
-			// Note: the caller must pass inventory so we can find the index,
-			// but save() doesn't take inventory — we store the pointer identity
-			// and resolve during load. For now we write a placeholder.
-			// This will be properly wired in task 8.2.
-			zip.putInt(0);
+			// Find index of this item in the inventory list
+			int index = 0;
+			for (auto it = inventory.inventory.begin(); it != inventory.inventory.end(); ++it, ++index) {
+				if (it->get() == slots[i]) break;
+			}
+			zip.putInt(index);
 		} else {
 			zip.putInt(0); // slot empty
 		}
