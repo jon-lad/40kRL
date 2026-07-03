@@ -3,6 +3,7 @@
 #include <random>
 #include <algorithm>
 #include <numeric>
+#include <cstring>
 #include "main.h"
 
 Attacker::Attacker(float power, int skillValue)
@@ -71,5 +72,24 @@ void Attacker::attack(Actor* owner, Actor* target)
 	} else {
 		engine.gui->message(Colors::uiText, "# attacks # in vain.",
 			owner->name, target->name);
+	}
+}
+
+void Attacker::save(TCODZip& zip) {
+	zip.putInt(ATTACKER_SAVE_V2);  // sentinel: -1 (new format marker)
+	zip.putFloat(power);
+	zip.putInt(skillValue);
+}
+
+void Attacker::load(TCODZip& zip) {
+	int marker = zip.getInt();
+	if (marker == ATTACKER_SAVE_V2) {
+		// New format: sentinel followed by power and skillValue
+		power = zip.getFloat();
+		skillValue = clampSkill(zip.getInt());
+	} else {
+		// Old format: marker contains the 4 bytes of old power float
+		std::memcpy(&power, &marker, sizeof(float));
+		skillValue = DEFAULT_SKILL;
 	}
 }
