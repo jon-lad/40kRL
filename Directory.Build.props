@@ -8,7 +8,7 @@
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <!-- Suppress noisy warnings from third-party headers (libtcod, sol2) -->
-      <DisableSpecificWarnings>4996;4100;4189;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4100;4189;4244;4251;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <!-- Treat vcpkg/external includes as system headers — warnings from them are silenced -->
       <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
       <!-- Also treat MSVC standard library headers as external -->
