@@ -197,7 +197,7 @@ void Engine::sendToBack(Actor* actor)
 
 void Engine::init()
 {
-	// Load player stats from Config.lua (fall back to hardcoded defaults if missing).
+	// Load player class stats from Classes.lua (fall back to hardcoded defaults if missing).
 	float playerHp      = 30.0f;
 	float playerDefense = 2.0f;
 	float playerPower   = 5.0f;
@@ -207,18 +207,18 @@ void Engine::init()
 	try {
 		sol::state lua;
 		lua.open_libraries(sol::lib::base);
-		lua.script_file("Scripts/Config.lua");
+		lua.script_file("Scripts/Classes.lua");
 
-		sol::table cfg = lua["config"];
-		if (cfg.valid()) {
-			playerHp      = cfg.get_or("playerHp",      playerHp);
-			playerDefense = cfg.get_or("playerDefense", playerDefense);
-			playerPower   = cfg.get_or("playerPower",   playerPower);
-			playerSkill   = cfg.get_or("playerSkill",   playerSkill);
-			playerInvSize = cfg.get_or("playerInvSize", playerInvSize);
+		sol::table cls = lua["defaultClass"];
+		if (cls.valid()) {
+			playerHp      = cls.get_or("hp",      playerHp);
+			playerDefense = cls.get_or("defense", playerDefense);
+			playerPower   = cls.get_or("power",   playerPower);
+			playerSkill   = cls.get_or("skill",   playerSkill);
+			playerInvSize = cls.get_or("invSize", playerInvSize);
 		}
 	} catch (const sol::error&) {
-		// Config.lua missing or malformed — use defaults above.
+		// Classes.lua missing or malformed — use defaults above.
 	}
 
 	// Create the player.
