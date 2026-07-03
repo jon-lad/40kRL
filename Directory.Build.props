@@ -9,6 +9,8 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <!-- Suppress noisy warnings from third-party headers (libtcod, sol2) -->
       <DisableSpecificWarnings>4996;4100;4189;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <!-- Treat vcpkg/external includes as system headers — warnings from them are silenced -->
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
     </ClCompile>
   </ItemDefinitionGroup>
 
@@ -24,6 +26,8 @@
   <ItemDefinitionGroup Condition="'$(VcpkgInstalled)' != ''">
     <ClCompile>
       <AdditionalIncludeDirectories>$(VcpkgInstalled)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- Mark vcpkg headers as external so /external:W0 applies to them -->
+      <ExternalIncludePath>$(VcpkgInstalled)\include;%(ExternalIncludePath)</ExternalIncludePath>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(VcpkgInstalled)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
