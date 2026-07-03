@@ -18,8 +18,8 @@ equipment = {
         skill   = 0,
     },
     {
-        name    = "Scoped Bolter",
-        glyph   = "}",
+        name    = "Power Sword",
+        glyph   = "|",
         color   = "lightGrey",
         slot    = "weapon",
         weight  = 5.0,
