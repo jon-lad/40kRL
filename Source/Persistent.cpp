@@ -228,8 +228,8 @@ std::unique_ptr<Destructible> Destructible::create(TCODZip& zip)
 	const auto type = static_cast<DestructibleType>(zip.getInt());
 	std::unique_ptr<Destructible> d;
 	switch (type) {
-	case DestructibleType::MONSTER: d = std::make_unique<MonsterDestructible>(0, 0.0f, "", 0); break;
-	case DestructibleType::PLAYER:  d = std::make_unique<PlayerDestructible> (0, 0.0f, "", 0); break;
+	case DestructibleType::MONSTER: d = std::make_unique<MonsterDestructible>(0.0f, 0.0f, "", 0); break;
+	case DestructibleType::PLAYER:  d = std::make_unique<PlayerDestructible> (0.0f, 0.0f, "", 0); break;
 	}
 	d->load(zip);
 	return d;
