@@ -236,6 +236,77 @@ void Engine::init()
 		// Config.lua missing or malformed — use defaults.
 	}
 
+	// Load equipment templates from Equipment.lua.
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Equipment.lua");
+
+		sol::table equipTable = lua["equipment"];
+		if (equipTable.valid()) {
+			for (size_t i = 1; i <= equipTable.size(); i++) {
+				sol::table entry = equipTable[i];
+
+				// Required fields
+				std::string emptyStr;
+				std::string name     = entry.get_or("name", emptyStr);
+				std::string glyphStr = entry.get_or("glyph", emptyStr);
+				std::string colorName = entry.get_or("color", emptyStr);
+				std::string slotName = entry.get_or("slot", emptyStr);
+				float negWeight = -1.0f;
+				float weight    = entry.get_or("weight", negWeight);
+
+				// Validate required fields
+				if (name.empty() || glyphStr.empty() || colorName.empty() || slotName.empty()) {
+					gui->message(Colors::damage, "Equipment.lua: skipping entry # — missing required field.", static_cast<int>(i));
+					continue;
+				}
+				if (weight < 0.0f) {
+					gui->message(Colors::damage, "Equipment.lua: skipping '#' — weight must be >= 0.", name);
+					continue;
+				}
+
+				// Parse slot
+				EquipmentSlot slot;
+				if (slotName == "weapon")       slot = EquipmentSlot::WEAPON;
+				else if (slotName == "offhand") slot = EquipmentSlot::OFFHAND;
+				else if (slotName == "head")    slot = EquipmentSlot::HEAD;
+				else if (slotName == "body")    slot = EquipmentSlot::BODY;
+				else {
+					gui->message(Colors::damage, "Equipment.lua: skipping '#' — invalid slot '#'.", name, slotName);
+					continue;
+				}
+
+				// Optional fields
+				int defaultValue = 0;
+				float defaultFloat = 0.0f;
+				int defaultInt = 0;
+				int value      = entry.get_or("value", defaultValue);
+				float power    = entry.get_or("power", defaultFloat);
+				float defense  = entry.get_or("defense", defaultFloat);
+				float maxHp    = entry.get_or("maxHp", defaultFloat);
+				int skill      = entry.get_or("skill", defaultInt);
+
+				// Resolve color
+				TCODColor color = Colors::colorFromName(colorName);
+
+				// Create template
+				EquipmentTemplate tmpl;
+				tmpl.name      = name;
+				tmpl.glyph     = static_cast<int>(glyphStr[0]);
+				tmpl.color     = color;
+				tmpl.slot      = slot;
+				tmpl.weight    = weight;
+				tmpl.value     = value;
+				tmpl.modifiers = { power, defense, maxHp, skill };
+
+				equipmentTemplates.push_back(tmpl);
+			}
+		}
+	} catch (const sol::error&) {
+		// Equipment.lua missing or malformed — no equipment templates loaded.
+	}
+
 	// Create the player.
 	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", Colors::white);
 	player = newPlayer.get();

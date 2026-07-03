@@ -190,14 +190,25 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		break;
 	}
 
-	case 'i': // open inventory to use an item
+	case 'i': // open inventory to use/equip an item
 	{
 		Actor* item = chooseFromInventory(owner);
 		if (item) {
-			for (auto& slot : owner->container->inventory) {
-				if (slot.get() == item) {
-					item->pickable->use(slot.get(), owner);
-					break;
+			if (item->equippable && owner->equipment) {
+				// Equippable item — equip it instead of using it
+				Actor* previous = owner->equipment->equip(item, *owner->container, owner->attacker.get());
+				if (previous) {
+					engine.gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
+				} else {
+					engine.gui->message(Colors::uiText, "You equip the #.", item->name);
+				}
+			} else {
+				// Non-equippable item — use it normally
+				for (auto& slot : owner->container->inventory) {
+					if (slot.get() == item) {
+						item->pickable->use(slot.get(), owner);
+						break;
+					}
 				}
 			}
 			engine.gameStatus = Engine::NEW_TURN;

@@ -1,5 +1,20 @@
 #pragma once
 
+#include <string>
+#include <vector>
+#include "Equippable.h"
+
+// A template for a spawnable equipment item, loaded from Equipment.lua at startup.
+struct EquipmentTemplate {
+	std::string name;
+	int glyph;
+	TCODColor color;
+	EquipmentSlot slot;
+	float weight;
+	int value;
+	StatModifiers modifiers;
+};
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -31,6 +46,8 @@ public:
 	std::unique_ptr<Gui> gui;
 	int dungeonLevel;
 	bool debugMode;  // toggled with F12, enables level-skip and other dev tools
+
+	std::vector<EquipmentTemplate> equipmentTemplates; // loaded from Equipment.lua
 
 	Engine(int screenWidth, int screenHeight);
 

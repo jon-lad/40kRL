@@ -569,16 +569,10 @@ void Map::createRoom(bool isFirstRoom, int x1, int y1, int x2, int y2, bool with
 // ─── Lua-driven spawn helpers ────────────────────────────────────────────────
 
 // Maps Lua colour names to TCODColor values.
+// Use the shared colour resolver from Colors.h.
 static TCODColor colorFromName(const std::string& name)
 {
-	if (name == "desaturatedGreen") return Colors::orkSkin;
-	if (name == "darkerGreen")      return Colors::nobArmour;
-	if (name == "lightBlue")        return Colors::lightBlue;
-	if (name == "orange")           return Colors::orange;
-	if (name == "lightGreen")       return Colors::surfaceMsg;
-	if (name == "violet")           return Colors::healthPotion;
-	if (name == "lightYellow")      return Colors::scroll;
-	return Colors::white;
+	return Colors::colorFromName(name);
 }
 
 // Maps Lua selector-type strings to the enum.
