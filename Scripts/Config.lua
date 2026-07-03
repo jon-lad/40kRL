@@ -15,6 +15,7 @@ config = {
     playerHp      = 30.0,
     playerDefense = 2.0,
     playerPower   = 5.0,
+    playerSkill   = 50,
     playerInvSize = 26,
 
     -- FOV

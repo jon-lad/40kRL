@@ -604,12 +604,12 @@ void Map::addMonster(int x, int y)
 		// Inject C++ callback that Lua calls to actually create the actor.
 		lua["addActor"] = [](int ax, int ay, int glyph, const std::string& name,
 			const std::string& colorName, float hp, float defense,
-			const std::string& corpse, int xp, float power)
+			const std::string& corpse, int xp, float power, int skill)
 		{
 			TCODColor col = colorFromName(colorName);
 			auto monster = std::make_unique<Actor>(ax, ay, glyph, name, col);
 			monster->destructible = std::make_unique<MonsterDestructible>(hp, defense, corpse, xp);
-			monster->attacker     = std::make_unique<Attacker>(power);
+			monster->attacker     = std::make_unique<Attacker>(power, skill);
 			monster->ai           = std::make_unique<MonsterAi>();
 			engine.actors.push_back(std::move(monster));
 		};
@@ -622,13 +622,13 @@ void Map::addMonster(int x, int y)
 		if (roll < 80) {
 			auto ork = std::make_unique<Actor>(x, y, 'o', "Ork", Colors::orkSkin);
 			ork->destructible = std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35);
-			ork->attacker     = std::make_unique<Attacker>(3.0f);
+			ork->attacker     = std::make_unique<Attacker>(3.0f, 40);
 			ork->ai           = std::make_unique<MonsterAi>();
 			engine.actors.push_back(std::move(ork));
 		} else {
 			auto nob = std::make_unique<Actor>(x, y, 'N', "Nob", Colors::nobArmour);
 			nob->destructible = std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100);
-			nob->attacker     = std::make_unique<Attacker>(4.0f);
+			nob->attacker     = std::make_unique<Attacker>(4.0f, 40);
 			nob->ai           = std::make_unique<MonsterAi>();
 			engine.actors.push_back(std::move(nob));
 		}

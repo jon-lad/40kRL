@@ -46,7 +46,7 @@ local enemies = {
 function spawnEnemy(roll, x, y)
     for _, e in ipairs(enemies) do
         if roll < e.chance then
-            addActor(x, y, e.glyph, e.name, e.color, e.hp, e.defense, e.corpse, e.xp, e.power)
+            addActor(x, y, e.glyph, e.name, e.color, e.hp, e.defense, e.corpse, e.xp, e.power, e.skill or 40)
             return
         end
     end
