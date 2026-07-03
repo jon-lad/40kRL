@@ -1,5 +1,18 @@
 <Project>
   <!-- 
+    Strict warnings for all builds. Treats warnings as errors so code
+    that compiles cleanly stays clean.
+  -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <!-- Suppress noisy warnings from third-party headers (libtcod, sol2) -->
+      <DisableSpecificWarnings>4996;4100;4189;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- 
     On CI (where VCPKG_ROOT is set), add vcpkg include/lib paths.
     On local dev machines this file does nothing because the vcxproj 
     already has the local libtcod/sol2 paths configured.
