@@ -18,6 +18,7 @@ local enemies = {
         corpse  = "dead Gretchin",
         xp      = 15,
         power   = 2.0,
+        skill   = 25,
     },
     {
         chance  = 90,
@@ -29,6 +30,7 @@ local enemies = {
         corpse  = "dead Ork",
         xp      = 35,
         power   = 3.0,
+        skill   = 35,
     },
     {
         chance  = 100,
@@ -40,6 +42,7 @@ local enemies = {
         corpse  = "Nob carcass",
         xp      = 100,
         power   = 4.0,
+        skill   = 45,
     },
 }
 
