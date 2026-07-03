@@ -29,6 +29,7 @@ public:
 	InputState inputState;
 	std::unique_ptr<Gui> gui;
 	int dungeonLevel;
+	bool debugMode;  // toggled with F12, enables level-skip and other dev tools
 
 	Engine(int screenWidth, int screenHeight);
 

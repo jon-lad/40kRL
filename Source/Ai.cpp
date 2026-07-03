@@ -56,6 +56,24 @@ void PlayerAi::update(Actor* owner)
 		case SDLK_DOWN:  dy =  1; break;
 		case SDLK_LEFT:  dx = -1; break;
 		case SDLK_RIGHT: dx =  1; break;
+		case SDLK_F12:
+			engine.debugMode = !engine.debugMode;
+			engine.gui->message(Colors::yellow,
+				engine.debugMode ? "Debug mode ON" : "Debug mode OFF");
+			break;
+		case SDLK_PAGEDOWN:
+			if (engine.debugMode) {
+				engine.gui->message(Colors::yellow, "DEBUG: Skipping to next level...");
+				engine.nextLevel();
+			}
+			break;
+		case SDLK_PAGEUP:
+			if (engine.debugMode) {
+				engine.gui->message(Colors::yellow, "DEBUG: Skipping to previous level...");
+				engine.stairs->setGlyph('<');
+				engine.nextLevel();
+			}
+			break;
 		default:
 			if (engine.inputState.key.c != 0) {
 				handleActionKey(owner, engine.inputState.key.c);

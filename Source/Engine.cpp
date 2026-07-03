@@ -18,6 +18,7 @@ Engine::Engine(int screenWidth, int screenHeight)
 	, screenWidth{ screenWidth }
 	, screenHeight{ screenHeight }
 	, dungeonLevel{ 20 }
+	, debugMode{ false }
 {
 	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
 	gui = std::make_unique<Gui>();
