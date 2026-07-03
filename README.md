@@ -61,7 +61,8 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 ├── Headers/          C++ header files
 ├── Source/           C++ implementation files
 ├── Scripts/          Lua data scripts
-│   ├── Config.lua    Game configuration (map size, FOV, stats)
+│   ├── Config.lua    Game configuration (map size, FOV, thresholds)
+│   ├── Classes.lua   Player class stats (hp, defense, power, skill)
 │   ├── Enemies.lua   Enemy definitions and spawn logic
 │   ├── Items.lua     Item definitions and spawn logic
 │   ├── Effects.lua   Item effect scripts
@@ -85,7 +86,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 
 ## Scripting
 
-Enemy and item definitions live in `Scripts/` as Lua tables. You can add new enemies by editing `Scripts/Enemies.lua` or new items in `Scripts/Items.lua` without recompiling. Game configuration (map dimensions, FOV radius, player stats) is in `Scripts/Config.lua`.
+Enemy and item definitions live in `Scripts/` as Lua tables. You can add new enemies by editing `Scripts/Enemies.lua` or new items in `Scripts/Items.lua` without recompiling. Game configuration (map dimensions, FOV radius, thresholds) is in `Scripts/Config.lua`. Player class stats (hp, defense, power, skill) are in `Scripts/Classes.lua`.
 
 ## Roadmap
 

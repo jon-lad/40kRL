@@ -18,6 +18,7 @@ local enemies = {
         corpse  = "dead Gretchin",
         xp      = 15,
         power   = 2.0,
+        skill   = 25,
     },
     {
         chance  = 90,
@@ -29,6 +30,7 @@ local enemies = {
         corpse  = "dead Ork",
         xp      = 35,
         power   = 3.0,
+        skill   = 35,
     },
     {
         chance  = 100,
@@ -40,13 +42,14 @@ local enemies = {
         corpse  = "Nob carcass",
         xp      = 100,
         power   = 4.0,
+        skill   = 45,
     },
 }
 
 function spawnEnemy(roll, x, y)
     for _, e in ipairs(enemies) do
         if roll < e.chance then
-            addActor(x, y, e.glyph, e.name, e.color, e.hp, e.defense, e.corpse, e.xp, e.power)
+            addActor(x, y, e.glyph, e.name, e.color, e.hp, e.defense, e.corpse, e.xp, e.power, e.skill or 40)
             return
         end
     end

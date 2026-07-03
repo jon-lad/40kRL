@@ -199,9 +199,7 @@ void Actor::load(TCODZip& zip)
 }
 
 // ─── Attacker ────────────────────────────────────────────────────────────────
-
-void Attacker::save(TCODZip& zip) { zip.putFloat(power); }
-void Attacker::load(TCODZip& zip) { power = zip.getFloat(); }
+// save/load moved to Source/Attacker.cpp (sentinel-based format with skillValue)
 
 // ─── Destructible ────────────────────────────────────────────────────────────
 

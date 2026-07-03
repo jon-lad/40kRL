@@ -112,6 +112,7 @@
     <ClCompile Include="test_destructible.cpp" />
     <ClCompile Include="test_outdoor_map.cpp" />
     <ClCompile Include="test_rapidcheck_smoke.cpp" />
+    <ClCompile Include="test_hit_chance.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>

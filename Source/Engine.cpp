@@ -1,6 +1,7 @@
 #include <list>
 #include <memory>
 #include <sstream>
+#include <sol/sol.hpp>
 #include "main.h"
 
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
@@ -196,13 +197,37 @@ void Engine::sendToBack(Actor* actor)
 
 void Engine::init()
 {
+	// Load player class stats from Classes.lua (fall back to hardcoded defaults if missing).
+	float playerHp      = 30.0f;
+	float playerDefense = 2.0f;
+	float playerPower   = 5.0f;
+	int   playerSkill   = 40;
+	int   playerInvSize = 26;
+
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Classes.lua");
+
+		sol::table cls = lua["defaultClass"];
+		if (cls.valid()) {
+			playerHp      = cls.get_or("hp",      playerHp);
+			playerDefense = cls.get_or("defense", playerDefense);
+			playerPower   = cls.get_or("power",   playerPower);
+			playerSkill   = cls.get_or("skill",   playerSkill);
+			playerInvSize = cls.get_or("invSize", playerInvSize);
+		}
+	} catch (const sol::error&) {
+		// Classes.lua missing or malformed — use defaults above.
+	}
+
 	// Create the player.
 	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", Colors::white);
 	player = newPlayer.get();
-	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
-	newPlayer->attacker     = std::make_unique<Attacker>(5.0f);
+	newPlayer->destructible = std::make_unique<PlayerDestructible>(playerHp, playerDefense, "Your cadaver", 0);
+	newPlayer->attacker     = std::make_unique<Attacker>(playerPower, playerSkill);
 	newPlayer->ai           = std::make_unique<PlayerAi>();
-	newPlayer->container    = std::make_unique<Container>(26);
+	newPlayer->container    = std::make_unique<Container>(playerInvSize);
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create the stairs (always visible, never blocks). '<' = ascend toward surface.
