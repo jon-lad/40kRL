@@ -46,6 +46,18 @@ void Attacker::clearModifiers() {
 void Attacker::attack(Actor* owner, Actor* target)
 {
 	if (target->destructible && !target->destructible->isDead()) {
+		// ── Hit check ──
+		const int threshold = computeThreshold();
+		const int roll = rollD100();
+
+		if (roll > threshold) {
+			// Miss — log and return early
+			engine.gui->message(Colors::uiText, "# attacks # but misses.",
+				owner->name, target->name);
+			return;
+		}
+
+		// ── Existing damage logic (unchanged) ──
 		const float effectiveDamage = power - target->destructible->defense;
 		if (effectiveDamage > 0) {
 			const TCODColor messageColor = (owner == engine.player) ? Colors::damage : Colors::uiText;
