@@ -617,7 +617,7 @@ void Map::addMonster(int x, int y)
 		lua.script_file("Scripts/Enemies.lua");
 		lua["spawnEnemy"](roll, x, y);
 
-	} catch (const sol::error& e) {
+	} catch (const sol::error& /*e*/) {
 		// Lua script failed — fall back to hard-coded spawn so the game still works.
 		if (roll < 80) {
 			auto ork = std::make_unique<Actor>(x, y, 'o', "Ork", Colors::orkSkin);
@@ -683,7 +683,7 @@ void Map::addItem(int x, int y)
 		lua.script_file("Scripts/Items.lua");
 		lua["spawnItem"](roll, x, y);
 
-	} catch (const sol::error& e) {
+	} catch (const sol::error& /*e*/) {
 		// Lua script failed — fall back to a simple health potion.
 		auto potion = std::make_unique<Actor>(x, y, '!', "health potion", Colors::healthPotion);
 		potion->blocks   = false;

@@ -35,8 +35,8 @@ TEST_CASE("Damage formula: power - defence", "[attacker]")
 TEST_CASE("PBT: effective damage is always non-negative", "[attacker][pbt]")
 {
     rc::prop("power - defence >= 0 when power > defence, else 0 damage", []() {
-        const float power   = *rc::gen::inRange(0, 50);
-        const float defence = *rc::gen::inRange(0, 50);
+        const float power   = static_cast<float>(*rc::gen::inRange(0, 50));
+        const float defence = static_cast<float>(*rc::gen::inRange(0, 50));
         const float maxHp   = 1000.0f;
 
         MonsterDestructible d(maxHp, defence, "c", 0);
