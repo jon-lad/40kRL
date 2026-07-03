@@ -232,6 +232,53 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			engine.gui->message(Colors::uiText, "There are no stairs here.");
 		}
 		break;
+
+	case 'e': // open equipment menu
+	{
+		static constexpr int EQUIP_WIDTH = 50;
+		static constexpr int EQUIP_HEIGHT = 10;
+		static TCODConsole equipConsole(EQUIP_WIDTH, EQUIP_HEIGHT);
+
+		equipConsole.setDefaultForeground(Colors::menuFrame);
+		equipConsole.printFrame(0, 0, EQUIP_WIDTH, EQUIP_HEIGHT, true, TCOD_BKGND_DEFAULT, "equipment");
+		equipConsole.setDefaultForeground(Colors::white);
+
+		const char* slotNames[] = { "Weapon", "Offhand", "Head", "Body" };
+		for (int i = 0; i < 4; i++) {
+			Actor* equipped = owner->equipment->getSlot(static_cast<EquipmentSlot>(i));
+			std::string line = std::string("[") + slotNames[i] + "]  ";
+			if (equipped) {
+				line += equipped->name;
+				auto& mods = equipped->equippable->modifiers;
+				if (mods.power != 0) line += " (+" + std::to_string((int)mods.power) + " pow)";
+				if (mods.defense != 0) line += " (+" + std::to_string((int)mods.defense) + " def)";
+				if (mods.skill != 0) line += " (" + std::to_string(mods.skill) + " skill)";
+			} else {
+				line += "empty";
+			}
+			equipConsole.printf(2, i + 2, "%c) %s", 'a' + i, line.c_str());
+		}
+
+		TCODConsole::blit(&equipConsole, 0, 0, EQUIP_WIDTH, EQUIP_HEIGHT,
+			TCODConsole::root,
+			engine.screenWidth / 2 - EQUIP_WIDTH / 2,
+			engine.screenHeight / 2 - EQUIP_HEIGHT / 2);
+		TCODConsole::flush();
+
+		// Wait for input: a-d to unequip a slot, ESC to close
+		TCOD_key_t key;
+		TCODSystem::waitForEvent(TCOD_EVENT_KEY_PRESS, &key, nullptr, true);
+		if (key.vk == TCODK_CHAR && key.c >= 'a' && key.c <= 'd') {
+			int slotIndex = key.c - 'a';
+			EquipmentSlot slot = static_cast<EquipmentSlot>(slotIndex);
+			if (owner->equipment->getSlot(slot)) {
+				owner->equipment->unequip(slot, *owner->container, owner->attacker.get());
+				engine.gui->message(Colors::uiText, "Item unequipped.");
+				engine.gameStatus = Engine::NEW_TURN;
+			}
+		}
+		break;
+	}
 	}
 }
 
