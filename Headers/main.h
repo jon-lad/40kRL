@@ -13,6 +13,8 @@ class Actor;
 #include "Ai.h"
 #include "Pickable.h"
 #include "Container.h"
+#include "Equippable.h"
+#include "Equipment.h"
 #include "Actor.h"
 #include "Map.h"
 #include "Gui.h"

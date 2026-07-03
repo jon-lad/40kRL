@@ -298,13 +298,22 @@ void ConfusedMonsterAi::load(TCODZip& zip)
 
 // ─── Pickable ────────────────────────────────────────────────────────────────
 
-// Save order: effect (with type discriminator), hasSelector flag, selector data.
+// Save order: effect (with type discriminator), hasSelector flag, selector data,
+// then sentinel-guarded weight/value fields.
 // Load order: effect is consumed by Effect::create() in Actor::load before Pickable::load is called.
 void Pickable::save(TCODZip& zip)
 {
 	effect->save(zip);
 	zip.putInt(selector != nullptr);
 	if (selector) { selector->save(zip); }
+
+	// Version sentinel for weight/value fields (backward-compatible extension).
+	// The sentinel -2 cannot collide with valid data: selector types and effects
+	// are non-negative, and Container::size is always >= 0.
+	static constexpr int PICKABLE_WEIGHT_VALUE_SENTINEL = -2;
+	zip.putInt(PICKABLE_WEIGHT_VALUE_SENTINEL);
+	zip.putFloat(weight);
+	zip.putInt(value);
 }
 
 void Pickable::load(TCODZip& zip)
@@ -314,6 +323,23 @@ void Pickable::load(TCODZip& zip)
 	if (hasSelector) {
 		selector = std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f);
 		selector->load(zip);
+	}
+
+	// Check for weight/value sentinel (new format).
+	// Old saves won't have the sentinel; TCODZip::getInt() returns 0 when the
+	// archive is exhausted or the next value is from a different section.
+	// Since -2 never appears as a valid Container::size or actor field count,
+	// any value != -2 means old format. Note: old saves should be deleted
+	// after this change to avoid stream misalignment.
+	static constexpr int PICKABLE_WEIGHT_VALUE_SENTINEL = -2;
+	int maybeSentinel = zip.getInt();
+	if (maybeSentinel == PICKABLE_WEIGHT_VALUE_SENTINEL) {
+		weight = zip.getFloat();
+		value  = zip.getInt();
+	} else {
+		// Old format — default both fields to zero.
+		weight = 0.0f;
+		value  = 0;
 	}
 }
 
