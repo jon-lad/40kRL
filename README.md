@@ -10,6 +10,7 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 
 - Procedural dungeon generation via BSP (Binary Space Partitioning)
 - Perlin noise outdoor terrain (ground, trees, water) with connectivity guarantee
+- Equipment system with body slots (weapon, offhand, head, body) and stat modifiers
 - Turn-based movement and combat with melee attacks
 - FOV (field of view) with libtcod's shadow-casting algorithm
 - Scent-tracking monster AI that follows the player even outside line of sight
@@ -78,7 +79,8 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 |-----|--------|
 | Arrow keys / Numpad | Move / Attack |
 | `g` | Pick up item |
-| `i` | Open inventory |
+| `i` | Open inventory (use or equip items) |
+| `e` | Open equipment menu |
 | `d` | Drop item |
 | `<` | Ascend stairs |
 | `>` | Descend stairs |
@@ -93,7 +95,6 @@ Enemy and item definitions live in `Scripts/` as Lua tables. You can add new ene
 
 - Perlin noise outdoor map generation (level 20+)
 - Ranged combat (guns)
-- Equipment and wearable items
 - Character generation
 - NPC dialogue
 - World/planet travel system

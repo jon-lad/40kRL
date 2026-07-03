@@ -33,6 +33,8 @@ bool Pickable::pick(std::unique_ptr<Actor> owner, Actor* wearer)
 
 bool Pickable::use(Actor* owner, Actor* wearer)
 {
+	if (!effect) return false; // safety guard for equipment items
+
 	TCODList<Actor*> targets;
 	if (selector) {
 		selector->selectTargets(wearer, targets);
