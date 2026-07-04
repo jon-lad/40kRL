@@ -24,7 +24,7 @@ public:
 	std::shared_ptr<Pickable>    pickable;
 	std::shared_ptr<Container>   container;
 	std::shared_ptr<Equippable>  equippable;
-	std::unique_ptr<Equipment>   equipment;  // only non-null on the player actor
+	std::unique_ptr<Equipment>   equipment;  // non-null on any actor with equipment
 
 	Actor(int x, int y, int glyph, std::string_view name, const TCODColor& color);
 

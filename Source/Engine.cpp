@@ -290,6 +290,12 @@ void Engine::init()
 				// Resolve color
 				TCODColor color = Colors::colorFromName(colorName);
 
+				// Parse optional tier field (default: COMMON)
+				std::string tierStr = entry.get_or("tier", std::string("common"));
+				ItemTier tier = ItemTier::COMMON;
+				if (tierStr == "uncommon")     tier = ItemTier::UNCOMMON;
+				else if (tierStr == "rare")    tier = ItemTier::RARE;
+
 				// Create template
 				EquipmentTemplate tmpl;
 				tmpl.name      = name;
@@ -299,6 +305,7 @@ void Engine::init()
 				tmpl.weight    = weight;
 				tmpl.value     = value;
 				tmpl.modifiers = { power, defense, maxHp, skill };
+				tmpl.tier      = tier;
 
 				equipmentTemplates.push_back(tmpl);
 			}

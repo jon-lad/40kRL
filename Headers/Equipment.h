@@ -1,5 +1,7 @@
 #pragma once
 #include <array>
+#include <memory>
+#include <vector>
 
 class Actor;
 class Container;
@@ -45,6 +47,13 @@ public:
 
 	void save(TCODZip& zip, const Container& inventory);
 	void load(TCODZip& zip, Container& inventory);
+
+	// Owns item Actors for non-player entities that don't use Container.
+	// Player equipment does NOT use this (items live in Container).
+	std::vector<std::unique_ptr<Actor>> ownedItems;
+
+	// Probability each equipped item drops on enemy death. Default 1.0 = always drop.
+	float dropChance = 1.0f;
 
 private:
 	std::array<Actor*, 4> slots = {};

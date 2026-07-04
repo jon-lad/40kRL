@@ -12,6 +12,9 @@ FEATURES
 
 to do
 
+FUTURE AI IDEAS:
+- CowardlyAi subclass: attacks only if 3+ units of the same type are within 10 tiles of each other. If fewer than 3 nearby allies, uses scent tracking to seek out NPCs of the same type to regroup.
+
 Stats for characters
 
 for V1.0
