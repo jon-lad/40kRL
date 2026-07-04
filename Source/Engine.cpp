@@ -87,6 +87,11 @@ void Engine::render()
 		renderTargeting();
 	}
 
+	// Render inventory overlay when in INVENTORY state.
+	if (gameStatus == INVENTORY) {
+		renderInventory();
+	}
+
 	gui->render();
 }
 
@@ -321,24 +326,101 @@ void Engine::updateTargeting()
 	}
 }
 
-void Engine::beginInventory(Actor* owner)
+void Engine::beginInventory(Actor* owner, InventoryState::Action action)
 {
-	// TODO: implement in task 7.1
-	(void)owner;
+	if (!owner || !owner->container) {
+		gui->message(Colors::damage, "Warning: beginInventory called with invalid owner.");
+		return;
+	}
+	inventoryState = InventoryState{ owner, action };
+	gameStatus = INVENTORY;
 }
 
 void Engine::updateInventory()
 {
-	// TODO: implement in task 7.1
-	// For now, ESC returns to IDLE so the game doesn't get stuck.
-	if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+	if (!inventoryState) {
+		// Safety: should not be called without a valid state.
 		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Cancellation: ESC key ---
+	if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+		inventoryState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Item selection: a-z key ---
+	if (inputState.key.pressed && inputState.key.c >= 'a' && inputState.key.c <= 'z') {
+		const int itemIndex = inputState.key.c - 'a';
+		Actor* owner = inventoryState->owner;
+
+		if (itemIndex < static_cast<int>(owner->container->inventory.size())) {
+			// Get the item at that index.
+			auto it = owner->container->inventory.begin();
+			std::advance(it, itemIndex);
+			Actor* item = it->get();
+
+			if (item) {
+				if (inventoryState->pendingAction == InventoryState::Action::USE) {
+					// Equippable items get equipped; others are used normally.
+					if (item->equippable && owner->equipment) {
+						Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
+						if (previous) {
+							gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
+						} else {
+							gui->message(Colors::uiText, "You equip the #.", item->name);
+						}
+						gameStatus = NEW_TURN;
+					} else {
+						// use() may initiate TARGETING (returns false) or apply immediately (returns true).
+						// If targeting was initiated, gameStatus is already TARGETING — don't override.
+						if (item->pickable->use(item, owner)) {
+							gameStatus = NEW_TURN;
+						}
+						// If use returned false and gameStatus == TARGETING, leave it.
+					}
+				} else {
+					// DROP action
+					item->pickable->drop(item, owner);
+					gameStatus = NEW_TURN;
+				}
+			}
+
+			inventoryState = std::nullopt;
+			return;
+		}
+		// Invalid index — ignore, remain in INVENTORY.
 	}
 }
 
 void Engine::renderInventory()
 {
-	// TODO: implement in task 7.1
+	if (!inventoryState) return;
+
+	static constexpr int INVENTORY_WIDTH  = 50;
+	static constexpr int INVENTORY_HEIGHT = 28;
+	static TCODConsole inventoryConsole(INVENTORY_WIDTH, INVENTORY_HEIGHT);
+
+	inventoryConsole.setDefaultForeground(Colors::menuFrame);
+	inventoryConsole.printFrame(0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT, true, TCOD_BKGND_DEFAULT, "inventory");
+
+	inventoryConsole.setDefaultForeground(Colors::white);
+	int shortcutKey = 'a';
+	int row = 1;
+	for (const auto& itemPtr : inventoryState->owner->container->inventory) {
+		if (itemPtr) {
+			inventoryConsole.printf(2, row, "(%c) %s", shortcutKey, itemPtr->name.c_str());
+			row++;
+			shortcutKey++;
+		}
+	}
+
+	TCODConsole::blit(&inventoryConsole, 0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - INVENTORY_WIDTH  / 2,
+		screenHeight / 2 - INVENTORY_HEIGHT / 2);
 }
 
 void Engine::sendToBack(Actor* actor)

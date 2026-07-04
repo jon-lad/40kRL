@@ -38,6 +38,12 @@ struct EnemyEquipmentConfig {
 // Direction the player is travelling when using stairs.
 enum class StairDirection { UP, DOWN };
 
+// Stores state for the non-blocking inventory menu overlay.
+struct InventoryState {
+	Actor* owner = nullptr;
+	enum class Action { USE, DROP } pendingAction = Action::USE;
+};
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -76,6 +82,7 @@ public:
 	std::vector<EquipmentTemplate> equipmentTemplates; // loaded from Equipment.lua
 
 	std::optional<TargetingContext> targetingCtx;  // active only during TARGETING state
+	std::optional<InventoryState> inventoryState; // active only during INVENTORY state
 
 	Engine(int screenWidth, int screenHeight);
 
@@ -107,7 +114,7 @@ public:
 	void renderTargeting();
 
 	// Enters inventory display mode. Called when player opens inventory.
-	void beginInventory(Actor* owner);
+	void beginInventory(Actor* owner, InventoryState::Action action);
 
 	// Processes one frame of inventory input. Called from update() when INVENTORY.
 	void updateInventory();
