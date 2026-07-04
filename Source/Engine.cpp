@@ -21,6 +21,7 @@ Engine::Engine(int screenWidth, int screenHeight)
 	, debugMode{ false }
 {
 	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
+	SDL_StartTextInput(SDL_GetKeyboardFocus());
 	gui = std::make_unique<Gui>();
 }
 

@@ -17,23 +17,54 @@ void pollInput(InputState& state, int cellWidth, int cellHeight) {
                 break;
 
             case SDL_EVENT_KEY_DOWN:
+            {
                 state.key.pressed = true;
                 state.key.key = event.key.key;
-                // key.c will be populated by TEXT_INPUT event if available.
-                // For non-text keys, derive basic ASCII from keycode.
-                if (event.key.key >= SDLK_A && event.key.key <= SDLK_Z) {
-                    // Lowercase letter (shift handling comes from TEXT_INPUT)
-                    state.key.c = static_cast<char>(event.key.key - SDLK_A + 'a');
-                } else if (event.key.key >= SDLK_0 && event.key.key <= SDLK_9) {
-                    state.key.c = static_cast<char>(event.key.key - SDLK_0 + '0');
+
+                // Derive the printable character from the keycode + shift state.
+                // SDL3 keycodes for printable keys correspond to the unshifted ASCII value.
+                SDL_Keymod mod = SDL_GetModState();
+                bool shifted = (mod & SDL_KMOD_SHIFT) != 0;
+
+                SDL_Keycode k = event.key.key;
+                char c = 0;
+
+                if (k >= SDLK_A && k <= SDLK_Z) {
+                    c = shifted ? static_cast<char>('A' + (k - SDLK_A))
+                                : static_cast<char>('a' + (k - SDLK_A));
+                } else if (k >= SDLK_0 && k <= SDLK_9) {
+                    if (shifted) {
+                        // US keyboard layout shifted digits
+                        const char shiftedDigits[] = ")!@#$%^&*(";
+                        c = shiftedDigits[k - SDLK_0];
+                    } else {
+                        c = static_cast<char>('0' + (k - SDLK_0));
+                    }
                 } else {
-                    state.key.c = 0;
+                    // Punctuation keys — map unshifted and shifted variants
+                    switch (k) {
+                        case SDLK_PERIOD:     c = shifted ? '>' : '.'; break;
+                        case SDLK_COMMA:      c = shifted ? '<' : ','; break;
+                        case SDLK_SLASH:      c = shifted ? '?' : '/'; break;
+                        case SDLK_SEMICOLON:  c = shifted ? ':' : ';'; break;
+                        case SDLK_APOSTROPHE: c = shifted ? '"' : '\''; break;
+                        case SDLK_MINUS:      c = shifted ? '_' : '-'; break;
+                        case SDLK_EQUALS:     c = shifted ? '+' : '='; break;
+                        case SDLK_LEFTBRACKET:  c = shifted ? '{' : '['; break;
+                        case SDLK_RIGHTBRACKET: c = shifted ? '}' : ']'; break;
+                        case SDLK_BACKSLASH:  c = shifted ? '|' : '\\'; break;
+                        case SDLK_GRAVE:      c = shifted ? '~' : '`'; break;
+                        case SDLK_SPACE:      c = ' '; break;
+                        default: c = 0; break;
+                    }
                 }
+                state.key.c = c;
                 break;
+            }
 
             case SDL_EVENT_TEXT_INPUT:
-                // TEXT_INPUT gives us the actual typed character including shift.
-                // This correctly maps Shift+. to '>' and Shift+, to '<'.
+                // TEXT_INPUT overrides with the actual OS-level character (handles
+                // non-US layouts, dead keys, etc). Only use if we get one.
                 if (event.text.text[0] != 0) {
                     state.key.c = event.text.text[0];
                 }
@@ -54,7 +85,6 @@ void pollInput(InputState& state, int cellWidth, int cellHeight) {
                 } else if (event.button.button == SDL_BUTTON_RIGHT) {
                     state.mouse.rbutton_pressed = true;
                 }
-                // Also update pixel/cell position from button event coords.
                 state.mouse.pixelX = static_cast<int>(event.button.x);
                 state.mouse.pixelY = static_cast<int>(event.button.y);
                 if (cellWidth > 0 && cellHeight > 0) {
