@@ -28,10 +28,23 @@ Engine::Engine(int screenWidth, int screenHeight)
 
 void Engine::update()
 {
-	if (gameStatus == STARTUP) { map->computeFOV(); }
-	gameStatus = IDLE;
+	if (gameStatus == STARTUP) { map->computeFOV(); gameStatus = IDLE; }
 
 	pollInput(inputState);
+
+	// Handle targeting state — skip all normal game logic.
+	if (gameStatus == TARGETING) {
+		updateTargeting();
+		return;
+	}
+
+	// Handle inventory state — skip all normal game logic.
+	if (gameStatus == INVENTORY) {
+		updateInventory();
+		return;
+	}
+
+	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
 		save();
@@ -67,6 +80,11 @@ void Engine::render()
 		if (isVisible || isExplored) {
 			actor->render();
 		}
+	}
+
+	// Render targeting overlay (highlights + cursor) when in TARGETING state.
+	if (gameStatus == TARGETING) {
+		renderTargeting();
 	}
 
 	gui->render();
@@ -378,6 +396,26 @@ void Engine::updateTargeting()
 		targetingCtx = std::nullopt;
 		gameStatus = NEW_TURN;
 	}
+}
+
+void Engine::beginInventory(Actor* owner)
+{
+	// TODO: implement in task 7.1
+	(void)owner;
+}
+
+void Engine::updateInventory()
+{
+	// TODO: implement in task 7.1
+	// For now, ESC returns to IDLE so the game doesn't get stuck.
+	if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+		gameStatus = IDLE;
+	}
+}
+
+void Engine::renderInventory()
+{
+	// TODO: implement in task 7.1
 }
 
 void Engine::sendToBack(Actor* actor)

@@ -111,6 +111,15 @@ public:
 	// Renders targeting highlights. Called from render() when TARGETING.
 	void renderTargeting();
 
+	// Enters inventory display mode. Called when player opens inventory.
+	void beginInventory(Actor* owner);
+
+	// Processes one frame of inventory input. Called from update() when INVENTORY.
+	void updateInventory();
+
+	// Renders inventory overlay. Called from render() when INVENTORY.
+	void renderInventory();
+
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);
 
