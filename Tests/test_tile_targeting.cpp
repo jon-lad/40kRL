@@ -256,9 +256,9 @@ TEST_CASE("beginTargeting with null item does not crash or transition state", "[
     engine.gameStatus = Engine::IDLE;
     engine.targetingCtx = std::nullopt;
 
-    // Create a valid owner and effect for the other parameters
-    Actor* owner = engine.player;
-    REQUIRE(owner != nullptr);
+    // Create a valid owner for the other parameters (self-contained, avoids engine.player)
+    auto ownerActor = std::make_unique<Actor>(5, 5, '@', "TestOwner", Colors::white);
+    Actor* owner = ownerActor.get();
 
     // Create a dummy effect
     auto effect = std::make_unique<HealthEffect>(-5.0f, "test damage to #", Colors::damage);
@@ -294,8 +294,8 @@ TEST_CASE("beginTargeting with null effect does not crash or transition state", 
     engine.targetingCtx = std::nullopt;
 
     auto item = std::make_unique<Actor>(0, 0, '!', "test scroll", Colors::white);
-    Actor* owner = engine.player;
-    REQUIRE(owner != nullptr);
+    auto ownerActor = std::make_unique<Actor>(5, 5, '@', "TestOwner", Colors::white);
+    Actor* owner = ownerActor.get();
 
     // Act: call beginTargeting with null effect
     engine.beginTargeting(item.get(), owner, 5.0f,
@@ -313,8 +313,9 @@ TEST_CASE("selectTargets with SELF resolves immediately without entering TARGETI
     engine.gameStatus = Engine::IDLE;
     engine.targetingCtx = std::nullopt;
 
-    Actor* owner = engine.player;
-    REQUIRE(owner != nullptr);
+    // Self-contained: create our own actor (avoids engine.player corruption from PBT tests)
+    auto ownerActor = std::make_unique<Actor>(5, 5, '@', "TestOwner", Colors::white);
+    Actor* owner = ownerActor.get();
 
     auto item = std::make_unique<Actor>(0, 0, '!', "self-heal", Colors::white);
     auto effect = std::make_unique<HealthEffect>(5.0f, "healed #", Colors::healing);
@@ -366,97 +367,60 @@ TEST_CASE("selectTargets with WEARER_RANGE resolves immediately without entering
 // ─── Inventory menu renders correct item count for boundary sizes (0, 1, 26) ─
 // **Validates: Requirements 8.3**
 
-TEST_CASE("renderInventory with 0 items does not crash", "[tile-targeting]") {
-    Actor* owner = engine.player;
-    REQUIRE(owner != nullptr);
-    if (!owner->container) {
-        owner->container = std::make_unique<Container>(26);
+TEST_CASE("Inventory state accepts 0, 1, and 26 items", "[tile-targeting]") {
+    // Self-contained test: create our own actor with container
+    // (avoids depending on engine.player state which may be corrupted by prior PBT tests)
+    auto testActor = std::make_unique<Actor>(5, 5, '@', "TestPlayer", Colors::white);
+    testActor->container = std::make_unique<Container>(26);
+    Actor* owner = testActor.get();
+
+    SECTION("0 items") {
+        engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
+        engine.gameStatus = Engine::INVENTORY;
+        REQUIRE(engine.inventoryState.has_value());
+        REQUIRE(engine.inventoryState->owner == owner);
+        REQUIRE(owner->container->inventory.empty());
+        engine.inventoryState = std::nullopt;
+        engine.gameStatus = Engine::IDLE;
     }
 
-    // Clear inventory
-    owner->container->inventory.clear();
-
-    // Set up inventory state with 0 items
-    engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
-    engine.gameStatus = Engine::INVENTORY;
-
-    // Verify state is set up correctly (skip actual render — requires full console init)
-    REQUIRE(engine.inventoryState.has_value());
-    REQUIRE(engine.inventoryState->owner == owner);
-    REQUIRE(owner->container->inventory.empty());
-
-    // Cleanup
-    engine.inventoryState = std::nullopt;
-    engine.gameStatus = Engine::IDLE;
-}
-
-TEST_CASE("renderInventory with 1 item does not crash", "[tile-targeting]") {
-    Actor* owner = engine.player;
-    REQUIRE(owner != nullptr);
-    if (!owner->container) {
-        owner->container = std::make_unique<Container>(26);
-    }
-
-    owner->container->inventory.clear();
-
-    // Add 1 item
-    auto item = std::make_unique<Actor>(0, 0, '!', "single potion", Colors::white);
-    owner->container->inventory.push_back(std::move(item));
-
-    engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
-    engine.gameStatus = Engine::INVENTORY;
-
-    // Verify state is correct (skip actual render — requires full console init)
-    REQUIRE(engine.inventoryState.has_value());
-    REQUIRE(owner->container->inventory.size() == 1);
-
-    // Cleanup
-    owner->container->inventory.clear();
-    engine.inventoryState = std::nullopt;
-    engine.gameStatus = Engine::IDLE;
-}
-
-TEST_CASE("renderInventory with 26 items (max) does not crash", "[tile-targeting]") {
-    Actor* owner = engine.player;
-    REQUIRE(owner != nullptr);
-    if (!owner->container) {
-        owner->container = std::make_unique<Container>(26);
-    }
-
-    owner->container->inventory.clear();
-
-    // Add 26 items (max inventory)
-    for (int i = 0; i < 26; ++i) {
-        auto item = std::make_unique<Actor>(0, 0, '!', "item_" + std::to_string(i), Colors::white);
+    SECTION("1 item") {
+        auto item = std::make_unique<Actor>(0, 0, '!', "potion", Colors::white);
         owner->container->inventory.push_back(std::move(item));
+        engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
+        engine.gameStatus = Engine::INVENTORY;
+        REQUIRE(engine.inventoryState.has_value());
+        REQUIRE(owner->container->inventory.size() == 1);
+        owner->container->inventory.clear();
+        engine.inventoryState = std::nullopt;
+        engine.gameStatus = Engine::IDLE;
     }
 
-    engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
-    engine.gameStatus = Engine::INVENTORY;
-
-    // Verify state is correct (skip actual render — requires full console init)
-    REQUIRE(engine.inventoryState.has_value());
-    REQUIRE(owner->container->inventory.size() == 26);
-
-    // Cleanup
-    owner->container->inventory.clear();
-    engine.inventoryState = std::nullopt;
-    engine.gameStatus = Engine::IDLE;
+    SECTION("26 items (max)") {
+        for (int i = 0; i < 26; ++i) {
+            auto item = std::make_unique<Actor>(0, 0, '!', "item_" + std::to_string(i), Colors::white);
+            owner->container->inventory.push_back(std::move(item));
+        }
+        engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
+        engine.gameStatus = Engine::INVENTORY;
+        REQUIRE(engine.inventoryState.has_value());
+        REQUIRE(owner->container->inventory.size() == 26);
+        owner->container->inventory.clear();
+        engine.inventoryState = std::nullopt;
+        engine.gameStatus = Engine::IDLE;
+    }
 }
 
 // ─── Cancellation during TARGETING preserves inventory ───────────────────────
 // **Validates: Requirements 5.4**
 
 TEST_CASE("Cancellation during TARGETING via ESC preserves inventory", "[tile-targeting]") {
-    Actor* owner = engine.player;
-    REQUIRE(owner != nullptr);
-    if (!owner->container) {
-        owner->container = std::make_unique<Container>(26);
-    }
-    REQUIRE(owner->container != nullptr);
+    // Self-contained: create our own actor to avoid engine.player corruption issues
+    auto testActor = std::make_unique<Actor>(5, 5, '@', "TestPlayer", Colors::white);
+    testActor->container = std::make_unique<Container>(26);
+    Actor* owner = testActor.get();
 
     // Set up inventory with a few items
-    owner->container->inventory.clear();
     auto scroll = std::make_unique<Actor>(0, 0, '!', "fireball scroll", Colors::white);
     Actor* scrollPtr = scroll.get();
     owner->container->inventory.push_back(std::move(scroll));
@@ -498,21 +462,15 @@ TEST_CASE("Cancellation during TARGETING via ESC preserves inventory", "[tile-ta
         }
     }
     REQUIRE(scrollFound);
-
-    // Cleanup
-    owner->container->inventory.clear();
 }
 
 TEST_CASE("Cancellation during TARGETING via right-click preserves inventory", "[tile-targeting]") {
-    Actor* owner = engine.player;
-    REQUIRE(owner != nullptr);
-    if (!owner->container) {
-        owner->container = std::make_unique<Container>(26);
-    }
-    REQUIRE(owner->container != nullptr);
+    // Self-contained: create our own actor
+    auto testActor = std::make_unique<Actor>(5, 5, '@', "TestPlayer", Colors::white);
+    testActor->container = std::make_unique<Container>(26);
+    Actor* owner = testActor.get();
 
     // Set up inventory
-    owner->container->inventory.clear();
     auto scroll = std::make_unique<Actor>(0, 0, '?', "confusion scroll", Colors::white);
     Actor* scrollPtr = scroll.get();
     owner->container->inventory.push_back(std::move(scroll));
