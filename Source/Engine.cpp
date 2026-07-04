@@ -107,6 +107,12 @@ void Engine::nextLevel()
 	// On the surface: stairs go down (dungeon entrance). Underground: stairs go up (toward surface).
 	stairs->setGlyph(isOutdoor ? '>' : '<');
 
+	// Place player on the stairs (they arrived via stairs from the previous level)
+	if (!isOutdoor) {
+		player->setX(stairs->getX());
+		player->setY(stairs->getY());
+	}
+
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
 	camera->update(player, isOutdoor);
@@ -166,21 +172,43 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 		}
 
 		TCODConsole::flush();
-		pollInput(inputState);
-		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
+
+		// Use SDL_GetMouseState for reliable mouse position and button state.
+		// This bypasses the event queue which libtcod's flush() may drain.
+		float mouseXf, mouseYf;
+		Uint32 buttons = SDL_GetMouseState(&mouseXf, &mouseYf);
+		int mousePixelX = static_cast<int>(mouseXf);
+		int mousePixelY = static_cast<int>(mouseYf);
+		int mouseCellX = mousePixelX / DEFAULT_CELL_WIDTH;
+		int mouseCellY = mousePixelY / DEFAULT_CELL_HEIGHT;
+
+		auto [worldX, worldY] = camera->getWorldLocation(mouseCellX, mouseCellY);
 
 		if (map->isInFOV(worldX, worldY)
 			&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
 		{
-			renderSetBg(TCODConsole::root->get_data(), inputState.mouse.cellX, inputState.mouse.cellY, {255, 255, 255});
-			if (inputState.mouse.lbutton_pressed) {
+			renderSetBg(TCODConsole::root->get_data(), mouseCellX, mouseCellY, {255, 255, 255});
+			if (buttons & SDL_BUTTON_LMASK) {
 				*x = worldX;
 				*y = worldY;
+				// Wait for button release to avoid repeat
+				while (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK) {
+					SDL_Delay(10);
+				}
 				return true;
 			}
-			if (inputState.mouse.rbutton_pressed || inputState.key.key != SDLK_UNKNOWN) {
+			if (buttons & SDL_BUTTON_RMASK) {
+				while (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) {
+					SDL_Delay(10);
+				}
 				return false;
 			}
+		}
+
+		// Also check keyboard for cancel (ESC or any key)
+		pollInput(inputState);
+		if (inputState.key.key != SDLK_UNKNOWN) {
+			return false;
 		}
 	}
 	return false;

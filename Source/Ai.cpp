@@ -64,6 +64,7 @@ void PlayerAi::update(Actor* owner)
 		case SDLK_PAGEDOWN:
 			if (engine.debugMode) {
 				engine.gui->message(Colors::yellow, "DEBUG: Skipping to next level...");
+				engine.stairs->setGlyph('>');
 				engine.nextLevel();
 			}
 			break;
