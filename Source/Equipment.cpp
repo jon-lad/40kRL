@@ -4,7 +4,7 @@ Actor* Equipment::getSlot(EquipmentSlot slot) const {
 	return slots[static_cast<int>(slot)];
 }
 
-Actor* Equipment::equip(Actor* item, Container& inventory, Attacker* attacker) {
+Actor* Equipment::equip(Actor* item, Container* inventory, Attacker* attacker) {
 	if (!item || !item->equippable) {
 		return nullptr;
 	}

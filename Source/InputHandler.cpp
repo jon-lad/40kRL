@@ -19,12 +19,23 @@ void pollInput(InputState& state, int cellWidth, int cellHeight) {
             case SDL_EVENT_KEY_DOWN:
                 state.key.pressed = true;
                 state.key.key = event.key.key;
-                // Derive a printable character from the keycode if it maps
-                // to a basic ASCII character (a-z, 0-9, punctuation).
-                if (event.key.key >= SDLK_SPACE && event.key.key <= SDLK_Z) {
-                    state.key.c = static_cast<char>(event.key.key & 0xFF);
+                // key.c will be populated by TEXT_INPUT event if available.
+                // For non-text keys, derive basic ASCII from keycode.
+                if (event.key.key >= SDLK_A && event.key.key <= SDLK_Z) {
+                    // Lowercase letter (shift handling comes from TEXT_INPUT)
+                    state.key.c = static_cast<char>(event.key.key - SDLK_A + 'a');
+                } else if (event.key.key >= SDLK_0 && event.key.key <= SDLK_9) {
+                    state.key.c = static_cast<char>(event.key.key - SDLK_0 + '0');
                 } else {
                     state.key.c = 0;
+                }
+                break;
+
+            case SDL_EVENT_TEXT_INPUT:
+                // TEXT_INPUT gives us the actual typed character including shift.
+                // This correctly maps Shift+. to '>' and Shift+, to '<'.
+                if (event.text.text[0] != 0) {
+                    state.key.c = event.text.text[0];
                 }
                 break;
 

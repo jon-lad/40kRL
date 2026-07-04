@@ -1,5 +1,7 @@
 #pragma once
 #include <array>
+#include <memory>
+#include <vector>
 
 class Actor;
 class Container;
@@ -12,13 +14,17 @@ public:
 	// Returns the item in the given slot, or nullptr if empty.
 	Actor* getSlot(EquipmentSlot slot) const;
 
+	// Returns a const reference to the internal slots array for iteration.
+	const std::array<Actor*, 4>& getSlots() const { return slots; }
+
 	// Equips item into its target slot. Returns the previously equipped item
 	// (which has been moved back to inventory), or nullptr if slot was empty.
 	// Returns nullptr and does nothing if item has no equippable component.
 	// If the item has a non-zero skill modifier, calls attacker->addModifier(skill).
 	// If swapping out an old item with a non-zero skill modifier, calls
 	// attacker->removeModifier(oldSkill) before adding the new one.
-	Actor* equip(Actor* item, Container& inventory, Attacker* attacker);
+	// inventory can be nullptr (enemy path) — inventory management is skipped.
+	Actor* equip(Actor* item, Container* inventory, Attacker* attacker);
 
 	// Unequips the item in the given slot, moving it back to inventory.
 	// If the item has a non-zero skill modifier, calls attacker->removeModifier(skill).
@@ -45,6 +51,13 @@ public:
 
 	void save(TCODZip& zip, const Container& inventory);
 	void load(TCODZip& zip, Container& inventory);
+
+	// Owns item Actors for non-player entities that don't use Container.
+	// Player equipment does NOT use this (items live in Container).
+	std::vector<std::unique_ptr<Actor>> ownedItems;
+
+	// Probability each equipped item drops on enemy death. Default 1.0 = always drop.
+	float dropChance = 1.0f;
 
 private:
 	std::array<Actor*, 4> slots = {};

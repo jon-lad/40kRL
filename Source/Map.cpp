@@ -596,16 +596,158 @@ void Map::addMonster(int x, int y)
 		lua.open_libraries(sol::lib::base, sol::lib::string);
 
 		// Inject C++ callback that Lua calls to actually create the actor.
-		lua["addActor"] = [](int ax, int ay, int glyph, const std::string& name,
-			const std::string& colorName, float hp, float defense,
-			const std::string& corpse, int xp, float power, int skill)
+		// Receives (x, y, entry_table) so C++ can read all fields including equipment config.
+		lua["addActor"] = [](int ax, int ay, sol::table entry)
 		{
+			// ── Core enemy fields ──
+			std::string name      = entry.get_or(std::string("name"), std::string(""));
+			std::string colorName = entry.get_or(std::string("color"), std::string(""));
+			int glyph             = entry.get_or(std::string("glyph"), static_cast<int>('?'));
+			float hp              = entry.get_or(std::string("hp"), 10.0f);
+			float defense         = entry.get_or(std::string("defense"), 0.0f);
+			std::string corpse    = entry.get_or(std::string("corpse"), std::string("remains"));
+			int xp                = entry.get_or(std::string("xp"), 0);
+			float power           = entry.get_or(std::string("power"), 1.0f);
+			int skill             = entry.get_or(std::string("skill"), 40);
+
 			TCODColor col = colorFromName(colorName);
 			auto monster = std::make_unique<Actor>(ax, ay, glyph, name, col);
 			monster->destructible = std::make_unique<MonsterDestructible>(hp, defense, corpse, xp);
 			monster->attacker     = std::make_unique<Attacker>(power, skill);
 			monster->ai           = std::make_unique<MonsterAi>();
+
+			// ── Parse equipment config from the Lua table ──
+			EnemyEquipmentConfig equipConfig;
+			bool hasEquipmentField = false;
+			bool hasEquipTierField = false;
+
+			// Read "equipment" field (list of strings)
+			sol::optional<sol::table> equipList = entry["equipment"];
+			if (equipList) {
+				hasEquipmentField = true;
+				for (size_t i = 1; i <= equipList->size(); i++) {
+					sol::optional<std::string> itemName = (*equipList)[i];
+					if (itemName) {
+						equipConfig.equipmentNames.push_back(*itemName);
+					}
+				}
+			}
+
+			// Read "dropChance" field (float)
+			sol::optional<float> dropChanceOpt = entry["dropChance"];
+			if (dropChanceOpt) {
+				float dc = *dropChanceOpt;
+				if (dc < 0.0f) {
+					engine.gui->message(Colors::damage,
+						"Warning: # dropChance clamped to 0.0 (was #)", name, dc);
+					dc = 0.0f;
+				} else if (dc > 1.0f) {
+					engine.gui->message(Colors::damage,
+						"Warning: # dropChance clamped to 1.0 (was #)", name, dc);
+					dc = 1.0f;
+				}
+				equipConfig.dropChance = dc;
+			}
+
+			// Read "equipTier" field (table with common/uncommon/rare weights)
+			sol::optional<sol::table> tierTable = entry["equipTier"];
+			if (tierTable) {
+				hasEquipTierField = true;
+				float defaultCommon = 70.0f;
+				float defaultUncommon = 25.0f;
+				float defaultRare = 5.0f;
+				equipConfig.tierWeights.common   = tierTable->get_or(std::string("common"), defaultCommon);
+				equipConfig.tierWeights.uncommon = tierTable->get_or(std::string("uncommon"), defaultUncommon);
+				equipConfig.tierWeights.rare     = tierTable->get_or(std::string("rare"), defaultRare);
+			}
+
+			// Determine useTierSelection logic:
+			// If "equipTier" is present and "equipment" is absent → use tier selection
+			// If both are present → named list takes precedence, ignore equipTier
+			if (hasEquipTierField && !hasEquipmentField) {
+				equipConfig.useTierSelection = true;
+			}
+
+			// Store the parsed config on the monster for later use by the equipment
+			// resolution step. Only store if the enemy actually has equipment-related fields.
+			if (hasEquipmentField || hasEquipTierField) {
+				monster->equipConfig = std::make_unique<EnemyEquipmentConfig>(std::move(equipConfig));
+			}
+
 			engine.actors.push_back(std::move(monster));
+
+			// ── Equipment resolution (task 2.2) ──
+			// Resolve equipment config and attach items to the newly created enemy.
+			Actor* spawned = engine.actors.back().get();
+			if (spawned->equipConfig && !engine.equipmentTemplates.empty()) {
+				const auto& cfg = *spawned->equipConfig;
+
+				// Create an Equipment instance on the enemy
+				spawned->equipment = std::make_unique<Equipment>();
+				spawned->equipment->dropChance = cfg.dropChance;
+
+				// Collect resolved templates
+				std::vector<const EquipmentTemplate*> resolvedTemplates;
+
+				if (!cfg.equipmentNames.empty()) {
+					// Named equipment: look up each name in engine.equipmentTemplates
+					for (const auto& itemName : cfg.equipmentNames) {
+						const EquipmentTemplate* found = nullptr;
+						for (const auto& tmpl : engine.equipmentTemplates) {
+							if (tmpl.name == itemName) {
+								found = &tmpl;
+								break;
+							}
+						}
+						if (!found) {
+							engine.gui->message(Colors::damage,
+								"Warning: equipment template '#' not found for #", itemName, name);
+							continue;
+						}
+						resolvedTemplates.push_back(found);
+					}
+				} else if (cfg.useTierSelection) {
+					// Tier-based random selection using the reusable helper
+					// For each slot, use the helper to pick a template based on tier weights
+					for (int slotIdx = 0; slotIdx < static_cast<int>(EquipmentSlot::COUNT); ++slotIdx) {
+						EquipmentSlot targetSlot = static_cast<EquipmentSlot>(slotIdx);
+						const EquipmentTemplate* selected = engine.selectEquipmentByTier(targetSlot, cfg.tierWeights);
+						if (selected) {
+							resolvedTemplates.push_back(selected);
+						}
+					}
+				}
+
+				// Create item Actors from resolved templates, equip them
+				// Track which slots have been filled to detect conflicts
+				std::array<bool, static_cast<int>(EquipmentSlot::COUNT)> slotFilled = {};
+
+				for (const auto* tmpl : resolvedTemplates) {
+					int slotIdx = static_cast<int>(tmpl->slot);
+
+					// Warn about slot conflicts (multiple items for same slot)
+					if (slotFilled[slotIdx]) {
+						engine.gui->message(Colors::damage,
+							"Warning: # has multiple items for same slot, equipping '#' last",
+							name, tmpl->name);
+					}
+					slotFilled[slotIdx] = true;
+
+					// Create item Actor with Equippable component
+					auto item = std::make_unique<Actor>(0, 0, tmpl->glyph, tmpl->name, tmpl->color);
+					item->blocks = false;
+					item->equippable = std::make_shared<Equippable>(
+						tmpl->slot, tmpl->modifiers, tmpl->weight, tmpl->value);
+
+					// Equip the item (pass nullptr for Container since enemies don't use inventory)
+					Actor* itemPtr = item.get();
+					spawned->equipment->ownedItems.push_back(std::move(item));
+					spawned->equipment->equip(itemPtr, nullptr, spawned->attacker.get());
+				}
+
+				// Consume the equipConfig — it's no longer needed
+				spawned->equipConfig.reset();
+			}
 		};
 
 		lua.script_file("Scripts/Enemies.lua");
@@ -634,7 +776,7 @@ void Map::addItem(int x, int y)
 	TCODRandom* rng  = TCODRandom::getInstance();
 
 	// 25% chance to spawn equipment if templates are available
-	if (!engine.equipmentTemplates.empty() && rng->getInt(0, 99) < 25) {
+	if (!engine.equipmentTemplates.empty() && rng != nullptr && rng->getInt(0, 99) < 25) {
 		int templateIndex = rng->getInt(0, static_cast<int>(engine.equipmentTemplates.size()) - 1);
 		const auto& tmpl = engine.equipmentTemplates[templateIndex];
 

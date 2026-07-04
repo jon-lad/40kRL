@@ -164,6 +164,7 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 			}
 		}
 
+		TCODConsole::flush();
 		pollInput(inputState);
 		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
 
@@ -180,8 +181,6 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 				return false;
 			}
 		}
-
-		TCODConsole::flush();
 	}
 	return false;
 }
@@ -194,6 +193,49 @@ void Engine::sendToBack(Actor* actor)
 			return;
 		}
 	}
+}
+
+const EquipmentTemplate* Engine::selectEquipmentByTier(EquipmentSlot slot, const EnemyEquipmentConfig::TierWeights& weights)
+{
+	// Normalize weights so they sum to 1.0
+	float totalWeight = weights.common + weights.uncommon + weights.rare;
+	if (totalWeight <= 0.0f) {
+		gui->message(Colors::damage, "Warning: tier weights sum to zero, cannot select equipment.");
+		return nullptr;
+	}
+	float normCommon   = weights.common / totalWeight;
+	float normUncommon = weights.uncommon / totalWeight;
+	// normRare is the remainder (1.0 - normCommon - normUncommon)
+
+	// Roll a random float to select a tier
+	TCODRandom* rng = TCODRandom::getInstance();
+	float tierRoll = rng->getFloat(0.0f, 1.0f);
+
+	ItemTier selectedTier;
+	if (tierRoll < normCommon) {
+		selectedTier = ItemTier::COMMON;
+	} else if (tierRoll < normCommon + normUncommon) {
+		selectedTier = ItemTier::UNCOMMON;
+	} else {
+		selectedTier = ItemTier::RARE;
+	}
+
+	// Filter equipmentTemplates by the selected tier AND the target slot
+	std::vector<const EquipmentTemplate*> candidates;
+	for (const auto& tmpl : equipmentTemplates) {
+		if (tmpl.slot == slot && tmpl.tier == selectedTier) {
+			candidates.push_back(&tmpl);
+		}
+	}
+
+	if (candidates.empty()) {
+		gui->message(Colors::damage, "Warning: no equipment templates for slot+tier combination.");
+		return nullptr;
+	}
+
+	// Randomly pick one from the matching candidates
+	int pick = rng->getInt(0, static_cast<int>(candidates.size()) - 1);
+	return candidates[pick];
 }
 
 void Engine::init()
@@ -237,6 +279,8 @@ void Engine::init()
 	}
 
 	// Load equipment templates from Equipment.lua.
+	// NOTE: This MUST run before map->init() because enemy spawning (Map::addMonster)
+	// references equipmentTemplates to assign gear to enemies.
 	try {
 		sol::state lua;
 		lua.open_libraries(sol::lib::base);
@@ -290,6 +334,12 @@ void Engine::init()
 				// Resolve color
 				TCODColor color = Colors::colorFromName(colorName);
 
+				// Parse optional tier field (default: COMMON)
+				std::string tierStr = entry.get_or("tier", std::string("common"));
+				ItemTier tier = ItemTier::COMMON;
+				if (tierStr == "uncommon")     tier = ItemTier::UNCOMMON;
+				else if (tierStr == "rare")    tier = ItemTier::RARE;
+
 				// Create template
 				EquipmentTemplate tmpl;
 				tmpl.name      = name;
@@ -299,6 +349,7 @@ void Engine::init()
 				tmpl.weight    = weight;
 				tmpl.value     = value;
 				tmpl.modifiers = { power, defense, maxHp, skill };
+				tmpl.tier      = tier;
 
 				equipmentTemplates.push_back(tmpl);
 			}

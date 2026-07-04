@@ -206,19 +206,28 @@ void Camera::update(Actor* trackedActor, bool isOutdoor)
 		x = -trackedActor->getX() + width / 2;
 		y = -trackedActor->getY() + height / 2;
 	} else {
-		// Outdoor: scroll by 1 tile when player is within margin of viewport edge
+		// Outdoor: scroll by 1 tile when player is within margin of viewport edge.
+		// First, check if camera is far from the player (e.g., just entered the level)
+		// and snap to centre if so.
 		int screenX = trackedActor->getX() + x;
 		int screenY = trackedActor->getY() + y;
 
-		if (screenX < scrollMargin)
-			x += 1;
-		else if (screenX >= width - scrollMargin)
-			x -= 1;
+		// If player is completely outside the viewport, snap to centre
+		if (screenX < 0 || screenX >= width || screenY < 0 || screenY >= height) {
+			x = -trackedActor->getX() + width / 2;
+			y = -trackedActor->getY() + height / 2;
+		} else {
+			// Gradual scroll when near edges
+			if (screenX < scrollMargin)
+				x += 1;
+			else if (screenX >= width - scrollMargin)
+				x -= 1;
 
-		if (screenY < scrollMargin)
-			y += 1;
-		else if (screenY >= height - scrollMargin)
-			y -= 1;
+			if (screenY < scrollMargin)
+				y += 1;
+			else if (screenY >= height - scrollMargin)
+				y -= 1;
+		}
 	}
 
 	// Clamp to map bounds

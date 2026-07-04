@@ -196,7 +196,7 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		if (item) {
 			if (item->equippable && owner->equipment) {
 				// Equippable item — equip it instead of using it
-				Actor* previous = owner->equipment->equip(item, *owner->container, owner->attacker.get());
+				Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
 				if (previous) {
 					engine.gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
 				} else {

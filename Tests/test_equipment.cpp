@@ -91,7 +91,7 @@ TEST_CASE("PBT: Each equipment slot contains at most one item after any sequence
 
         // Equip all items in sequence
         for (Actor* item : itemPtrs) {
-            equipment.equip(item, inventory, &attacker);
+            equipment.equip(item, &inventory, &attacker);
         }
 
         // Verify: each slot has at most one item (check no duplicates)
@@ -131,7 +131,7 @@ TEST_CASE("PBT: Equip then unequip leaves slot empty", "[equipment][pbt]")
         inventory.add(std::move(item));
 
         // Equip
-        equipment.equip(ptr, inventory, &attacker);
+        equipment.equip(ptr, &inventory, &attacker);
         RC_ASSERT(equipment.getSlot(slot) == ptr);
 
         // Unequip
@@ -164,7 +164,7 @@ TEST_CASE("PBT: Equip/unequip round-trip restores Attacker modifiers to pre-equi
         inventory.add(std::move(item));
 
         // Equip then unequip
-        equipment.equip(ptr, inventory, &attacker);
+        equipment.equip(ptr, &inventory, &attacker);
         equipment.unequip(slot, inventory, &attacker);
 
         // Verify modifiers vector is restored
@@ -194,7 +194,7 @@ TEST_CASE("PBT: getTotalPowerModifier equals sum of all equipped items' power mo
             auto item = makeEquippableActor("Item" + std::to_string(i), slot, mods);
             Actor* ptr = item.get();
             inventory.add(std::move(item));
-            equipment.equip(ptr, inventory, &attacker);
+            equipment.equip(ptr, &inventory, &attacker);
             expectedSum += power;
         }
 
@@ -255,7 +255,7 @@ TEST_CASE("PBT: Skill modifier equip/unequip round-trip preserves computeThresho
         inventory.add(std::move(item));
 
         // Equip — should add modifier
-        equipment.equip(ptr, inventory, &attacker);
+        equipment.equip(ptr, &inventory, &attacker);
         RC_ASSERT(attacker.modifiers.size() == 1);
 
         // Unequip — should remove modifier
@@ -288,7 +288,7 @@ TEST_CASE("PBT: Multiple skill modifiers are additive in computeThreshold", "[eq
             auto item = makeEquippableActor("SkillItem" + std::to_string(i), slot, mods);
             Actor* ptr = item.get();
             inventory.add(std::move(item));
-            equipment.equip(ptr, inventory, &attacker);
+            equipment.equip(ptr, &inventory, &attacker);
         }
 
         const int expectedThreshold = std::max(1, std::min(99, baseSkill + skillSum));
@@ -319,7 +319,7 @@ TEST_CASE("PBT: Item with skill==0 does not change Attacker modifiers vector", "
         inventory.add(std::move(item));
 
         // Equip — should NOT add modifier
-        equipment.equip(ptr, inventory, &attacker);
+        equipment.equip(ptr, &inventory, &attacker);
         RC_ASSERT(attacker.modifiers == modsBefore);
 
         // Unequip — should NOT change modifiers
@@ -352,7 +352,7 @@ TEST_CASE("PBT: Save/load equipment round-trip preserves slot assignments", "[eq
                 weightInt / 10.0f, value);
             Actor* ptr = item.get();
             inventory.add(std::move(item));
-            equipment.equip(ptr, inventory, &attacker);
+            equipment.equip(ptr, &inventory, &attacker);
         }
 
         // Save
@@ -401,7 +401,7 @@ TEST_CASE("Equip weapon-slot item occupies only the WEAPON slot", "[equipment]")
     Actor* ptr = item.get();
     inventory.add(std::move(item));
 
-    equipment.equip(ptr, inventory, &attacker);
+    equipment.equip(ptr, &inventory, &attacker);
 
     REQUIRE(equipment.getSlot(EquipmentSlot::WEAPON) == ptr);
     REQUIRE(equipment.getSlot(EquipmentSlot::OFFHAND) == nullptr);
@@ -424,7 +424,7 @@ TEST_CASE("Unequip succeeds and clears the slot (item stays in inventory)", "[eq
     Actor* ptr = item.get();
     inventory.add(std::move(item));
 
-    equipment.equip(ptr, inventory, &attacker);
+    equipment.equip(ptr, &inventory, &attacker);
     REQUIRE(equipment.getSlot(EquipmentSlot::WEAPON) == ptr);
 
     bool result = equipment.unequip(EquipmentSlot::WEAPON, inventory, &attacker);
@@ -461,12 +461,12 @@ TEST_CASE("Equip to occupied slot swaps: slot contains new item, previous is ret
     inventory.add(std::move(itemB));
 
     // Equip A first
-    Actor* prev1 = equipment.equip(ptrA, inventory, &attacker);
+    Actor* prev1 = equipment.equip(ptrA, &inventory, &attacker);
     REQUIRE(prev1 == nullptr); // slot was empty
     REQUIRE(equipment.getSlot(EquipmentSlot::WEAPON) == ptrA);
 
     // Equip B — should swap out A
-    Actor* prev2 = equipment.equip(ptrB, inventory, &attacker);
+    Actor* prev2 = equipment.equip(ptrB, &inventory, &attacker);
     REQUIRE(prev2 == ptrA); // A was returned as previous
     REQUIRE(equipment.getSlot(EquipmentSlot::WEAPON) == ptrB);
 }

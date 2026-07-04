@@ -56,4 +56,10 @@ public:
 	void save(TCODZip& zip) override;
 };
 
+// Evaluates each equipped item on a dying enemy for loot drop.
+// For each occupied slot, rolls against enemy->equipment->dropChance.
+// On success, creates a Pickable_Actor on the map at the enemy's position.
+// No-op if enemy->equipment is null.
+void dropEnemyEquipment(Actor* enemy);
+
 

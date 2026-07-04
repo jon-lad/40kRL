@@ -374,7 +374,7 @@ TEST_CASE("Level progression: starting dungeon level is 20", "[outdoor][engine]"
     REQUIRE(engine.dungeonLevel == 20);
 }
 
-TEST_CASE("Level progression: stairs '<' decrements depth", "[outdoor][engine]")
+TEST_CASE("Level progression: stairs '<' decrements depth", "[outdoor][engine][.integration]")
 {
     // Setup: engine must have player, stairs, map, gui, camera initialised
     // The global `engine` should be set up by the test harness or we test logic directly.
@@ -392,7 +392,7 @@ TEST_CASE("Level progression: stairs '<' decrements depth", "[outdoor][engine]")
     // Restore (nextLevel creates a new map, so state is already changed)
 }
 
-TEST_CASE("Level progression: stairs '>' increments depth", "[outdoor][engine]")
+TEST_CASE("Level progression: stairs '>' increments depth", "[outdoor][engine][.integration]")
 {
     int originalLevel = engine.dungeonLevel;
     engine.stairs->setGlyph('>');
@@ -402,7 +402,7 @@ TEST_CASE("Level progression: stairs '>' increments depth", "[outdoor][engine]")
     REQUIRE(engine.dungeonLevel == originalLevel + 1);
 }
 
-TEST_CASE("Level progression: depth 0 generates outdoor map", "[outdoor][engine]")
+TEST_CASE("Level progression: depth 0 generates outdoor map", "[outdoor][engine][.integration]")
 {
     // Set engine to depth 1 with '<' stairs so nextLevel goes to 0
     engine.dungeonLevel = 1;
