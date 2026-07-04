@@ -166,7 +166,7 @@ TEST_CASE("PBT: outdoor map has connected ground region >= MIN_PLAYABLE_AREA (20
 // ═══════════════════════════════════════════════════════════════════════════════
 
 TEST_CASE("PBT: stairs distance from player >= 40 or is furthest ground tile",
-          "[outdoor][pbt]")
+          "[outdoor][pbt][.integration]")
 {
     /**
      * Validates: Requirements 4.3, 4.4
