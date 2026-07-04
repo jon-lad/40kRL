@@ -20,7 +20,8 @@ public:
 	// If the item has a non-zero skill modifier, calls attacker->addModifier(skill).
 	// If swapping out an old item with a non-zero skill modifier, calls
 	// attacker->removeModifier(oldSkill) before adding the new one.
-	Actor* equip(Actor* item, Container& inventory, Attacker* attacker);
+	// inventory can be nullptr (enemy path) — inventory management is skipped.
+	Actor* equip(Actor* item, Container* inventory, Attacker* attacker);
 
 	// Unequips the item in the given slot, moving it back to inventory.
 	// If the item has a non-zero skill modifier, calls attacker->removeModifier(skill).

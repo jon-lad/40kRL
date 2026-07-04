@@ -3,10 +3,12 @@
 -- C++ calls: spawnEnemy(roll, x, y)
 --   roll : int  (0-99 random roll)
 --   x, y : int  (world position)
--- The function calls back into C++ via the injected addActor(actor_def) function.
+-- The function calls back into C++ via the injected addActor(x, y, entry) function,
+-- passing the entire enemy table entry so C++ can read all fields including equipment config.
 
 -- Enemy definitions table.
--- Fields: chance (cumulative %), glyph, name, color, hp, defense, corpse, xp, power
+-- Fields: chance (cumulative %), glyph, name, color, hp, defense, corpse, xp, power, skill
+-- Optional equipment fields: equipment (list of strings), dropChance (float), equipTier (table)
 local enemies = {
     {
         chance  = 60,
@@ -49,7 +51,7 @@ local enemies = {
 function spawnEnemy(roll, x, y)
     for _, e in ipairs(enemies) do
         if roll < e.chance then
-            addActor(x, y, e.glyph, e.name, e.color, e.hp, e.defense, e.corpse, e.xp, e.power, e.skill or 40)
+            addActor(x, y, e)
             return
         end
     end

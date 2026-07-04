@@ -4,6 +4,7 @@
 
 class Equippable;
 class Equipment;
+struct EnemyEquipmentConfig;
 
 // An Actor is any entity that exists on the map: the player, monsters, items, corpses, stairs.
 // Capabilities are defined by which optional components are non-null.
@@ -25,6 +26,10 @@ public:
 	std::shared_ptr<Container>   container;
 	std::shared_ptr<Equippable>  equippable;
 	std::unique_ptr<Equipment>   equipment;  // non-null on any actor with equipment
+
+	// Parsed equipment config from Lua (used during spawn to resolve equipment in task 2.2).
+	// Null for actors without equipment configuration. Consumed and cleared after equipment is attached.
+	std::unique_ptr<EnemyEquipmentConfig> equipConfig;
 
 	Actor(int x, int y, int glyph, std::string_view name, const TCODColor& color);
 

@@ -8,7 +8,8 @@ Destructible::Destructible(float maxHp, float defense, std::string_view corpseNa
 
 float Destructible::takeDamage(Actor* owner, float damage)
 {
-	damage -= defense;
+	float equipDefenseBonus = owner->equipment ? owner->equipment->getTotalDefenseModifier() : 0.0f;
+	damage -= (defense + equipDefenseBonus);
 	if (damage > 0) {
 		hp -= damage;
 		if (hp <= 0) { die(owner); }

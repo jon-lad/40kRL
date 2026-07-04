@@ -596,15 +596,85 @@ void Map::addMonster(int x, int y)
 		lua.open_libraries(sol::lib::base, sol::lib::string);
 
 		// Inject C++ callback that Lua calls to actually create the actor.
-		lua["addActor"] = [](int ax, int ay, int glyph, const std::string& name,
-			const std::string& colorName, float hp, float defense,
-			const std::string& corpse, int xp, float power, int skill)
+		// Receives (x, y, entry_table) so C++ can read all fields including equipment config.
+		lua["addActor"] = [](int ax, int ay, sol::table entry)
 		{
+			// ── Core enemy fields ──
+			std::string name      = entry.get_or(std::string("name"), std::string(""));
+			std::string colorName = entry.get_or(std::string("color"), std::string(""));
+			int glyph             = entry.get_or(std::string("glyph"), static_cast<int>('?'));
+			float hp              = entry.get_or(std::string("hp"), 10.0f);
+			float defense         = entry.get_or(std::string("defense"), 0.0f);
+			std::string corpse    = entry.get_or(std::string("corpse"), std::string("remains"));
+			int xp                = entry.get_or(std::string("xp"), 0);
+			float power           = entry.get_or(std::string("power"), 1.0f);
+			int skill             = entry.get_or(std::string("skill"), 40);
+
 			TCODColor col = colorFromName(colorName);
 			auto monster = std::make_unique<Actor>(ax, ay, glyph, name, col);
 			monster->destructible = std::make_unique<MonsterDestructible>(hp, defense, corpse, xp);
 			monster->attacker     = std::make_unique<Attacker>(power, skill);
 			monster->ai           = std::make_unique<MonsterAi>();
+
+			// ── Parse equipment config from the Lua table ──
+			EnemyEquipmentConfig equipConfig;
+			bool hasEquipmentField = false;
+			bool hasEquipTierField = false;
+
+			// Read "equipment" field (list of strings)
+			sol::optional<sol::table> equipList = entry["equipment"];
+			if (equipList) {
+				hasEquipmentField = true;
+				for (size_t i = 1; i <= equipList->size(); i++) {
+					sol::optional<std::string> itemName = (*equipList)[i];
+					if (itemName) {
+						equipConfig.equipmentNames.push_back(*itemName);
+					}
+				}
+			}
+
+			// Read "dropChance" field (float)
+			sol::optional<float> dropChanceOpt = entry["dropChance"];
+			if (dropChanceOpt) {
+				float dc = *dropChanceOpt;
+				if (dc < 0.0f) {
+					engine.gui->message(Colors::damage,
+						"Warning: # dropChance clamped to 0.0 (was #)", name, dc);
+					dc = 0.0f;
+				} else if (dc > 1.0f) {
+					engine.gui->message(Colors::damage,
+						"Warning: # dropChance clamped to 1.0 (was #)", name, dc);
+					dc = 1.0f;
+				}
+				equipConfig.dropChance = dc;
+			}
+
+			// Read "equipTier" field (table with common/uncommon/rare weights)
+			sol::optional<sol::table> tierTable = entry["equipTier"];
+			if (tierTable) {
+				hasEquipTierField = true;
+				float defaultCommon = 70.0f;
+				float defaultUncommon = 25.0f;
+				float defaultRare = 5.0f;
+				equipConfig.tierWeights.common   = tierTable->get_or(std::string("common"), defaultCommon);
+				equipConfig.tierWeights.uncommon = tierTable->get_or(std::string("uncommon"), defaultUncommon);
+				equipConfig.tierWeights.rare     = tierTable->get_or(std::string("rare"), defaultRare);
+			}
+
+			// Determine useTierSelection logic:
+			// If "equipTier" is present and "equipment" is absent → use tier selection
+			// If both are present → named list takes precedence, ignore equipTier
+			if (hasEquipTierField && !hasEquipmentField) {
+				equipConfig.useTierSelection = true;
+			}
+
+			// Store the parsed config on the monster for later use by the equipment
+			// resolution step (task 2.2). We attach it via a temporary field on the Actor.
+			// Only store if the enemy actually has equipment-related fields.
+			if (hasEquipmentField || hasEquipTierField) {
+				monster->equipConfig = std::make_unique<EnemyEquipmentConfig>(std::move(equipConfig));
+			}
+
 			engine.actors.push_back(std::move(monster));
 		};
 
