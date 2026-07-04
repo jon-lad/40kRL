@@ -175,7 +175,9 @@ Actor* Engine::getActorAt(int x, int y) const
 
 bool Engine::pickAtTile(int* x, int* y, float maxRange)
 {
-	while (!TCODConsole::isWindowClosed()) {
+	// Tile-picking loop: render highlighted tiles, wait for mouse click or cancel.
+	bool running = true;
+	while (running) {
 		render();
 
 		// Brighten all in-range, in-FOV tiles to indicate they are selectable.
@@ -194,44 +196,55 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 			}
 		}
 
-		TCODConsole::flush();
-
-		// Use SDL_GetMouseState for reliable mouse position and button state.
-		// This bypasses the event queue which libtcod's flush() may drain.
+		// Show mouse cursor highlight
 		float mouseXf, mouseYf;
-		Uint32 buttons = SDL_GetMouseState(&mouseXf, &mouseYf);
-		int mousePixelX = static_cast<int>(mouseXf);
-		int mousePixelY = static_cast<int>(mouseYf);
-		int mouseCellX = mousePixelX / DEFAULT_CELL_WIDTH;
-		int mouseCellY = mousePixelY / DEFAULT_CELL_HEIGHT;
-
+		SDL_GetMouseState(&mouseXf, &mouseYf);
+		int mouseCellX = static_cast<int>(mouseXf) / DEFAULT_CELL_WIDTH;
+		int mouseCellY = static_cast<int>(mouseYf) / DEFAULT_CELL_HEIGHT;
 		auto [worldX, worldY] = camera->getWorldLocation(mouseCellX, mouseCellY);
 
 		if (map->isInFOV(worldX, worldY)
 			&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
 		{
 			renderSetBg(TCODConsole::root->get_data(), mouseCellX, mouseCellY, {255, 255, 255});
-			if (buttons & SDL_BUTTON_LMASK) {
-				*x = worldX;
-				*y = worldY;
-				// Wait for button release to avoid repeat
-				while (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK) {
-					SDL_Delay(10);
-				}
-				return true;
-			}
-			if (buttons & SDL_BUTTON_RMASK) {
-				while (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) {
-					SDL_Delay(10);
-				}
-				return false;
-			}
 		}
 
-		// Also check keyboard for cancel (ESC or any key)
-		pollInput(inputState);
-		if (inputState.key.key != SDLK_UNKNOWN) {
-			return false;
+		TCODConsole::flush();
+
+		// Wait for an event (blocks until mouse/key input arrives)
+		SDL_Event event;
+		while (SDL_WaitEvent(&event)) {
+			if (event.type == SDL_EVENT_QUIT) {
+				running = false;
+				return false;
+			}
+			if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+				float clickX = event.button.x;
+				float clickY = event.button.y;
+				int cellX = static_cast<int>(clickX) / DEFAULT_CELL_WIDTH;
+				int cellY = static_cast<int>(clickY) / DEFAULT_CELL_HEIGHT;
+				auto [wx, wy] = camera->getWorldLocation(cellX, cellY);
+
+				if (event.button.button == SDL_BUTTON_LEFT) {
+					if (map->isInFOV(wx, wy)
+						&& (maxRange == 0.0f || player->getDistance(wx, wy) <= maxRange))
+					{
+						*x = wx;
+						*y = wy;
+						return true;
+					}
+				} else if (event.button.button == SDL_BUTTON_RIGHT) {
+					return false;
+				}
+			}
+			if (event.type == SDL_EVENT_KEY_DOWN) {
+				// Any key press cancels
+				return false;
+			}
+			if (event.type == SDL_EVENT_MOUSE_MOTION) {
+				// Mouse moved — break inner wait to re-render with new cursor position
+				break;
+			}
 		}
 	}
 	return false;
