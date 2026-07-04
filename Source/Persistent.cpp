@@ -29,12 +29,32 @@ void Engine::save()
 		zip.putInt(0);
 	}
 
-	stairs->save(zip);
+	// Dual stairs serialization — sentinel-based presence flags.
+	static constexpr int STAIR_PRESENT = 1;
+	static constexpr int STAIR_ABSENT = -1;
+
+	if (stairsUp) {
+		zip.putInt(STAIR_PRESENT);
+		stairsUp->save(zip);
+	} else {
+		zip.putInt(STAIR_ABSENT);
+	}
+
+	if (stairsDown) {
+		zip.putInt(STAIR_PRESENT);
+		stairsDown->save(zip);
+	} else {
+		zip.putInt(STAIR_ABSENT);
+	}
 
 	// Save all actors except player and stairs (they are saved above).
-	zip.putInt(static_cast<int>(actors.size()) - 2);
+	int count = 0;
 	for (const auto& actorPtr : actors) {
-		if (actorPtr.get() != player && actorPtr.get() != stairs) {
+		if (actorPtr.get() != player && actorPtr.get() != stairsUp && actorPtr.get() != stairsDown) count++;
+	}
+	zip.putInt(count);
+	for (const auto& actorPtr : actors) {
+		if (actorPtr.get() != player && actorPtr.get() != stairsUp && actorPtr.get() != stairsDown) {
 			actorPtr->save(zip);
 		}
 	}
@@ -101,10 +121,28 @@ void Engine::load()
 		player->equipment = std::make_unique<Equipment>();
 	}
 
-	auto newStairs = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
-	stairs = newStairs.get();
-	actors.emplace_front(std::move(newStairs));
-	stairs->load(zip);
+	// Dual stairs restoration — sentinel-based presence flags.
+	static constexpr int STAIR_PRESENT = 1;
+
+	int upFlag = zip.getInt();
+	if (upFlag == STAIR_PRESENT) {
+		auto newUp = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
+		stairsUp = newUp.get();
+		actors.emplace_front(std::move(newUp));
+		stairsUp->load(zip);
+	} else {
+		stairsUp = nullptr;
+	}
+
+	int downFlag = zip.getInt();
+	if (downFlag == STAIR_PRESENT) {
+		auto newDown = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
+		stairsDown = newDown.get();
+		actors.emplace_front(std::move(newDown));
+		stairsDown->load(zip);
+	} else {
+		stairsDown = nullptr;
+	}
 
 	int remainingActors = zip.getInt();
 	while (remainingActors-- > 0) {

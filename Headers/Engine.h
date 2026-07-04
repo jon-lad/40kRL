@@ -33,6 +33,9 @@ struct EnemyEquipmentConfig {
 	bool useTierSelection = false;  // true if "equipTier" field is present in Lua
 };
 
+// Direction the player is travelling when using stairs.
+enum class StairDirection { UP, DOWN };
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -52,7 +55,8 @@ public:
 
 	// Raw-pointer aliases into actors — these actors must remain in the list for the lifetime of the pointers.
 	Actor* player;
-	Actor* stairs;
+	Actor* stairsUp;
+	Actor* stairsDown;
 
 	int fovRadius;
 	float carryingCapacity = 50.0f;
@@ -90,8 +94,8 @@ public:
 	// Returns true if a tile was selected, false if cancelled.
 	bool pickAtTile(int* x, int* y, float maxRange = 0.0f);
 
-	// Changes depth and generates a new level. Direction is determined by the stairs glyph.
-	void nextLevel();
+	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
+	void nextLevel(StairDirection direction);
 
 	// Selects a random equipment template matching the given slot, using tier-weighted
 	// random selection. Normalizes the tier weights to sum to 1.0, rolls a tier, then

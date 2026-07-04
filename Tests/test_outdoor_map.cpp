@@ -115,7 +115,7 @@ TEST_CASE("PBT: outdoor generation is deterministic — same seed produces same 
 // ═══════════════════════════════════════════════════════════════════════════════
 
 TEST_CASE("PBT: outdoor map has connected ground region >= MIN_PLAYABLE_AREA (200)",
-          "[outdoor][pbt]")
+          "[outdoor][pbt][.integration]")
 {
     /**
      * Validates: Requirements 2.7
@@ -166,7 +166,7 @@ TEST_CASE("PBT: outdoor map has connected ground region >= MIN_PLAYABLE_AREA (20
 // ═══════════════════════════════════════════════════════════════════════════════
 
 TEST_CASE("PBT: stairs distance from player >= 40 or is furthest ground tile",
-          "[outdoor][pbt]")
+          "[outdoor][pbt][.integration]")
 {
     /**
      * Validates: Requirements 4.3, 4.4
@@ -180,8 +180,8 @@ TEST_CASE("PBT: stairs distance from player >= 40 or is furthest ground tile",
 
         int playerX = engine.player->getX();
         int playerY = engine.player->getY();
-        int stairsX = engine.stairs->getX();
-        int stairsY = engine.stairs->getY();
+        int stairsX = engine.stairsDown->getX();
+        int stairsY = engine.stairsDown->getY();
 
         float dx = static_cast<float>(stairsX - playerX);
         float dy = static_cast<float>(stairsY - playerY);
@@ -374,41 +374,38 @@ TEST_CASE("Level progression: starting dungeon level is 20", "[outdoor][engine]"
     REQUIRE(engine.dungeonLevel == 20);
 }
 
-TEST_CASE("Level progression: stairs '<' decrements depth", "[outdoor][engine][.integration]")
+TEST_CASE("Level progression: ascending decrements depth", "[outdoor][engine][.integration]")
 {
     // Setup: engine must have player, stairs, map, gui, camera initialised
     // The global `engine` should be set up by the test harness or we test logic directly.
     // Since these tests require full engine, we'll test the logic:
-    // stairs glyph '<' means ascending → dungeonLevel--
+    // StairDirection::UP means ascending → dungeonLevel--
 
     // Save original state
     int originalLevel = engine.dungeonLevel;
-    engine.stairs->setGlyph('<');
 
-    engine.nextLevel();
+    engine.nextLevel(StairDirection::UP);
 
     REQUIRE(engine.dungeonLevel == originalLevel - 1);
 
     // Restore (nextLevel creates a new map, so state is already changed)
 }
 
-TEST_CASE("Level progression: stairs '>' increments depth", "[outdoor][engine][.integration]")
+TEST_CASE("Level progression: descending increments depth", "[outdoor][engine][.integration]")
 {
     int originalLevel = engine.dungeonLevel;
-    engine.stairs->setGlyph('>');
 
-    engine.nextLevel();
+    engine.nextLevel(StairDirection::DOWN);
 
     REQUIRE(engine.dungeonLevel == originalLevel + 1);
 }
 
 TEST_CASE("Level progression: depth 0 generates outdoor map", "[outdoor][engine][.integration]")
 {
-    // Set engine to depth 1 with '<' stairs so nextLevel goes to 0
+    // Set engine to depth 1 then ascend so nextLevel goes to 0
     engine.dungeonLevel = 1;
-    engine.stairs->setGlyph('<');
 
-    engine.nextLevel();
+    engine.nextLevel(StairDirection::UP);
 
     REQUIRE(engine.dungeonLevel == 0);
     REQUIRE(engine.map->getLevelType() == LevelType::OUTDOOR);

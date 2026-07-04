@@ -64,14 +64,13 @@ void PlayerAi::update(Actor* owner)
 		case SDLK_PAGEDOWN:
 			if (engine.debugMode) {
 				engine.gui->message(Colors::yellow, "DEBUG: Skipping to next level...");
-				engine.nextLevel();
+				engine.nextLevel(StairDirection::DOWN);
 			}
 			break;
 		case SDLK_PAGEUP:
 			if (engine.debugMode) {
 				engine.gui->message(Colors::yellow, "DEBUG: Skipping to previous level...");
-				engine.stairs->setGlyph('<');
-				engine.nextLevel();
+				engine.nextLevel(StairDirection::UP);
 			}
 			break;
 		default:
@@ -227,18 +226,22 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 	}
 
 	case '<': // ascend stairs
-		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()
-			&& engine.stairs->getGlyph() == '<') {
-			engine.nextLevel();
+		if (engine.stairsUp
+			&& engine.stairsUp->getX() == owner->getX()
+			&& engine.stairsUp->getY() == owner->getY())
+		{
+			engine.nextLevel(StairDirection::UP);
 		} else {
 			engine.gui->message(Colors::uiText, "There are no stairs here.");
 		}
 		break;
 
 	case '>': // descend stairs
-		if (engine.stairs->getX() == owner->getX() && engine.stairs->getY() == owner->getY()
-			&& engine.stairs->getGlyph() == '>') {
-			engine.nextLevel();
+		if (engine.stairsDown
+			&& engine.stairsDown->getX() == owner->getX()
+			&& engine.stairsDown->getY() == owner->getY())
+		{
+			engine.nextLevel(StairDirection::DOWN);
 		} else {
 			engine.gui->message(Colors::uiText, "There are no stairs here.");
 		}

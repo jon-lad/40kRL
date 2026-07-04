@@ -13,7 +13,8 @@ static constexpr int VIEWPORT_HEIGHT      = 43;
 Engine::Engine(int screenWidth, int screenHeight)
 	: gameStatus{ STARTUP }
 	, player{ nullptr }
-	, stairs{ nullptr }
+	, stairsUp{ nullptr }
+	, stairsDown{ nullptr }
 	, fovRadius{ DEFAULT_FOV_RADIUS }
 	, screenWidth{ screenWidth }
 	, screenHeight{ screenHeight }
@@ -21,6 +22,7 @@ Engine::Engine(int screenWidth, int screenHeight)
 	, debugMode{ false }
 {
 	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
+	SDL_StartTextInput(SDL_GetKeyboardFocus());
 	gui = std::make_unique<Gui>();
 }
 
@@ -70,14 +72,12 @@ void Engine::render()
 	gui->render();
 }
 
-void Engine::nextLevel()
+void Engine::nextLevel(StairDirection direction)
 {
-	// Direction is determined by the stairs glyph on the current level.
-	// '<' stairs = ascend (depth decreases), '>' stairs = descend (depth increases).
-	if (stairs->getGlyph() == '<') {
-		dungeonLevel--;
-	} else {
+	if (direction == StairDirection::DOWN) {
 		dungeonLevel++;
+	} else {
+		dungeonLevel--;
 	}
 
 	gui->message(Colors::healing, "You take a moment to rest and recover your strength.");
@@ -87,24 +87,54 @@ void Engine::nextLevel()
 
 	if (isOutdoor) {
 		gui->message(Colors::surfaceMsg, "You emerge from the depths onto the planet surface.");
-	} else if (stairs->getGlyph() == '<') {
+	} else if (direction == StairDirection::UP) {
 		gui->message(Colors::damage, "You ascend closer to the surface.");
 	} else {
 		gui->message(Colors::damage, "You descend deeper underground.");
 	}
 
+	// Destroy old map and remove all actors except player.
 	map.reset();
-
-	// Remove all actors except the player and stairs.
 	for (auto i = actors.begin(); i != actors.end(); ) {
-		i = (i->get() != player && i->get() != stairs) ? actors.erase(i) : std::next(i);
+		i = (i->get() != player) ? actors.erase(i) : std::next(i);
+	}
+	stairsUp = nullptr;
+	stairsDown = nullptr;
+
+	// Create stair actors for the new depth BEFORE map->init() so that
+	// createRoom() can set their positions during BSP generation.
+	const bool needsUp   = (dungeonLevel > 0);
+	const bool needsDown = (dungeonLevel < 20);
+
+	if (needsUp) {
+		auto newUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
+		stairsUp = newUp.get();
+		newUp->blocks = false;
+		newUp->fovOnly = false;
+		actors.emplace_front(std::move(newUp));
+	}
+	if (needsDown) {
+		auto newDown = std::make_unique<Actor>(0, 0, '>', "stairs down", Colors::white);
+		stairsDown = newDown.get();
+		newDown->blocks = false;
+		newDown->fovOnly = false;
+		actors.emplace_front(std::move(newDown));
 	}
 
+	// Generate new map — createRoom() sets stair positions during BSP generation.
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
 
-	// On the surface: stairs go down (dungeon entrance). Underground: stairs go up (toward surface).
-	stairs->setGlyph(isOutdoor ? '>' : '<');
+	// Place player on arrival stair (BSP levels — outdoor handled by placeOutdoorActors).
+	if (!isOutdoor) {
+		if (direction == StairDirection::DOWN && stairsUp) {
+			player->setX(stairsUp->getX());
+			player->setY(stairsUp->getY());
+		} else if (direction == StairDirection::UP && stairsDown) {
+			player->setX(stairsDown->getX());
+			player->setY(stairsDown->getY());
+		}
+	}
 
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
@@ -165,21 +195,43 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 		}
 
 		TCODConsole::flush();
-		pollInput(inputState);
-		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
+
+		// Use SDL_GetMouseState for reliable mouse position and button state.
+		// This bypasses the event queue which libtcod's flush() may drain.
+		float mouseXf, mouseYf;
+		Uint32 buttons = SDL_GetMouseState(&mouseXf, &mouseYf);
+		int mousePixelX = static_cast<int>(mouseXf);
+		int mousePixelY = static_cast<int>(mouseYf);
+		int mouseCellX = mousePixelX / DEFAULT_CELL_WIDTH;
+		int mouseCellY = mousePixelY / DEFAULT_CELL_HEIGHT;
+
+		auto [worldX, worldY] = camera->getWorldLocation(mouseCellX, mouseCellY);
 
 		if (map->isInFOV(worldX, worldY)
 			&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
 		{
-			renderSetBg(TCODConsole::root->get_data(), inputState.mouse.cellX, inputState.mouse.cellY, {255, 255, 255});
-			if (inputState.mouse.lbutton_pressed) {
+			renderSetBg(TCODConsole::root->get_data(), mouseCellX, mouseCellY, {255, 255, 255});
+			if (buttons & SDL_BUTTON_LMASK) {
 				*x = worldX;
 				*y = worldY;
+				// Wait for button release to avoid repeat
+				while (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK) {
+					SDL_Delay(10);
+				}
 				return true;
 			}
-			if (inputState.mouse.rbutton_pressed || inputState.key.key != SDLK_UNKNOWN) {
+			if (buttons & SDL_BUTTON_RMASK) {
+				while (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) {
+					SDL_Delay(10);
+				}
 				return false;
 			}
+		}
+
+		// Also check keyboard for cancel (ESC or any key)
+		pollInput(inputState);
+		if (inputState.key.key != SDLK_UNKNOWN) {
+			return false;
 		}
 	}
 	return false;
@@ -368,12 +420,13 @@ void Engine::init()
 	newPlayer->equipment    = std::make_unique<Equipment>();
 	actors.emplace_front(std::move(newPlayer));
 
-	// Create the stairs (always visible, never blocks). '<' = ascend toward surface.
-	auto newStairs = std::make_unique<Actor>(0, 0, '<', "stairs", Colors::white);
-	stairs = newStairs.get();
-	newStairs->blocks  = false;
-	newStairs->fovOnly = false;
-	actors.emplace_front(std::move(newStairs));
+	// Create stairsUp (always visible, never blocks). Starting level is depth 20 (deepest),
+	// so only up-stairs exist — stairsDown remains nullptr.
+	auto newStairsUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
+	stairsUp = newStairsUp.get();
+	newStairsUp->blocks  = false;
+	newStairsUp->fovOnly = false;
+	actors.emplace_front(std::move(newStairsUp));
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true, LevelType::BSP);
