@@ -1,5 +1,10 @@
 #pragma once
 
+#include <memory>
+
+class Equippable;
+class Equipment;
+
 // An Actor is any entity that exists on the map: the player, monsters, items, corpses, stairs.
 // Capabilities are defined by which optional components are non-null.
 class Actor : public Persistent{
@@ -18,6 +23,8 @@ public:
 	std::shared_ptr<Ai>          ai;
 	std::shared_ptr<Pickable>    pickable;
 	std::shared_ptr<Container>   container;
+	std::shared_ptr<Equippable>  equippable;
+	std::unique_ptr<Equipment>   equipment;  // only non-null on the player actor
 
 	Actor(int x, int y, int glyph, std::string_view name, const TCODColor& color);
 
@@ -32,6 +39,12 @@ public:
 
 	// Returns the Euclidean distance from this actor to world coordinate (cx, cy).
 	float getDistance(int cx, int cy) const;
+
+	// Returns equippable->weight if equippable exists, else pickable->weight if pickable exists, else 0.
+	float getWeight() const;
+
+	// Returns equippable->value if equippable exists, else pickable->value if pickable exists, else 0.
+	int getValue() const;
 
 	int getX() const;
 	void setX(int newX);

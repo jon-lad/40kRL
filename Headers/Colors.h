@@ -5,6 +5,7 @@
 // Games Workshop / Citadel paint names for flavour.
 
 #include "libtcod.hpp"
+#include <string>
 
 namespace Colors {
     // ─── UI / system ────────────────────────────────────────────────────
@@ -54,4 +55,21 @@ namespace Colors {
     constexpr TCODColor lighterOrange    = levelUp;
     constexpr TCODColor darkerViolet     = confusion;
     constexpr TCODColor lightGreen       = surfaceMsg;
+
+    // ─── Shared colour-name resolver ────────────────────────────────────
+    // Maps Lua colour-name strings to TCODColor values.
+    inline TCODColor colorFromName(const std::string& name)
+    {
+        if (name == "desaturatedGreen") return orkSkin;
+        if (name == "darkerGreen")      return nobArmour;
+        if (name == "lightBlue")        return lightBlue;
+        if (name == "orange")           return orange;
+        if (name == "lightGreen")       return surfaceMsg;
+        if (name == "violet")           return healthPotion;
+        if (name == "lightYellow")      return scroll;
+        if (name == "lightGrey")        return lightGrey;
+        if (name == "lighterOrange")    return lighterOrange;
+        if (name == "darkGrey")         return TCODColor{95, 95, 95};
+        return white;
+    }
 }

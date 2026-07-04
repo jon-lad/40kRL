@@ -158,6 +158,8 @@
     <ClCompile Include="Source\Map.cpp" />
     <ClCompile Include="Source\Persistent.cpp" />
     <ClCompile Include="Source\Pickable.cpp" />
+    <ClCompile Include="Source\Equippable.cpp" />
+    <ClCompile Include="Source\Equipment.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -175,6 +177,8 @@
     <ClInclude Include="Headers\Map.h" />
     <ClInclude Include="Headers\Persistent.h" />
     <ClInclude Include="Headers\Pickable.h" />
+    <ClInclude Include="Headers\Equippable.h" />
+    <ClInclude Include="Headers\Equipment.h" />
     <ClInclude Include="Headers\RenderUtils.h" />
   </ItemGroup>
   <ItemGroup>

@@ -30,6 +30,20 @@ float Actor::getDistance(int cx, int cy) const
 	return std::sqrtf(static_cast<float>(dx * dx + dy * dy));
 }
 
+float Actor::getWeight() const
+{
+	if (equippable) { return equippable->weight; }
+	if (pickable) { return pickable->weight; }
+	return 0.0f;
+}
+
+int Actor::getValue() const
+{
+	if (equippable) { return equippable->value; }
+	if (pickable) { return pickable->value; }
+	return 0;
+}
+
 int Actor::getX() const { return x; }
 void Actor::setX(int newX) { x = newX; }
 

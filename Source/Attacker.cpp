@@ -58,8 +58,13 @@ void Attacker::attack(Actor* owner, Actor* target)
 			return;
 		}
 
-		// ── Existing damage logic (unchanged) ──
-		const float effectiveDamage = power - target->destructible->defense;
+		// ── Compute effective power (equipment bonus for player) ──
+		float effectivePower = power;
+		if (owner->equipment) {
+			effectivePower += owner->equipment->getTotalPowerModifier();
+		}
+
+		const float effectiveDamage = effectivePower - target->destructible->defense;
 		if (effectiveDamage > 0) {
 			const TCODColor messageColor = (owner == engine.player) ? Colors::damage : Colors::uiText;
 			engine.gui->message(messageColor, "# attacks # for # damage.",
@@ -68,7 +73,7 @@ void Attacker::attack(Actor* owner, Actor* target)
 			engine.gui->message(Colors::uiText, "# attacks # but it has no effect!",
 				owner->name, target->name);
 		}
-		target->destructible->takeDamage(target, power);
+		target->destructible->takeDamage(target, effectivePower);
 	} else {
 		engine.gui->message(Colors::uiText, "# attacks # in vain.",
 			owner->name, target->name);

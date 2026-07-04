@@ -53,6 +53,9 @@ class Pickable : public Persistent {
 public:
 	Pickable(std::unique_ptr<TargetSelector> selector, std::unique_ptr<Effect> effect);
 
+	float weight = 0.0f;
+	int   value  = 0;
+
 	// Moves owner into wearer's inventory. Returns false if the inventory is full.
 	bool pick(std::unique_ptr<Actor> owner, Actor* wearer);
 

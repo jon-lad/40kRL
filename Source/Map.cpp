@@ -569,16 +569,10 @@ void Map::createRoom(bool isFirstRoom, int x1, int y1, int x2, int y2, bool with
 // ─── Lua-driven spawn helpers ────────────────────────────────────────────────
 
 // Maps Lua colour names to TCODColor values.
+// Use the shared colour resolver from Colors.h.
 static TCODColor colorFromName(const std::string& name)
 {
-	if (name == "desaturatedGreen") return Colors::orkSkin;
-	if (name == "darkerGreen")      return Colors::nobArmour;
-	if (name == "lightBlue")        return Colors::lightBlue;
-	if (name == "orange")           return Colors::orange;
-	if (name == "lightGreen")       return Colors::surfaceMsg;
-	if (name == "violet")           return Colors::healthPotion;
-	if (name == "lightYellow")      return Colors::scroll;
-	return Colors::white;
+	return Colors::colorFromName(name);
 }
 
 // Maps Lua selector-type strings to the enum.
@@ -638,6 +632,22 @@ void Map::addMonster(int x, int y)
 void Map::addItem(int x, int y)
 {
 	TCODRandom* rng  = TCODRandom::getInstance();
+
+	// 25% chance to spawn equipment if templates are available
+	if (!engine.equipmentTemplates.empty() && rng->getInt(0, 99) < 25) {
+		int templateIndex = rng->getInt(0, static_cast<int>(engine.equipmentTemplates.size()) - 1);
+		const auto& tmpl = engine.equipmentTemplates[templateIndex];
+
+		auto item = std::make_unique<Actor>(x, y, tmpl.glyph, tmpl.name, tmpl.color);
+		item->blocks = false;
+		item->pickable = std::make_shared<Pickable>(nullptr, nullptr);
+		item->pickable->weight = tmpl.weight;
+		item->pickable->value = tmpl.value;
+		item->equippable = std::make_shared<Equippable>(tmpl.slot, tmpl.modifiers, tmpl.weight, tmpl.value);
+		engine.actors.emplace_front(std::move(item));
+		return;
+	}
+
 	const int   roll = rng->getInt(0, 100);
 
 	try {
