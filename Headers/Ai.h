@@ -67,9 +67,6 @@ protected:
 	// Moves to (targetX, targetY) or attacks the living actor there.
 	// Returns true if the player actually moved (FOV needs recomputing).
 	bool moveOrAttack(Actor* owner, int targetX, int targetY);
-
-	// Displays the inventory and waits for a keypress. Returns the selected item or nullptr.
-	Actor* chooseFromInventory(Actor* owner);
 };
 
 class MonsterAi : public Ai {
