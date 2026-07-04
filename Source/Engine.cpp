@@ -196,6 +196,49 @@ void Engine::sendToBack(Actor* actor)
 	}
 }
 
+const EquipmentTemplate* Engine::selectEquipmentByTier(EquipmentSlot slot, const EnemyEquipmentConfig::TierWeights& weights)
+{
+	// Normalize weights so they sum to 1.0
+	float totalWeight = weights.common + weights.uncommon + weights.rare;
+	if (totalWeight <= 0.0f) {
+		gui->message(Colors::damage, "Warning: tier weights sum to zero, cannot select equipment.");
+		return nullptr;
+	}
+	float normCommon   = weights.common / totalWeight;
+	float normUncommon = weights.uncommon / totalWeight;
+	// normRare is the remainder (1.0 - normCommon - normUncommon)
+
+	// Roll a random float to select a tier
+	TCODRandom* rng = TCODRandom::getInstance();
+	float tierRoll = rng->getFloat(0.0f, 1.0f);
+
+	ItemTier selectedTier;
+	if (tierRoll < normCommon) {
+		selectedTier = ItemTier::COMMON;
+	} else if (tierRoll < normCommon + normUncommon) {
+		selectedTier = ItemTier::UNCOMMON;
+	} else {
+		selectedTier = ItemTier::RARE;
+	}
+
+	// Filter equipmentTemplates by the selected tier AND the target slot
+	std::vector<const EquipmentTemplate*> candidates;
+	for (const auto& tmpl : equipmentTemplates) {
+		if (tmpl.slot == slot && tmpl.tier == selectedTier) {
+			candidates.push_back(&tmpl);
+		}
+	}
+
+	if (candidates.empty()) {
+		gui->message(Colors::damage, "Warning: no equipment templates for slot+tier combination.");
+		return nullptr;
+	}
+
+	// Randomly pick one from the matching candidates
+	int pick = rng->getInt(0, static_cast<int>(candidates.size()) - 1);
+	return candidates[pick];
+}
+
 void Engine::init()
 {
 	// Load player class stats from Classes.lua (fall back to hardcoded defaults if missing).

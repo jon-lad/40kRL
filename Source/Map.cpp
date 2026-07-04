@@ -707,49 +707,14 @@ void Map::addMonster(int x, int y)
 						resolvedTemplates.push_back(found);
 					}
 				} else if (cfg.useTierSelection) {
-					// Tier-based random selection
-					// Normalize weights
-					float totalWeight = cfg.tierWeights.common + cfg.tierWeights.uncommon + cfg.tierWeights.rare;
-					if (totalWeight <= 0.0f) totalWeight = 1.0f;
-					float normCommon   = cfg.tierWeights.common / totalWeight;
-					float normUncommon = cfg.tierWeights.uncommon / totalWeight;
-					// normRare is the remainder
-
-					// For tier-based, select one item for each slot that has matching templates
-					// Pick a tier first, then find a template of that tier for each slot
-					TCODRandom* tierRng = TCODRandom::getInstance();
-
-					// Iterate over all slots and try to fill each one
+					// Tier-based random selection using the reusable helper
+					// For each slot, use the helper to pick a template based on tier weights
 					for (int slotIdx = 0; slotIdx < static_cast<int>(EquipmentSlot::COUNT); ++slotIdx) {
 						EquipmentSlot targetSlot = static_cast<EquipmentSlot>(slotIdx);
-
-						// Roll for tier
-						float tierRoll = tierRng->getFloat(0.0f, 1.0f);
-						ItemTier selectedTier;
-						if (tierRoll < normCommon) {
-							selectedTier = ItemTier::COMMON;
-						} else if (tierRoll < normCommon + normUncommon) {
-							selectedTier = ItemTier::UNCOMMON;
-						} else {
-							selectedTier = ItemTier::RARE;
+						const EquipmentTemplate* selected = engine.selectEquipmentByTier(targetSlot, cfg.tierWeights);
+						if (selected) {
+							resolvedTemplates.push_back(selected);
 						}
-
-						// Find templates matching this slot and tier
-						std::vector<const EquipmentTemplate*> candidates;
-						for (const auto& tmpl : engine.equipmentTemplates) {
-							if (tmpl.slot == targetSlot && tmpl.tier == selectedTier) {
-								candidates.push_back(&tmpl);
-							}
-						}
-
-						if (candidates.empty()) {
-							// No templates for this slot+tier combination — skip this slot
-							continue;
-						}
-
-						// Pick a random template from the candidates
-						int pick = tierRng->getInt(0, static_cast<int>(candidates.size()) - 1);
-						resolvedTemplates.push_back(candidates[pick]);
 					}
 				}
 

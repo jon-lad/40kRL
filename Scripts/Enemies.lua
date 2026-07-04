@@ -21,6 +21,8 @@ local enemies = {
         xp      = 15,
         power   = 2.0,
         skill   = 25,
+        equipment = { "Choppa" },
+        dropChance = 0.3,
     },
     {
         chance  = 90,
@@ -33,6 +35,8 @@ local enemies = {
         xp      = 35,
         power   = 3.0,
         skill   = 35,
+        equipTier = { common = 80, uncommon = 18, rare = 2 },
+        dropChance = 0.4,
     },
     {
         chance  = 100,
@@ -45,6 +49,8 @@ local enemies = {
         xp      = 100,
         power   = 4.0,
         skill   = 45,
+        equipment = { "Big Choppa", "Ork Armor" },
+        dropChance = 0.5,
     },
 }
 

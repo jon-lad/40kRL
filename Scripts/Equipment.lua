@@ -3,8 +3,24 @@
 -- Each entry is validated by the C++ loader; invalid entries are skipped with a warning.
 -- Required fields: name, glyph, color, slot, weight
 -- Optional fields (default to 0): value, power, defense, maxHp, skill
+-- Optional field: tier ("common", "uncommon", "rare") — defaults to "common" if omitted.
 
 equipment = {
+    -- ===== Existing Player-Oriented Equipment =====
+
+    {
+        name    = "Combat Knife",
+        glyph   = "-",
+        color   = "white",
+        slot    = "weapon",
+        weight  = 1.0,
+        value   = 15,
+        power   = 1.0,
+        defense = 0.0,
+        maxHp   = 0.0,
+        skill   = 5,
+        tier    = "common",
+    },
     {
         name    = "Chainsword",
         glyph   = "/",
@@ -16,6 +32,7 @@ equipment = {
         defense = 0.0,
         maxHp   = 0.0,
         skill   = 0,
+        tier    = "uncommon",
     },
     {
         name    = "Power Sword",
@@ -28,6 +45,7 @@ equipment = {
         defense = 0.0,
         maxHp   = 0.0,
         skill   = 10,
+        tier    = "rare",
     },
     {
         name    = "Flak Armor",
@@ -40,18 +58,7 @@ equipment = {
         defense = 2.0,
         maxHp   = 0.0,
         skill   = -5,
-    },
-    {
-        name    = "Combat Knife",
-        glyph   = "-",
-        color   = "white",
-        slot    = "weapon",
-        weight  = 1.0,
-        value   = 15,
-        power   = 1.0,
-        defense = 0.0,
-        maxHp   = 0.0,
-        skill   = 5,
+        tier    = "uncommon",
     },
     {
         name    = "Carapace Helm",
@@ -64,5 +71,105 @@ equipment = {
         defense = 1.0,
         maxHp   = 5.0,
         skill   = -2,
+        tier    = "uncommon",
+    },
+
+    -- ===== Ork Equipment (Enemy-Appropriate) =====
+
+    -- Common tier: basic Ork weapons and armor, weak stats
+    {
+        name    = "Choppa",
+        glyph   = "/",
+        color   = "desaturatedGreen",
+        slot    = "weapon",
+        weight  = 4.0,
+        value   = 10,
+        power   = 2.0,
+        defense = 0.0,
+        maxHp   = 0.0,
+        skill   = -5,
+        tier    = "common",
+    },
+    {
+        name    = "Slugga",
+        glyph   = ")",
+        color   = "desaturatedGreen",
+        slot    = "weapon",
+        weight  = 2.5,
+        value   = 12,
+        power   = 1.5,
+        defense = 0.0,
+        maxHp   = 0.0,
+        skill   = 0,
+        tier    = "common",
+    },
+    {
+        name    = "Scrap Shield",
+        glyph   = "(",
+        color   = "lightYellow",
+        slot    = "offhand",
+        weight  = 5.0,
+        value   = 8,
+        power   = 0.0,
+        defense = 1.0,
+        maxHp   = 0.0,
+        skill   = -3,
+        tier    = "common",
+    },
+
+    -- Uncommon tier: better Ork gear, moderate stats
+    {
+        name    = "Shoota",
+        glyph   = "}",
+        color   = "desaturatedGreen",
+        slot    = "weapon",
+        weight  = 5.5,
+        value   = 35,
+        power   = 2.5,
+        defense = 0.0,
+        maxHp   = 0.0,
+        skill   = 5,
+        tier    = "uncommon",
+    },
+    {
+        name    = "Big Choppa",
+        glyph   = "/",
+        color   = "lightGreen",
+        slot    = "weapon",
+        weight  = 7.0,
+        value   = 40,
+        power   = 3.5,
+        defense = 0.0,
+        maxHp   = 0.0,
+        skill   = -8,
+        tier    = "uncommon",
+    },
+    {
+        name    = "Ork Armor",
+        glyph   = "[",
+        color   = "desaturatedGreen",
+        slot    = "body",
+        weight  = 10.0,
+        value   = 25,
+        power   = 0.0,
+        defense = 1.5,
+        maxHp   = 3.0,
+        skill   = -8,
+        tier    = "uncommon",
+    },
+
+    -- Rare tier: powerful Ork weapon, strong stats
+    {
+        name    = "Power Klaw",
+        glyph   = "{",
+        color   = "lightYellow",
+        slot    = "weapon",
+        weight  = 9.0,
+        value   = 90,
+        power   = 5.0,
+        defense = 0.5,
+        maxHp   = 0.0,
+        skill   = -10,
+        tier    = "rare",
     },
 }

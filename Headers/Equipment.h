@@ -14,6 +14,9 @@ public:
 	// Returns the item in the given slot, or nullptr if empty.
 	Actor* getSlot(EquipmentSlot slot) const;
 
+	// Returns a const reference to the internal slots array for iteration.
+	const std::array<Actor*, 4>& getSlots() const { return slots; }
+
 	// Equips item into its target slot. Returns the previously equipped item
 	// (which has been moved back to inventory), or nullptr if slot was empty.
 	// Returns nullptr and does nothing if item has no equippable component.
