@@ -95,11 +95,6 @@ public:
 	// Returns the living actor at world position (x, y), or nullptr if the tile is empty.
 	Actor* getActorAt(int x, int y) const;
 
-	// Enters interactive tile-selection mode. Highlights reachable tiles and waits for a
-	// mouse click. Writes the chosen world position into *x and *y.
-	// Returns true if a tile was selected, false if cancelled.
-	bool pickAtTile(int* x, int* y, float maxRange = 0.0f);
-
 	// Enters targeting mode. Called by TargetSelector instead of pickAtTile.
 	void beginTargeting(Actor* item, Actor* owner, float maxRange,
 	                    TargetSelector::SelectorType type, Effect* effect,
