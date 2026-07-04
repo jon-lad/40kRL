@@ -250,6 +250,136 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 	return false;
 }
 
+void Engine::beginTargeting(Actor* item, Actor* owner, float maxRange,
+                            TargetSelector::SelectorType type, Effect* effect,
+                            float aoeRange)
+{
+	// Validate pointers — abort without state change if any are null.
+	if (!item) {
+		gui->message(Colors::damage, "Warning: beginTargeting called with null item.");
+		return;
+	}
+	if (!owner) {
+		gui->message(Colors::damage, "Warning: beginTargeting called with null owner.");
+		return;
+	}
+	if (!effect) {
+		gui->message(Colors::damage, "Warning: beginTargeting called with null effect.");
+		return;
+	}
+
+	// Populate targeting context and transition to TARGETING state.
+	targetingCtx = TargetingContext{ item, owner, maxRange, type, effect, aoeRange };
+	gameStatus = TARGETING;
+
+	gui->message(Colors::uiText, "Left-click to confirm, right-click or ESC to cancel.");
+}
+
+void Engine::renderTargeting()
+{
+	if (!targetingCtx) return;
+
+	const float maxRange = targetingCtx->maxRange;
+
+	// Brighten all in-range, in-FOV tiles to indicate they are selectable.
+	for (int cx = 0; cx < map->getWidth(); cx++) {
+		for (int cy = 0; cy < map->getHeight(); cy++) {
+			if (map->isInFOV(cx, cy)
+				&& (maxRange == 0.0f || player->getDistance(cx, cy) <= maxRange))
+			{
+				auto [screenX, screenY] = camera->apply(cx, cy);
+				TCODColor col = TCODConsole::root->getCharForeground(screenX, screenY);
+				TCOD_ColorRGB bright = {
+					static_cast<uint8_t>(std::min(255, col.r * 6 / 5)),
+					static_cast<uint8_t>(std::min(255, col.g * 6 / 5)),
+					static_cast<uint8_t>(std::min(255, col.b * 6 / 5))
+				};
+				TCOD_console_put_rgb(TCODConsole::root->get_data(), screenX, screenY, 0, &bright, nullptr, TCOD_BKGND_NONE);
+			}
+		}
+	}
+
+	// Show cursor highlight on the tile under the mouse, only if valid (in FOV + in range).
+	int mouseCellX = inputState.mouse.cellX;
+	int mouseCellY = inputState.mouse.cellY;
+	auto [worldX, worldY] = camera->getWorldLocation(mouseCellX, mouseCellY);
+
+	if (map->isInFOV(worldX, worldY)
+		&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
+	{
+		renderSetBg(TCODConsole::root->get_data(), mouseCellX, mouseCellY, {255, 255, 255});
+	}
+}
+
+void Engine::updateTargeting()
+{
+	if (!targetingCtx) {
+		// Safety: should not be called without a valid context.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Cancellation: ESC key or right-click ---
+	if ((inputState.key.key == SDLK_ESCAPE && inputState.key.pressed)
+		|| inputState.mouse.rbutton_pressed)
+	{
+		gui->message(Colors::uiText, "Targeting cancelled.");
+		targetingCtx = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Confirmation: left-click ---
+	if (inputState.mouse.lbutton_pressed) {
+		// Convert mouse cell coords to world coords.
+		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
+
+		// Validate tile: must be in FOV.
+		if (!map->isInFOV(worldX, worldY)) {
+			return; // ignore click, remain in TARGETING
+		}
+
+		// Validate tile: must be in range (maxRange == 0 means unlimited).
+		if (targetingCtx->maxRange > 0.0f
+			&& player->getDistance(worldX, worldY) > targetingCtx->maxRange)
+		{
+			return; // ignore click, remain in TARGETING
+		}
+
+		// --- SELECTED_MONSTER: require a living non-player actor on tile ---
+		if (targetingCtx->type == TargetSelector::SelectorType::SELECTED_MONSTER) {
+			Actor* target = getActorAt(worldX, worldY);
+			if (!target || target == player) {
+				return; // no valid target, remain in TARGETING
+			}
+			// Apply effect to the targeted actor.
+			targetingCtx->effect->applyTo(target);
+		}
+		// --- SELECTED_RANGE: AoE around confirmed tile ---
+		else if (targetingCtx->type == TargetSelector::SelectorType::SELECTED_RANGE) {
+			for (const auto& actorPtr : actors) {
+				Actor* actor = actorPtr.get();
+				if (actor != player
+					&& actor->destructible
+					&& !actor->destructible->isDead()
+					&& actor->getDistance(worldX, worldY) <= targetingCtx->aoeRange)
+				{
+					targetingCtx->effect->applyTo(actor);
+				}
+			}
+		}
+
+		// --- Successful confirmation: remove item from owner's inventory ---
+		if (targetingCtx->owner && targetingCtx->owner->container) {
+			targetingCtx->owner->container->remove(targetingCtx->item);
+		}
+
+		// Clear context and advance turn.
+		targetingCtx = std::nullopt;
+		gameStatus = NEW_TURN;
+	}
+}
+
 void Engine::sendToBack(Actor* actor)
 {
 	for (auto i = actors.begin(); i != actors.end(); ++i) {
