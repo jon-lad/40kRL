@@ -115,7 +115,7 @@ TEST_CASE("PBT: outdoor generation is deterministic — same seed produces same 
 // ═══════════════════════════════════════════════════════════════════════════════
 
 TEST_CASE("PBT: outdoor map has connected ground region >= MIN_PLAYABLE_AREA (200)",
-          "[outdoor][pbt]")
+          "[outdoor][pbt][.integration]")
 {
     /**
      * Validates: Requirements 2.7
