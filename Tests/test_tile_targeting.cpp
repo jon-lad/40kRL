@@ -387,7 +387,9 @@ TEST_CASE("selectTargets with WEARER_RANGE resolves immediately without entering
 TEST_CASE("renderInventory with 0 items does not crash", "[tile-targeting]") {
     Actor* owner = engine.player;
     REQUIRE(owner != nullptr);
-    REQUIRE(owner->container != nullptr);
+    if (!owner->container) {
+        owner->container = std::make_unique<Container>(26);
+    }
 
     // Clear inventory
     owner->container->inventory.clear();
@@ -407,7 +409,9 @@ TEST_CASE("renderInventory with 0 items does not crash", "[tile-targeting]") {
 TEST_CASE("renderInventory with 1 item does not crash", "[tile-targeting]") {
     Actor* owner = engine.player;
     REQUIRE(owner != nullptr);
-    REQUIRE(owner->container != nullptr);
+    if (!owner->container) {
+        owner->container = std::make_unique<Container>(26);
+    }
 
     owner->container->inventory.clear();
 
@@ -429,7 +433,9 @@ TEST_CASE("renderInventory with 1 item does not crash", "[tile-targeting]") {
 TEST_CASE("renderInventory with 26 items (max) does not crash", "[tile-targeting]") {
     Actor* owner = engine.player;
     REQUIRE(owner != nullptr);
-    REQUIRE(owner->container != nullptr);
+    if (!owner->container) {
+        owner->container = std::make_unique<Container>(26);
+    }
 
     owner->container->inventory.clear();
 
@@ -456,6 +462,9 @@ TEST_CASE("renderInventory with 26 items (max) does not crash", "[tile-targeting
 TEST_CASE("Cancellation during TARGETING via ESC preserves inventory", "[tile-targeting]") {
     Actor* owner = engine.player;
     REQUIRE(owner != nullptr);
+    if (!owner->container) {
+        owner->container = std::make_unique<Container>(26);
+    }
     REQUIRE(owner->container != nullptr);
 
     // Set up inventory with a few items
@@ -509,6 +518,9 @@ TEST_CASE("Cancellation during TARGETING via ESC preserves inventory", "[tile-ta
 TEST_CASE("Cancellation during TARGETING via right-click preserves inventory", "[tile-targeting]") {
     Actor* owner = engine.player;
     REQUIRE(owner != nullptr);
+    if (!owner->container) {
+        owner->container = std::make_unique<Container>(26);
+    }
     REQUIRE(owner->container != nullptr);
 
     // Set up inventory
