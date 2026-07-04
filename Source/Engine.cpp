@@ -292,6 +292,23 @@ void Engine::updateTargeting()
 			return; // ignore click, remain in TARGETING
 		}
 
+		// --- Stale-pointer check: verify item still exists in owner's inventory ---
+		bool itemFound = false;
+		if (targetingCtx->owner && targetingCtx->owner->container) {
+			for (const auto& slot : targetingCtx->owner->container->inventory) {
+				if (slot.get() == targetingCtx->item) {
+					itemFound = true;
+					break;
+				}
+			}
+		}
+		if (!itemFound) {
+			gui->message(Colors::damage, "Targeting cancelled — item no longer available.");
+			targetingCtx = std::nullopt;
+			gameStatus = IDLE;
+			return;
+		}
+
 		// --- SELECTED_MONSTER: require a living non-player actor on tile ---
 		if (targetingCtx->type == TargetSelector::SelectorType::SELECTED_MONSTER) {
 			Actor* target = getActorAt(worldX, worldY);

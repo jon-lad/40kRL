@@ -246,3 +246,303 @@ TEST_CASE("PBT: Property 10 — pixel-to-cell coordinate conversion", "[property
         RC_ASSERT(state.mouse.cellY >= 0);
     });
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: tile-targeting — Unit Tests for Edge Cases (Task 11.3)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── beginTargeting with null pointers does not crash or transition state ─────
+// **Validates: Requirements 2.3, 11.1**
+
+TEST_CASE("beginTargeting with null item does not crash or transition state", "[tile-targeting]") {
+    // Setup: engine in IDLE, no targeting context
+    engine.gameStatus = Engine::IDLE;
+    engine.targetingCtx = std::nullopt;
+
+    // Create a valid owner and effect for the other parameters
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+
+    // Create a dummy effect
+    auto effect = std::make_unique<HealthEffect>(-5.0f, "test damage to #", Colors::damage);
+
+    // Act: call beginTargeting with null item
+    engine.beginTargeting(nullptr, owner, 5.0f,
+        TargetSelector::SelectorType::SELECTED_MONSTER, effect.get(), 0.0f);
+
+    // Assert: state remains IDLE, no targeting context created
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+    REQUIRE(!engine.targetingCtx.has_value());
+}
+
+TEST_CASE("beginTargeting with null owner does not crash or transition state", "[tile-targeting]") {
+    engine.gameStatus = Engine::IDLE;
+    engine.targetingCtx = std::nullopt;
+
+    // Create a valid item actor
+    auto item = std::make_unique<Actor>(0, 0, '!', "test scroll", Colors::white);
+    auto effect = std::make_unique<HealthEffect>(-5.0f, "test damage to #", Colors::damage);
+
+    // Act: call beginTargeting with null owner
+    engine.beginTargeting(item.get(), nullptr, 5.0f,
+        TargetSelector::SelectorType::SELECTED_MONSTER, effect.get(), 0.0f);
+
+    // Assert: state remains IDLE, no targeting context
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+    REQUIRE(!engine.targetingCtx.has_value());
+}
+
+TEST_CASE("beginTargeting with null effect does not crash or transition state", "[tile-targeting]") {
+    engine.gameStatus = Engine::IDLE;
+    engine.targetingCtx = std::nullopt;
+
+    auto item = std::make_unique<Actor>(0, 0, '!', "test scroll", Colors::white);
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+
+    // Act: call beginTargeting with null effect
+    engine.beginTargeting(item.get(), owner, 5.0f,
+        TargetSelector::SelectorType::SELECTED_MONSTER, nullptr, 0.0f);
+
+    // Assert: state remains IDLE, no targeting context
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+    REQUIRE(!engine.targetingCtx.has_value());
+}
+
+// ─── selectTargets with SELF/CLOSEST_MONSTER/WEARER_RANGE does NOT enter TARGETING ──
+// **Validates: Requirements 2.3**
+
+TEST_CASE("selectTargets with SELF resolves immediately without entering TARGETING", "[tile-targeting]") {
+    engine.gameStatus = Engine::IDLE;
+    engine.targetingCtx = std::nullopt;
+
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+
+    auto item = std::make_unique<Actor>(0, 0, '!', "self-heal", Colors::white);
+    auto effect = std::make_unique<HealthEffect>(5.0f, "healed #", Colors::healing);
+
+    TargetSelector selector(TargetSelector::SelectorType::SELF, 0.0f);
+    TCODList<Actor*> targets;
+
+    // Act
+    bool resolved = selector.selectTargets(owner, item.get(), effect.get(), targets);
+
+    // Assert: resolved immediately, did NOT enter TARGETING
+    REQUIRE(resolved == true);
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+    REQUIRE(!engine.targetingCtx.has_value());
+    REQUIRE(targets.size() == 1);
+    REQUIRE(targets.get(0) == owner);
+}
+
+TEST_CASE("selectTargets with CLOSEST_MONSTER resolves immediately without entering TARGETING", "[tile-targeting]") {
+    engine.gameStatus = Engine::IDLE;
+    engine.targetingCtx = std::nullopt;
+
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+
+    auto item = std::make_unique<Actor>(0, 0, '!', "lightning bolt", Colors::white);
+    auto effect = std::make_unique<HealthEffect>(-10.0f, "zapped #", Colors::damage);
+
+    TargetSelector selector(TargetSelector::SelectorType::CLOSEST_MONSTER, 5.0f);
+    TCODList<Actor*> targets;
+
+    // Act — may find 0 targets if none nearby, that's fine
+    bool resolved = selector.selectTargets(owner, item.get(), effect.get(), targets);
+
+    // Assert: resolved immediately regardless of whether a monster was found
+    REQUIRE(resolved == true);
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+    REQUIRE(!engine.targetingCtx.has_value());
+}
+
+TEST_CASE("selectTargets with WEARER_RANGE resolves immediately without entering TARGETING", "[tile-targeting]") {
+    engine.gameStatus = Engine::IDLE;
+    engine.targetingCtx = std::nullopt;
+
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+
+    auto item = std::make_unique<Actor>(0, 0, '!', "shockwave", Colors::white);
+    auto effect = std::make_unique<HealthEffect>(-3.0f, "blasted #", Colors::damage);
+
+    TargetSelector selector(TargetSelector::SelectorType::WEARER_RANGE, 3.0f);
+    TCODList<Actor*> targets;
+
+    // Act
+    bool resolved = selector.selectTargets(owner, item.get(), effect.get(), targets);
+
+    // Assert: resolved immediately, did NOT enter TARGETING
+    REQUIRE(resolved == true);
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+    REQUIRE(!engine.targetingCtx.has_value());
+}
+
+// ─── Inventory menu renders correct item count for boundary sizes (0, 1, 26) ─
+// **Validates: Requirements 8.3**
+
+TEST_CASE("renderInventory with 0 items does not crash", "[tile-targeting]") {
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+    REQUIRE(owner->container != nullptr);
+
+    // Clear inventory
+    owner->container->inventory.clear();
+
+    // Set up inventory state with 0 items
+    engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
+    engine.gameStatus = Engine::INVENTORY;
+
+    // Act: calling renderInventory should not crash
+    REQUIRE_NOTHROW(engine.renderInventory());
+
+    // Cleanup
+    engine.inventoryState = std::nullopt;
+    engine.gameStatus = Engine::IDLE;
+}
+
+TEST_CASE("renderInventory with 1 item does not crash", "[tile-targeting]") {
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+    REQUIRE(owner->container != nullptr);
+
+    owner->container->inventory.clear();
+
+    // Add 1 item
+    auto item = std::make_unique<Actor>(0, 0, '!', "single potion", Colors::white);
+    owner->container->inventory.push_back(std::move(item));
+
+    engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
+    engine.gameStatus = Engine::INVENTORY;
+
+    REQUIRE_NOTHROW(engine.renderInventory());
+
+    // Cleanup
+    owner->container->inventory.clear();
+    engine.inventoryState = std::nullopt;
+    engine.gameStatus = Engine::IDLE;
+}
+
+TEST_CASE("renderInventory with 26 items (max) does not crash", "[tile-targeting]") {
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+    REQUIRE(owner->container != nullptr);
+
+    owner->container->inventory.clear();
+
+    // Add 26 items (max inventory)
+    for (int i = 0; i < 26; ++i) {
+        auto item = std::make_unique<Actor>(0, 0, '!', "item_" + std::to_string(i), Colors::white);
+        owner->container->inventory.push_back(std::move(item));
+    }
+
+    engine.inventoryState = InventoryState{ owner, InventoryState::Action::USE };
+    engine.gameStatus = Engine::INVENTORY;
+
+    REQUIRE_NOTHROW(engine.renderInventory());
+
+    // Cleanup
+    owner->container->inventory.clear();
+    engine.inventoryState = std::nullopt;
+    engine.gameStatus = Engine::IDLE;
+}
+
+// ─── Cancellation during TARGETING preserves inventory ───────────────────────
+// **Validates: Requirements 5.4**
+
+TEST_CASE("Cancellation during TARGETING via ESC preserves inventory", "[tile-targeting]") {
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+    REQUIRE(owner->container != nullptr);
+
+    // Set up inventory with a few items
+    owner->container->inventory.clear();
+    auto scroll = std::make_unique<Actor>(0, 0, '!', "fireball scroll", Colors::white);
+    Actor* scrollPtr = scroll.get();
+    owner->container->inventory.push_back(std::move(scroll));
+    auto potion = std::make_unique<Actor>(0, 0, '!', "health potion", Colors::white);
+    owner->container->inventory.push_back(std::move(potion));
+
+    const int inventorySizeBefore = static_cast<int>(owner->container->inventory.size());
+    REQUIRE(inventorySizeBefore == 2);
+
+    // Set up targeting state as if player used the fireball scroll
+    auto effect = std::make_unique<HealthEffect>(-10.0f, "burned #", Colors::damage);
+    engine.targetingCtx = TargetingContext{
+        scrollPtr, owner, 5.0f,
+        TargetSelector::SelectorType::SELECTED_RANGE, effect.get(), 3.0f
+    };
+    engine.gameStatus = Engine::TARGETING;
+
+    // Simulate ESC key press
+    engine.inputState = InputState{};
+    engine.inputState.key.key = SDLK_ESCAPE;
+    engine.inputState.key.pressed = true;
+
+    // Act
+    engine.updateTargeting();
+
+    // Assert: targeting cancelled, state back to IDLE
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+    REQUIRE(!engine.targetingCtx.has_value());
+
+    // Assert: inventory is preserved (same size, same items)
+    REQUIRE(static_cast<int>(owner->container->inventory.size()) == inventorySizeBefore);
+
+    // Verify the scroll is still in inventory
+    bool scrollFound = false;
+    for (const auto& item : owner->container->inventory) {
+        if (item.get() == scrollPtr) {
+            scrollFound = true;
+            break;
+        }
+    }
+    REQUIRE(scrollFound);
+
+    // Cleanup
+    owner->container->inventory.clear();
+}
+
+TEST_CASE("Cancellation during TARGETING via right-click preserves inventory", "[tile-targeting]") {
+    Actor* owner = engine.player;
+    REQUIRE(owner != nullptr);
+    REQUIRE(owner->container != nullptr);
+
+    // Set up inventory
+    owner->container->inventory.clear();
+    auto scroll = std::make_unique<Actor>(0, 0, '?', "confusion scroll", Colors::white);
+    Actor* scrollPtr = scroll.get();
+    owner->container->inventory.push_back(std::move(scroll));
+
+    const int inventorySizeBefore = static_cast<int>(owner->container->inventory.size());
+    REQUIRE(inventorySizeBefore == 1);
+
+    // Set up targeting state
+    auto effect = std::make_unique<HealthEffect>(-3.0f, "confused #", Colors::damage);
+    engine.targetingCtx = TargetingContext{
+        scrollPtr, owner, 8.0f,
+        TargetSelector::SelectorType::SELECTED_MONSTER, effect.get(), 0.0f
+    };
+    engine.gameStatus = Engine::TARGETING;
+
+    // Simulate right-click
+    engine.inputState = InputState{};
+    engine.inputState.mouse.rbutton_pressed = true;
+
+    // Act
+    engine.updateTargeting();
+
+    // Assert: targeting cancelled
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+    REQUIRE(!engine.targetingCtx.has_value());
+
+    // Assert: inventory preserved
+    REQUIRE(static_cast<int>(owner->container->inventory.size()) == inventorySizeBefore);
+    REQUIRE(owner->container->inventory.front().get() == scrollPtr);
+
+    // Cleanup
+    owner->container->inventory.clear();
+}
