@@ -280,6 +280,8 @@ void Engine::init()
 	}
 
 	// Load equipment templates from Equipment.lua.
+	// NOTE: This MUST run before map->init() because enemy spawning (Map::addMonster)
+	// references equipmentTemplates to assign gear to enemies.
 	try {
 		sol::state lua;
 		lua.open_libraries(sol::lib::base);

@@ -96,6 +96,9 @@ MonsterDestructible::MonsterDestructible(float maxHp, float defense, std::string
 
 void MonsterDestructible::die(Actor* owner)
 {
+	// Drop equipped loot before the actor becomes a corpse
+	dropEnemyEquipment(owner);
+
 	std::stringstream ss;
 	ss << owner->name << " is dead! You gain " << xp << " xp.";
 	engine.gui->message(Colors::uiText, ss.str());
