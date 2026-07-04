@@ -214,10 +214,15 @@ void Actor::load(TCODZip& zip)
 		ai = Ai::create(zip);
 	}
 	if (hasPickable) {
-		// Effect is read here by Effect::create; Pickable::load reads only the selector.
+		// Read whether effect is present (new format writes hasEffect flag first)
+		const bool hasEffect = zip.getInt();
+		std::unique_ptr<Effect> effect;
+		if (hasEffect) {
+			effect = Effect::create(zip);
+		}
 		pickable = std::make_unique<Pickable>(
 			std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
-			Effect::create(zip));
+			std::move(effect));
 		pickable->load(zip);
 	}
 	if (hasContainer) {
@@ -335,7 +340,8 @@ void ConfusedMonsterAi::load(TCODZip& zip)
 // Load order: effect is consumed by Effect::create() in Actor::load before Pickable::load is called.
 void Pickable::save(TCODZip& zip)
 {
-	effect->save(zip);
+	zip.putInt(effect != nullptr);
+	if (effect) { effect->save(zip); }
 	zip.putInt(selector != nullptr);
 	if (selector) { selector->save(zip); }
 
