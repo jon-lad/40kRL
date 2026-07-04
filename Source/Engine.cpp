@@ -164,6 +164,7 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 			}
 		}
 
+		TCODConsole::flush();
 		pollInput(inputState);
 		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
 
@@ -180,8 +181,6 @@ bool Engine::pickAtTile(int* x, int* y, float maxRange)
 				return false;
 			}
 		}
-
-		TCODConsole::flush();
 	}
 	return false;
 }
