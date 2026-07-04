@@ -679,7 +679,7 @@ void Map::addMonster(int x, int y)
 			// ── Equipment resolution (task 2.2) ──
 			// Resolve equipment config and attach items to the newly created enemy.
 			Actor* spawned = engine.actors.back().get();
-			if (spawned->equipConfig) {
+			if (spawned->equipConfig && !engine.equipmentTemplates.empty()) {
 				const auto& cfg = *spawned->equipConfig;
 
 				// Create an Equipment instance on the enemy
@@ -776,7 +776,7 @@ void Map::addItem(int x, int y)
 	TCODRandom* rng  = TCODRandom::getInstance();
 
 	// 25% chance to spawn equipment if templates are available
-	if (!engine.equipmentTemplates.empty() && rng->getInt(0, 99) < 25) {
+	if (!engine.equipmentTemplates.empty() && rng != nullptr && rng->getInt(0, 99) < 25) {
 		int templateIndex = rng->getInt(0, static_cast<int>(engine.equipmentTemplates.size()) - 1);
 		const auto& tmpl = engine.equipmentTemplates[templateIndex];
 
