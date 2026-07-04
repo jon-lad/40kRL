@@ -117,16 +117,12 @@ TEST_CASE("PBT: Property 8 — inventory key mapping", "[property][tile-targetin
         }
 
         // --- Cleanup: restore engine to a sane state ---
-        // Reset equipment slots first (before clearing inventory that owns the items)
-        if (owner->equipment) {
-            for (int s = 0; s < static_cast<int>(EquipmentSlot::COUNT); ++s) {
-                EquipmentSlot slot = static_cast<EquipmentSlot>(s);
-                if (owner->equipment->getSlot(slot) != nullptr) {
-                    owner->equipment->unequip(slot, *owner->container, owner->attacker.get());
-                }
-            }
-        }
+        // Reset equipment entirely (avoids dangling pointers when inventory is cleared)
+        owner->equipment = std::make_unique<Equipment>();
         owner->container->inventory.clear();
+        if (owner->attacker) {
+            owner->attacker->modifiers.clear();
+        }
         engine.inventoryState = std::nullopt;
         engine.gameStatus = Engine::IDLE;
     });

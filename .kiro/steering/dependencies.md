@@ -2,7 +2,7 @@
 
 This project uses the following pinned library versions. All code, CI workflows, and build configurations must target these versions.
 
-- **libtcod 2.2.0** — terminal rendering, FOV, noise, BSP, pathfinding
+- **libtcod 2.2.2** — terminal rendering, FOV, noise, BSP, pathfinding
 - **SDL3** — window management, input handling, audio (via libtcod)
 - **sol2** — C++ binding for Lua scripting
 - **Lua 5.4** — scripting runtime for effects, enemies, items, and config
