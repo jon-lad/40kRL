@@ -1,8 +1,10 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 #include "Equippable.h"
+#include "TargetingContext.h"
 
 // Rarity tier for equipment items — used for weighted random selection during enemy spawning.
 enum class ItemTier { COMMON, UNCOMMON, RARE };
@@ -46,7 +48,9 @@ public:
 		IDLE,      // waiting for player input; no AI updates
 		NEW_TURN,  // player acted; all actors update this frame
 		VICTORY,
-		DEFEAT
+		DEFEAT,
+		TARGETING,  // tile selection in progress
+		INVENTORY   // inventory menu is open
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -71,6 +75,8 @@ public:
 
 	std::vector<EquipmentTemplate> equipmentTemplates; // loaded from Equipment.lua
 
+	std::optional<TargetingContext> targetingCtx;  // active only during TARGETING state
+
 	Engine(int screenWidth, int screenHeight);
 
 	// Processes one frame: recompute FOV if needed, read input, update player, update monsters on NEW_TURN.
@@ -93,6 +99,17 @@ public:
 	// mouse click. Writes the chosen world position into *x and *y.
 	// Returns true if a tile was selected, false if cancelled.
 	bool pickAtTile(int* x, int* y, float maxRange = 0.0f);
+
+	// Enters targeting mode. Called by TargetSelector instead of pickAtTile.
+	void beginTargeting(Actor* item, Actor* owner, float maxRange,
+	                    TargetSelector::SelectorType type, Effect* effect,
+	                    float aoeRange = 0.0f);
+
+	// Processes one frame of targeting input. Called from update() when TARGETING.
+	void updateTargeting();
+
+	// Renders targeting highlights. Called from render() when TARGETING.
+	void renderTargeting();
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);
