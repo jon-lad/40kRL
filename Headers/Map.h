@@ -39,6 +39,7 @@ private:
 	void initOutdoor(bool withActors);
 	void renderOutdoor() const;
 	void placeOutdoorActors();
+	void addOutdoorDecorations();
 	std::vector<std::pair<int,int>> findLargestGroundRegion() const;
 
 	// BSP generation extracted from init for dispatch clarity.
@@ -79,6 +80,7 @@ public:
 
 	void addMonster(int x, int y);
 	void addItem(int x, int y);
+	void addDecorations(int x1, int y1, int x2, int y2);
 
 	void save(TCODZip& zip) override;
 	void load(TCODZip& zip) override;
