@@ -15,8 +15,10 @@ private:
 	TCODColor color;
 public:
 	std::string name;
+	std::string description; // optional description shown in look mode (max 200 chars)
 	bool blocks;    // true if this actor prevents other actors from entering its tile
 	bool fovOnly;   // if true, only render when the tile is currently in the player's FOV
+	int coverValue = 0; // cover bonus (0-100) for future cover system; populated from DecorationTemplate
 
 	// Optional components — null means "this actor does not have this capability"
 	std::shared_ptr<Attacker>    attacker;

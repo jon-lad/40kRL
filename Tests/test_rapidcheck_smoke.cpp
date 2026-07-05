@@ -3,7 +3,7 @@
 #include "rapidcheck.h"
 #include "rapidcheck_catch.h"
 
-TEST_CASE("RapidCheck stub smoke test", "[rapidcheck][smoke]") {
+TEST_CASE("RapidCheck stub smoke test", "[pbt][rapidcheck][smoke]") {
     // Test rc::check() basic usage
     SECTION("rc::check runs property without failure") {
         rc::check("addition is commutative", []() {

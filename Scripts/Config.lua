@@ -35,6 +35,10 @@ config = {
     startingDepth          = 20,   -- player starts at this depth, ascends to 0 (surface)
     outdoorScrollMargin    = 20,
 
+    -- Decoration spawning
+    maxRoomDecorations     = 3,
+    outdoorDecorationCount = 8,
+
     -- Carrying capacity (max total weight the player can carry; 0 = unlimited)
     carryingCapacity = 50.0,
 }

@@ -207,6 +207,7 @@ void Actor::save(TCODZip& zip)
 	zip.putString(name.c_str());
 	zip.putInt(blocks);
 	zip.putInt(fovOnly);
+	zip.putString(description.c_str());
 
 	// Write presence flags before payloads so load knows what to expect.
 	zip.putInt(attacker     != nullptr);
@@ -233,6 +234,7 @@ void Actor::load(TCODZip& zip)
 	name   = zip.getString();
 	blocks  = zip.getInt();
 	fovOnly = zip.getInt();
+	description = zip.getString();
 
 	const bool hasAttacker     = zip.getInt();
 	const bool hasDestructible = zip.getInt();

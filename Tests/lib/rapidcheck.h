@@ -124,7 +124,9 @@ inline Gen<bool> arbitrary_bool() {
     }};
 }
 
-// Generate a random int in range [min, max]
+// Generate a random int in range [min, max] — inclusive both ends
+// NOTE: Unlike real RapidCheck which uses [min, max), this stub uses [min, max] inclusive.
+// All tests in this project are written for this inclusive convention.
 inline Gen<int> inRange(int min, int max) {
     return {[min, max](std::mt19937& rng) {
         return std::uniform_int_distribution<int>(min, max)(rng);

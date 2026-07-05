@@ -7,7 +7,7 @@
 #include "main.h"
 
 Actor::Actor(int x, int y, int glyph, std::string_view name, const TCODColor& color)
-	: x{ x }, y{ y }, glyph{ glyph }, name{ name }, color{ color }, blocks{ true }, fovOnly{ true }
+	: x{ x }, y{ y }, glyph{ glyph }, name{ name }, description{}, color{ color }, blocks{ true }, fovOnly{ true }
 {
 	// All component slots start empty; callers assign components after construction.
 }

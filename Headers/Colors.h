@@ -58,8 +58,10 @@ namespace Colors {
 
     // ─── Shared colour-name resolver ────────────────────────────────────
     // Maps Lua colour-name strings to TCODColor values.
+    // Returns black for unrecognised names (used as sentinel for invalid colours).
     inline TCODColor colorFromName(const std::string& name)
     {
+        if (name == "white")            return white;
         if (name == "desaturatedGreen") return orkSkin;
         if (name == "darkerGreen")      return nobArmour;
         if (name == "lightBlue")        return lightBlue;
@@ -70,6 +72,9 @@ namespace Colors {
         if (name == "lightGrey")        return lightGrey;
         if (name == "lighterOrange")    return lighterOrange;
         if (name == "darkGrey")         return TCODColor{95, 95, 95};
-        return white;
+        if (name == "red")              return damage;
+        if (name == "darkRed")          return darkRed;
+        if (name == "cyan")             return cyan;
+        return black;
     }
 }
