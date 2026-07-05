@@ -227,9 +227,6 @@ void Engine::renderTargeting()
 
 	const float maxRange = targetingCtx->maxRange;
 
-	// DEBUG: unconditional marker to confirm renderTargeting is being called
-	renderSetBg(TCODConsole::root->get_data(), 0, 0, {255, 0, 0}); // red pixel at top-left
-
 	// Brighten all in-range, in-FOV tiles to indicate they are selectable.
 	for (int cx = 0; cx < map->getWidth(); cx++) {
 		for (int cy = 0; cy < map->getHeight(); cy++) {
@@ -268,15 +265,6 @@ void Engine::updateTargeting()
 		return;
 	}
 
-	// DEBUG: Check if mouse events are being received
-	if (inputState.mouse.lbutton_pressed) {
-		auto [dbgWorldX, dbgWorldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
-		gui->message(Colors::yellow, "DEBUG: Click cell(#,#) -> world(#,#) FOV=#", 
-			std::to_string(inputState.mouse.cellX), std::to_string(inputState.mouse.cellY),
-			std::to_string(dbgWorldX), std::to_string(dbgWorldY),
-			map->isInFOV(dbgWorldX, dbgWorldY) ? "yes" : "no");
-	}
-
 	// --- Cancellation: ESC key or right-click ---
 	if ((inputState.key.key == SDLK_ESCAPE && inputState.key.pressed)
 		|| inputState.mouse.rbutton_pressed)
@@ -294,7 +282,6 @@ void Engine::updateTargeting()
 
 		// Validate tile: must be in FOV.
 		if (!map->isInFOV(worldX, worldY)) {
-			gui->message(Colors::damage, "Target out of sight.");
 			return; // ignore click, remain in TARGETING
 		}
 
@@ -302,7 +289,6 @@ void Engine::updateTargeting()
 		if (targetingCtx->maxRange > 0.0f
 			&& player->getDistance(worldX, worldY) > targetingCtx->maxRange)
 		{
-			gui->message(Colors::damage, "Target out of range.");
 			return; // ignore click, remain in TARGETING
 		}
 
