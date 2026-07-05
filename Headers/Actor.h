@@ -15,6 +15,7 @@ private:
 	TCODColor color;
 public:
 	std::string name;
+	std::string description; // optional description shown in look mode (max 200 chars)
 	bool blocks;    // true if this actor prevents other actors from entering its tile
 	bool fovOnly;   // if true, only render when the tile is currently in the player's FOV
 
