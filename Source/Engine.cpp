@@ -282,6 +282,7 @@ void Engine::updateTargeting()
 
 		// Validate tile: must be in FOV.
 		if (!map->isInFOV(worldX, worldY)) {
+			gui->message(Colors::damage, "Target out of sight.");
 			return; // ignore click, remain in TARGETING
 		}
 
@@ -289,6 +290,7 @@ void Engine::updateTargeting()
 		if (targetingCtx->maxRange > 0.0f
 			&& player->getDistance(worldX, worldY) > targetingCtx->maxRange)
 		{
+			gui->message(Colors::damage, "Target out of range.");
 			return; // ignore click, remain in TARGETING
 		}
 
