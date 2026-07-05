@@ -627,6 +627,8 @@ void Map::createRoom(bool isFirstRoom, int x1, int y1, int x2, int y2, bool with
 			const int iy = rng->getInt(y1, y2);
 			if (canWalk(ix, iy)) { addItem(ix, iy); }
 		}
+
+		addDecorations(x1, y1, x2, y2);
 	}
 }
 
