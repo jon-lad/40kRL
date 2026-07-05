@@ -79,7 +79,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 |-----|--------|
 | Arrow keys / Numpad | Move / Attack |
 | `g` | Pick up item (shows selection menu when multiple items on tile) |
-| `i` | Open inventory (use or equip items) |
+| `i` | Open inventory (shows only unequipped items) |
 | `e` | Open equipment menu |
 | `d` | Drop item |
 | `<` | Ascend stairs |

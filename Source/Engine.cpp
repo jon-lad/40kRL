@@ -387,45 +387,52 @@ void Engine::updateInventory()
 
 	// --- Item selection: a-z key ---
 	if (inputState.key.pressed && inputState.key.c >= 'a' && inputState.key.c <= 'z') {
-		const int itemIndex = inputState.key.c - 'a';
+		const int selectionIndex = inputState.key.c - 'a';
 		Actor* owner = inventoryState->owner;
 
-		if (itemIndex < static_cast<int>(owner->container->inventory.size())) {
-			// Get the item at that index.
-			auto it = owner->container->inventory.begin();
-			std::advance(it, itemIndex);
-			Actor* item = it->get();
+		// Map selection to the j-th unequipped item (skip equipped items).
+		int unequippedCount = 0;
+		Actor* item = nullptr;
+		for (const auto& itemPtr : owner->container->inventory) {
+			if (!itemPtr) continue;
+			// Skip equipped items — they are hidden from the inventory display.
+			if (owner->equipment && owner->equipment->isEquipped(itemPtr.get())) continue;
+			if (unequippedCount == selectionIndex) {
+				item = itemPtr.get();
+				break;
+			}
+			unequippedCount++;
+		}
 
-			if (item) {
-				if (inventoryState->pendingAction == InventoryState::Action::USE) {
-					// Equippable items get equipped; others are used normally.
-					if (item->equippable && owner->equipment) {
-						Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
-						if (previous) {
-							gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
-						} else {
-							gui->message(Colors::uiText, "You equip the #.", item->name);
-						}
-						gameStatus = NEW_TURN;
+		if (item) {
+			if (inventoryState->pendingAction == InventoryState::Action::USE) {
+				// Equippable items get equipped; others are used normally.
+				if (item->equippable && owner->equipment) {
+					Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
+					if (previous) {
+						gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
 					} else {
-						// use() may initiate TARGETING (returns false) or apply immediately (returns true).
-						// If targeting was initiated, gameStatus is already TARGETING — don't override.
-						if (item->pickable->use(item, owner)) {
-							gameStatus = NEW_TURN;
-						}
-						// If use returned false and gameStatus == TARGETING, leave it.
+						gui->message(Colors::uiText, "You equip the #.", item->name);
 					}
-				} else {
-					// DROP action
-					item->pickable->drop(item, owner);
 					gameStatus = NEW_TURN;
+				} else {
+					// use() may initiate TARGETING (returns false) or apply immediately (returns true).
+					// If targeting was initiated, gameStatus is already TARGETING — don't override.
+					if (item->pickable->use(item, owner)) {
+						gameStatus = NEW_TURN;
+					}
+					// If use returned false and gameStatus == TARGETING, leave it.
 				}
+			} else {
+				// DROP action
+				item->pickable->drop(item, owner);
+				gameStatus = NEW_TURN;
 			}
 
 			inventoryState = std::nullopt;
 			return;
 		}
-		// Invalid index — ignore, remain in INVENTORY.
+		// Invalid index (beyond unequipped item count) — ignore, remain in INVENTORY.
 	}
 }
 
@@ -445,6 +452,11 @@ void Engine::renderInventory()
 	int row = 1;
 	for (const auto& itemPtr : inventoryState->owner->container->inventory) {
 		if (itemPtr) {
+			// Skip equipped items — they are shown in the equipment screen, not here.
+			if (inventoryState->owner->equipment &&
+				inventoryState->owner->equipment->isEquipped(itemPtr.get())) {
+				continue;
+			}
 			inventoryConsole.printf(2, row, "(%c) %s", shortcutKey, itemPtr->name.c_str());
 			row++;
 			shortcutKey++;
