@@ -59,6 +59,8 @@
       <PreprocessorDefinitions>CATCH_AMALGAMATED_CUSTOM_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <!-- Catch2 amalgamated header is large; bump PCH threshold -->
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <!-- /FS enables serialized PDB writes to avoid C1041 with parallel CL.EXE -->
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
