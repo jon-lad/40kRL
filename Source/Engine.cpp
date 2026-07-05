@@ -44,6 +44,12 @@ void Engine::update()
 		return;
 	}
 
+	// Handle pickup menu state — skip all normal game logic.
+	if (gameStatus == PICKUP_MENU) {
+		updatePickupMenu();
+		return;
+	}
+
 	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
@@ -90,6 +96,11 @@ void Engine::render()
 	// Render inventory overlay when in INVENTORY state.
 	if (gameStatus == INVENTORY) {
 		renderInventory();
+	}
+
+	// Render pickup menu overlay when in PICKUP_MENU state.
+	if (gameStatus == PICKUP_MENU) {
+		renderPickupMenu();
 	}
 
 	gui->render();
@@ -353,6 +364,12 @@ void Engine::beginInventory(Actor* owner, InventoryState::Action action)
 	gameStatus = INVENTORY;
 }
 
+void Engine::beginPickupMenu(const std::vector<Actor*>& items)
+{
+	pickupMenuState = PickupMenuState{ items };
+	gameStatus = PICKUP_MENU;
+}
+
 void Engine::updateInventory()
 {
 	if (!inventoryState) {
@@ -438,6 +455,16 @@ void Engine::renderInventory()
 		TCODConsole::root,
 		screenWidth  / 2 - INVENTORY_WIDTH  / 2,
 		screenHeight / 2 - INVENTORY_HEIGHT / 2);
+}
+
+void Engine::updatePickupMenu()
+{
+	// Stub — full implementation in Task 2.1.
+}
+
+void Engine::renderPickupMenu()
+{
+	// Stub — full implementation in Task 2.2.
 }
 
 void Engine::sendToBack(Actor* actor)
