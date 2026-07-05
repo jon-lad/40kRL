@@ -44,6 +44,12 @@ void Engine::update()
 		return;
 	}
 
+	// Handle pickup menu state — skip all normal game logic.
+	if (gameStatus == PICKUP_MENU) {
+		updatePickupMenu();
+		return;
+	}
+
 	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
@@ -90,6 +96,11 @@ void Engine::render()
 	// Render inventory overlay when in INVENTORY state.
 	if (gameStatus == INVENTORY) {
 		renderInventory();
+	}
+
+	// Render pickup menu overlay when in PICKUP_MENU state.
+	if (gameStatus == PICKUP_MENU) {
+		renderPickupMenu();
 	}
 
 	gui->render();
@@ -353,6 +364,12 @@ void Engine::beginInventory(Actor* owner, InventoryState::Action action)
 	gameStatus = INVENTORY;
 }
 
+void Engine::beginPickupMenu(const std::vector<Actor*>& items)
+{
+	pickupMenuState = PickupMenuState{ items };
+	gameStatus = PICKUP_MENU;
+}
+
 void Engine::updateInventory()
 {
 	if (!inventoryState) {
@@ -370,45 +387,52 @@ void Engine::updateInventory()
 
 	// --- Item selection: a-z key ---
 	if (inputState.key.pressed && inputState.key.c >= 'a' && inputState.key.c <= 'z') {
-		const int itemIndex = inputState.key.c - 'a';
+		const int selectionIndex = inputState.key.c - 'a';
 		Actor* owner = inventoryState->owner;
 
-		if (itemIndex < static_cast<int>(owner->container->inventory.size())) {
-			// Get the item at that index.
-			auto it = owner->container->inventory.begin();
-			std::advance(it, itemIndex);
-			Actor* item = it->get();
+		// Map selection to the j-th unequipped item (skip equipped items).
+		int unequippedCount = 0;
+		Actor* item = nullptr;
+		for (const auto& itemPtr : owner->container->inventory) {
+			if (!itemPtr) continue;
+			// Skip equipped items — they are hidden from the inventory display.
+			if (owner->equipment && owner->equipment->isEquipped(itemPtr.get())) continue;
+			if (unequippedCount == selectionIndex) {
+				item = itemPtr.get();
+				break;
+			}
+			unequippedCount++;
+		}
 
-			if (item) {
-				if (inventoryState->pendingAction == InventoryState::Action::USE) {
-					// Equippable items get equipped; others are used normally.
-					if (item->equippable && owner->equipment) {
-						Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
-						if (previous) {
-							gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
-						} else {
-							gui->message(Colors::uiText, "You equip the #.", item->name);
-						}
-						gameStatus = NEW_TURN;
+		if (item) {
+			if (inventoryState->pendingAction == InventoryState::Action::USE) {
+				// Equippable items get equipped; others are used normally.
+				if (item->equippable && owner->equipment) {
+					Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
+					if (previous) {
+						gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
 					} else {
-						// use() may initiate TARGETING (returns false) or apply immediately (returns true).
-						// If targeting was initiated, gameStatus is already TARGETING — don't override.
-						if (item->pickable->use(item, owner)) {
-							gameStatus = NEW_TURN;
-						}
-						// If use returned false and gameStatus == TARGETING, leave it.
+						gui->message(Colors::uiText, "You equip the #.", item->name);
 					}
-				} else {
-					// DROP action
-					item->pickable->drop(item, owner);
 					gameStatus = NEW_TURN;
+				} else {
+					// use() may initiate TARGETING (returns false) or apply immediately (returns true).
+					// If targeting was initiated, gameStatus is already TARGETING — don't override.
+					if (item->pickable->use(item, owner)) {
+						gameStatus = NEW_TURN;
+					}
+					// If use returned false and gameStatus == TARGETING, leave it.
 				}
+			} else {
+				// DROP action
+				item->pickable->drop(item, owner);
+				gameStatus = NEW_TURN;
 			}
 
 			inventoryState = std::nullopt;
 			return;
 		}
-		// Invalid index — ignore, remain in INVENTORY.
+		// Invalid index (beyond unequipped item count) — ignore, remain in INVENTORY.
 	}
 }
 
@@ -428,6 +452,11 @@ void Engine::renderInventory()
 	int row = 1;
 	for (const auto& itemPtr : inventoryState->owner->container->inventory) {
 		if (itemPtr) {
+			// Skip equipped items — they are shown in the equipment screen, not here.
+			if (inventoryState->owner->equipment &&
+				inventoryState->owner->equipment->isEquipped(itemPtr.get())) {
+				continue;
+			}
 			inventoryConsole.printf(2, row, "(%c) %s", shortcutKey, itemPtr->name.c_str());
 			row++;
 			shortcutKey++;
@@ -438,6 +467,82 @@ void Engine::renderInventory()
 		TCODConsole::root,
 		screenWidth  / 2 - INVENTORY_WIDTH  / 2,
 		screenHeight / 2 - INVENTORY_HEIGHT / 2);
+}
+
+void Engine::updatePickupMenu()
+{
+	if (!pickupMenuState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Cancellation: ESC key ---
+	if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+		pickupMenuState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Item selection: a-z key ---
+	if (inputState.key.pressed && inputState.key.c >= 'a' && inputState.key.c <= 'z') {
+		const int itemIndex = inputState.key.c - 'a';
+
+		if (itemIndex < static_cast<int>(pickupMenuState->items.size())) {
+			Actor* item = pickupMenuState->items[itemIndex];
+
+			// Find the matching unique_ptr in actors and attempt pickup.
+			for (auto it = actors.begin(); it != actors.end(); ++it) {
+				if (it->get() == item) {
+					if (item->pickable->pick(std::move(*it), player)) {
+						gui->message(Colors::uiText, "You pick up the #.", item->name);
+						// Erase null slots left by the move.
+						auto i = actors.begin();
+						while (i != actors.end()) {
+							i = (i->get() == nullptr) ? actors.erase(i) : std::next(i);
+						}
+						pickupMenuState = std::nullopt;
+						gameStatus = NEW_TURN;
+					} else {
+						// Inventory full.
+						gui->message(Colors::damage, "Your inventory is full!");
+						pickupMenuState = std::nullopt;
+						gameStatus = IDLE;
+					}
+					return;
+				}
+			}
+		}
+		// Invalid index — ignore, remain in PICKUP_MENU.
+	}
+}
+
+void Engine::renderPickupMenu()
+{
+	if (!pickupMenuState) return;
+
+	static constexpr int PICKUP_WIDTH  = 50;
+	static constexpr int PICKUP_HEIGHT = 28;
+	static TCODConsole pickupConsole(PICKUP_WIDTH, PICKUP_HEIGHT);
+
+	pickupConsole.setDefaultForeground(Colors::menuFrame);
+	pickupConsole.printFrame(0, 0, PICKUP_WIDTH, PICKUP_HEIGHT, true, TCOD_BKGND_DEFAULT, "pick up");
+
+	pickupConsole.setDefaultForeground(Colors::white);
+	int shortcutKey = 'a';
+	int row = 1;
+	for (Actor* item : pickupMenuState->items) {
+		if (item && shortcutKey <= 'z') {
+			pickupConsole.printf(2, row, "(%c) %s", shortcutKey, item->name.c_str());
+			row++;
+			shortcutKey++;
+		}
+	}
+
+	TCODConsole::blit(&pickupConsole, 0, 0, PICKUP_WIDTH, PICKUP_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - PICKUP_WIDTH  / 2,
+		screenHeight / 2 - PICKUP_HEIGHT / 2);
 }
 
 void Engine::sendToBack(Actor* actor)
