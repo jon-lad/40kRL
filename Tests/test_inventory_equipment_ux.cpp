@@ -17,7 +17,7 @@
 // sequential letter from 'a' to 'a'+(M-K-1), and no displayed item SHALL
 // be currently equipped.
 
-TEST_CASE("PBT: Property 4 — Inventory displays only unequipped items with sequential letters", "[property][inventory-equipment-ux]")
+TEST_CASE("PBT: Property 4 — Inventory displays only unequipped items with sequential letters", "[pbt][property][inventory-equipment-ux]")
 {
     rc::prop("filtered inventory has M-K unequipped items with sequential letters a..z", []() {
         // Generate random total items M in [1, 10]
@@ -68,7 +68,7 @@ TEST_CASE("PBT: Property 4 — Inventory displays only unequipped items with seq
 // the selection mapping iterates items, skips equipped ones, and lands on the
 // j-th unequipped item in container order. That item must NOT be equipped.
 
-TEST_CASE("PBT: Property 5 — inventory selection maps to the correct filtered item", "[property][inventory-equipment-ux]")
+TEST_CASE("PBT: Property 5 — inventory selection maps to the correct filtered item", "[pbt][property][inventory-equipment-ux]")
 {
     rc::prop("selecting 'a'+j acts on the j-th unequipped item in container order", []() {
         // Generate random total items [1, 10]
@@ -194,7 +194,7 @@ TEST_CASE("PBT: Property 5 — inventory selection maps to the correct filtered 
 // pressing 'a'+i selects the item at position i. For invalid indices (i >= N),
 // the selection is ignored (menu stays open).
 
-TEST_CASE("PBT: Property 3 — menu letter selection picks the correct item", "[property][inventory-equipment-ux]")
+TEST_CASE("PBT: Property 3 — menu letter selection picks the correct item", "[pbt][property][inventory-equipment-ux]")
 {
     rc::prop("key 'a'+i where i < N selects item at index i; i >= N is ignored", []() {
         // Generate random menu size [2, 26] — pickup menu requires at least 2 items

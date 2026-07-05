@@ -19,7 +19,7 @@
 //   - If the key is ESC, no item is selected (gameStatus -> IDLE, inventoryState cleared)
 //   - If the key is 'a' + i where i >= N, no item is selected (stays in INVENTORY)
 
-TEST_CASE("PBT: Property 8 — inventory key mapping", "[property][tile-targeting]")
+TEST_CASE("PBT: Property 8 — inventory key mapping", "[pbt][property][tile-targeting]")
 {
     rc::prop("key 'a'+i where i < N selects the i-th item; ESC cancels; i >= N is ignored", []() {
         // Generate random inventory size [0, 26]
@@ -70,7 +70,7 @@ TEST_CASE("PBT: Property 8 — inventory key mapping", "[property][tile-targetin
 // the highlighted index stays in [0, N-1] wrapping cyclically, and pressing
 // Enter returns the MenuItemCode of the currently highlighted item.
 
-TEST_CASE("PBT: Property 9 — menu navigation wraps and Enter returns selection", "[property][tile-targeting]")
+TEST_CASE("PBT: Property 9 — menu navigation wraps and Enter returns selection", "[pbt][property][tile-targeting]")
 {
     rc::prop("highlighted index wraps cyclically and Enter returns correct MenuItemCode", []() {
         // Generate random menu size [1, 10]
@@ -142,7 +142,7 @@ TEST_CASE("PBT: Property 9 — menu navigation wraps and Enter returns selection
 // (cw, ch), the resulting cell coordinates shall be (px / cw, py / ch) using
 // integer division.
 
-TEST_CASE("PBT: Property 10 — pixel-to-cell coordinate conversion", "[property][tile-targeting]")
+TEST_CASE("PBT: Property 10 — pixel-to-cell coordinate conversion", "[pbt][property][tile-targeting]")
 {
     rc::prop("cell coords equal pixel coords divided by cell dimensions (integer division)", []() {
         // Generate random non-negative pixel coordinates [0, 2000]

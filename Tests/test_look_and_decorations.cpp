@@ -17,7 +17,7 @@
 // printable ASCII chars), the formatted look-mode output shall equal the name
 // alone when the description is empty, or "name: description" when non-empty.
 
-TEST_CASE("PBT: Property 2 — actor description formatting", "[property][look-and-decorations]")
+TEST_CASE("PBT: Property 2 — actor description formatting", "[pbt][property][look-and-decorations]")
 {
     rc::prop("formatted output is name when description empty, name + ': ' + description otherwise", []() {
         // Generate a random name: 1–30 printable ASCII characters (32-126 inclusive)
@@ -68,7 +68,7 @@ static rc::Gen<bool> genBool() {
     }};
 }
 
-TEST_CASE("PBT: Property 5 — invalid decoration entries are skipped during loading", "[property][look-and-decorations]")
+TEST_CASE("PBT: Property 5 — invalid decoration entries are skipped during loading", "[pbt][property][look-and-decorations]")
 {
     // Valid colour names recognised by Colors::colorFromName (non-black results)
     static const std::vector<std::string> validColorNames = {
@@ -153,7 +153,7 @@ TEST_CASE("PBT: Property 5 — invalid decoration entries are skipped during loa
 //   effective max = max(0, configValue)
 //   spawned count is in [0, effective max]
 
-TEST_CASE("PBT: Property 6 — decoration spawn count bounded by config", "[property][look-and-decorations]")
+TEST_CASE("PBT: Property 6 — decoration spawn count bounded by config", "[pbt][property][look-and-decorations]")
 {
     rc::prop("spawned decoration count is in [0, max(0, configValue)]", []() {
         // Generate a random maxRoomDecorations config value in [-5, 10]
@@ -195,7 +195,7 @@ TEST_CASE("PBT: Property 6 — decoration spawn count bounded by config", "[prop
 // description == template.description, coverValue == template.coverValue,
 // and all gameplay components (ai, attacker, destructible, pickable) are null.
 
-TEST_CASE("PBT: Property 8 — spawned decoration matches its template", "[property][look-and-decorations]")
+TEST_CASE("PBT: Property 8 — spawned decoration matches its template", "[pbt][property][look-and-decorations]")
 {
     rc::prop("decoration actor fields match template values", []() {
         // Generate random template values
@@ -242,7 +242,7 @@ TEST_CASE("PBT: Property 8 — spawned decoration matches its template", "[prope
 // positions, every decoration placed using the same logic as addDecorations
 // must land on a tile that is walkable AND was not occupied at placement time.
 
-TEST_CASE("PBT: Property 7 — decorations placed on walkable unoccupied tiles", "[property][look-and-decorations]")
+TEST_CASE("PBT: Property 7 — decorations placed on walkable unoccupied tiles", "[pbt][property][look-and-decorations]")
 {
     rc::prop("every placed decoration is on a walkable unoccupied tile at placement time", []() {
         // 1. Generate a room of random size (4-8 x 4-8), kept small to limit generator calls
