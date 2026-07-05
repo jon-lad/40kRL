@@ -104,6 +104,12 @@ void Engine::render()
 	}
 
 	gui->render();
+
+	// Render look-mode cursor + description AFTER gui->render() so the description
+	// text in the HUD panel area is not overwritten by the gui blit.
+	if (gameStatus == LOOK) {
+		renderLook();
+	}
 }
 
 void Engine::nextLevel(StairDirection direction)
@@ -354,6 +360,82 @@ void Engine::updateTargeting()
 	}
 }
 
+void Engine::beginLook()
+{
+	lookState = LookState{ player->getX(), player->getY() };
+	gameStatus = LOOK;
+}
+
+void Engine::renderLook()
+{
+	if (!lookState) return;
+
+	const int cursorX = lookState->cursorX;
+	const int cursorY = lookState->cursorY;
+
+	// --- Draw cursor highlight (bright yellow background) on cursor tile ---
+	auto [screenX, screenY] = camera->apply(cursorX, cursorY);
+	renderSetBg(TCODConsole::root->get_data(), screenX, screenY, {255, 255, 63});
+
+	// --- Display actor/terrain description in the HUD panel area ---
+	// Panel starts at y = screenHeight - PANEL_HEIGHT. We write at the message area.
+	const int panelY = screenHeight - constants::PANEL_HEIGHT;
+	const int textX  = constants::MSG_X;
+	const int textStartY = panelY + 1;
+
+	if (map->isInFOV(cursorX, cursorY)) {
+		// Tile is in FOV — list actors (excluding player), ordered front-to-back
+		std::vector<std::string> lines;
+		for (const auto& actorPtr : actors) {
+			Actor* actor = actorPtr.get();
+			if (actor == player) continue;
+			if (actor->getX() != cursorX || actor->getY() != cursorY) continue;
+
+			// Include dead actors (corpses) as well as living actors
+			if (actor->description.empty()) {
+				lines.push_back(actor->name);
+			} else {
+				lines.push_back(actor->name + ": " + actor->description);
+			}
+		}
+
+		if (lines.empty()) {
+			// No actors on tile — show terrain type
+			std::string terrain;
+			if (map->getLevelType() == LevelType::OUTDOOR) {
+				TerrainType tt = map->getTerrainType(cursorX, cursorY);
+				switch (tt) {
+					case TerrainType::GROUND: terrain = "Floor"; break;
+					case TerrainType::TREE:   terrain = "Tree";  break;
+					case TerrainType::WATER:  terrain = "Water"; break;
+				}
+			} else {
+				// BSP level: walkable = Floor, non-walkable = Wall
+				if (map->isWall(cursorX, cursorY)) {
+					terrain = "Wall";
+				} else {
+					terrain = "Floor";
+				}
+			}
+			lines.push_back(terrain);
+		}
+
+		// Render lines to the HUD panel area (overwrite message area)
+		int row = 0;
+		for (const auto& line : lines) {
+			if (row >= constants::MSG_HEIGHT) break;
+			TCODConsole::root->setDefaultForeground(Colors::white);
+			TCODConsole::root->printf(textX, textStartY + row, line.c_str());
+			row++;
+		}
+	} else if (map->isExplored(cursorX, cursorY)) {
+		// Tile explored but not in FOV
+		TCODConsole::root->setDefaultForeground(Colors::uiText);
+		TCODConsole::root->printf(textX, textStartY, "You can't see that clearly from here.");
+	}
+	// If unexplored: display nothing (don't render any text)
+}
+
 void Engine::beginInventory(Actor* owner, InventoryState::Action action)
 {
 	if (!owner || !owner->container) {
@@ -543,6 +625,66 @@ void Engine::renderPickupMenu()
 		TCODConsole::root,
 		screenWidth  / 2 - PICKUP_WIDTH  / 2,
 		screenHeight / 2 - PICKUP_HEIGHT / 2);
+}
+
+void Engine::updateLook()
+{
+	if (!lookState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Exit: ESC key or 'l' key ---
+	if ((inputState.key.key == SDLK_ESCAPE && inputState.key.pressed)
+		|| (inputState.key.c == 'l' && inputState.key.pressed))
+	{
+		lookState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Movement: arrow keys and vi-keys ---
+	int dx = 0, dy = 0;
+
+	// Arrow keys
+	switch (inputState.key.key) {
+		case SDLK_UP:    dy = -1; break;
+		case SDLK_DOWN:  dy =  1; break;
+		case SDLK_LEFT:  dx = -1; break;
+		case SDLK_RIGHT: dx =  1; break;
+		default: break;
+	}
+
+	// Vi-keys (only if arrow keys didn't match)
+	if (dx == 0 && dy == 0 && inputState.key.pressed) {
+		switch (inputState.key.c) {
+			case 'h': dx = -1;          break; // left
+			case 'j':          dy =  1; break; // down
+			case 'k':          dy = -1; break; // up
+			case 'y': dx = -1; dy = -1; break; // up-left
+			case 'u': dx =  1; dy = -1; break; // up-right
+			case 'b': dx = -1; dy =  1; break; // down-left
+			case 'n': dx =  1; dy =  1; break; // down-right
+			default: break;
+		}
+	}
+
+	if (dx != 0 || dy != 0) {
+		// Move cursor and clamp to map bounds [0, width-1] × [0, height-1]
+		int newX = lookState->cursorX + dx;
+		int newY = lookState->cursorY + dy;
+
+		if (newX < 0) newX = 0;
+		if (newX >= map->getWidth()) newX = map->getWidth() - 1;
+		if (newY < 0) newY = 0;
+		if (newY >= map->getHeight()) newY = map->getHeight() - 1;
+
+		lookState->cursorX = newX;
+		lookState->cursorY = newY;
+	}
+
+	// No turn advancement, no AI updates.
 }
 
 void Engine::sendToBack(Actor* actor)
