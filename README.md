@@ -14,7 +14,9 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 - Turn-based movement and combat with melee attacks
 - FOV (field of view) with libtcod's shadow-casting algorithm
 - Scent-tracking monster AI that follows the player even outside line of sight
-- Lua-driven enemy and item definitions for easy modding
+- Look mode for inspecting tiles and reading actor descriptions
+- Data-driven room decorations (crates, barrels, consoles, pillars, etc.)
+- Lua-driven enemy, item, and decoration definitions for easy modding
 - Item system with health potions, damage scrolls, and confusion scrolls
 - Save/load via binary archives (TCODZip)
 - Scrolling camera with a 160×86 map viewed through an 80×43 viewport
@@ -67,6 +69,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 │   ├── Enemies.lua   Enemy definitions and spawn logic
 │   ├── Items.lua     Item definitions and spawn logic
 │   ├── Effects.lua   Item effect scripts
+│   ├── Decorations.lua  Room decoration definitions (glyphs, colours, cover values)
 │   └── Map.Lua       Map generation parameters
 ├── Tests/            Unit and property-based tests (Catch2 + RapidCheck)
 ├── Docs/             Design notes and todo list
@@ -82,6 +85,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | `i` | Open inventory (shows only unequipped items) |
 | `e` | Open equipment menu |
 | `d` | Drop item |
+| `l` | Look mode (inspect tiles — move cursor with arrows, ESC to exit) |
 | `<` | Ascend stairs |
 | `>` | Descend stairs |
 | `Esc` | Save and return to menu |
@@ -89,7 +93,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 
 ## Scripting
 
-Enemy and item definitions live in `Scripts/` as Lua tables. You can add new enemies by editing `Scripts/Enemies.lua` or new items in `Scripts/Items.lua` without recompiling. Game configuration (map dimensions, FOV radius, thresholds) is in `Scripts/Config.lua`. Player class stats (hp, defense, power, skill) are in `Scripts/Classes.lua`.
+Enemy and item definitions live in `Scripts/` as Lua tables. You can add new enemies by editing `Scripts/Enemies.lua`, new items in `Scripts/Items.lua`, or new room decorations in `Scripts/Decorations.lua` without recompiling. Game configuration (map dimensions, FOV radius, thresholds, decoration counts) is in `Scripts/Config.lua`. Player class stats (hp, defense, power, skill) are in `Scripts/Classes.lua`.
 
 ## Roadmap
 
