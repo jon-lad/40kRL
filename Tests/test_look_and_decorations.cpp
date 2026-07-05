@@ -170,7 +170,8 @@ TEST_CASE("PBT: Property 6 — decoration spawn count bounded by config", "[pbt]
             RC_ASSERT(spawnedCount == 0);
         } else {
             // Generate a random spawn count simulating rng->getInt(0, effectiveMax)
-            const int spawnedCount = *rc::gen::inRange(0, effectiveMax + 1);
+            // Note: stub inRange is inclusive [min, max], so use effectiveMax directly
+            const int spawnedCount = *rc::gen::inRange(0, effectiveMax);
 
             // Verify: spawned count is in [0, effectiveMax]
             RC_ASSERT(spawnedCount >= 0);
