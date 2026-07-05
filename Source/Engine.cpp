@@ -270,8 +270,11 @@ void Engine::updateTargeting()
 
 	// DEBUG: Check if mouse events are being received
 	if (inputState.mouse.lbutton_pressed) {
-		gui->message(Colors::yellow, "DEBUG: Left-click detected at cell (#,#)", 
-			std::to_string(inputState.mouse.cellX), std::to_string(inputState.mouse.cellY));
+		auto [dbgWorldX, dbgWorldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
+		gui->message(Colors::yellow, "DEBUG: Click cell(#,#) -> world(#,#) FOV=#", 
+			std::to_string(inputState.mouse.cellX), std::to_string(inputState.mouse.cellY),
+			std::to_string(dbgWorldX), std::to_string(dbgWorldY),
+			map->isInFOV(dbgWorldX, dbgWorldY) ? "yes" : "no");
 	}
 
 	// --- Cancellation: ESC key or right-click ---
