@@ -59,6 +59,12 @@ struct PickupMenuState {
 	std::vector<Actor*> items;
 };
 
+// Stores state for the look-mode cursor overlay.
+struct LookState {
+	int cursorX;
+	int cursorY;
+};
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -72,7 +78,8 @@ public:
 		DEFEAT,
 		TARGETING,  // tile selection in progress
 		INVENTORY,  // inventory menu is open
-		PICKUP_MENU // pickup selection menu is open
+		PICKUP_MENU, // pickup selection menu is open
+		LOOK        // look-mode cursor active
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -101,6 +108,7 @@ public:
 	std::optional<TargetingContext> targetingCtx;  // active only during TARGETING state
 	std::optional<InventoryState> inventoryState; // active only during INVENTORY state
 	std::optional<PickupMenuState> pickupMenuState; // active only during PICKUP_MENU state
+	std::optional<LookState> lookState; // active only during LOOK state
 
 	Engine(int screenWidth, int screenHeight);
 
@@ -148,6 +156,15 @@ public:
 
 	// Renders pickup menu overlay. Called from render() when PICKUP_MENU.
 	void renderPickupMenu();
+
+	// Enters look mode. Called when player presses 'l' in IDLE state.
+	void beginLook();
+
+	// Processes one frame of look-mode input. Called from update() when LOOK.
+	void updateLook();
+
+	// Renders look-mode cursor highlight. Called from render() when LOOK.
+	void renderLook();
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);
