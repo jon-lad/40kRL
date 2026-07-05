@@ -116,6 +116,7 @@
     <ClCompile Include="test_equipment.cpp" />
     <ClCompile Include="test_enemy_equipment.cpp" />
     <ClCompile Include="test_tile_targeting.cpp" />
+    <ClCompile Include="test_inventory_equipment_ux.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
