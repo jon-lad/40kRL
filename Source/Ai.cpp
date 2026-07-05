@@ -119,45 +119,6 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 	return true;
 }
 
-Actor* PlayerAi::chooseFromInventory(Actor* owner)
-{
-	static constexpr int INVENTORY_WIDTH  = 50;
-	static constexpr int INVENTORY_HEIGHT = 28;
-	static TCODConsole inventoryConsole(INVENTORY_WIDTH, INVENTORY_HEIGHT);
-
-	inventoryConsole.setDefaultForeground(Colors::menuFrame);
-	inventoryConsole.printFrame(0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT, true, TCOD_BKGND_DEFAULT, "inventory");
-
-	inventoryConsole.setDefaultForeground(Colors::white);
-	int shortcutKey = 'a';
-	int row = 1;
-	for (const auto& itemPtr : owner->container->inventory) {
-		if (itemPtr) {
-			inventoryConsole.printf(2, row, "(%c) %s", shortcutKey, itemPtr->name.c_str());
-			row++;
-			shortcutKey++;
-		}
-	}
-
-	TCODConsole::blit(&inventoryConsole, 0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT,
-		TCODConsole::root,
-		engine.screenWidth  / 2 - INVENTORY_WIDTH  / 2,
-		engine.screenHeight / 2 - INVENTORY_HEIGHT / 2);
-	TCODConsole::flush();
-
-	TCOD_key_t key;
-	TCODSystem::waitForEvent(TCOD_EVENT_KEY_PRESS, &key, nullptr, true);
-	if (key.vk == TCODK_CHAR) {
-		const int itemIndex = key.c - 'a';
-		if (itemIndex >= 0 && itemIndex < static_cast<int>(owner->container->inventory.size())) {
-			auto it = owner->container->inventory.begin();
-			std::advance(it, itemIndex);
-			return it->get();
-		}
-	}
-	return nullptr;
-}
-
 void PlayerAi::handleActionKey(Actor* owner, int ascii)
 {
 	switch (ascii) {
@@ -190,40 +151,12 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 	}
 
 	case 'i': // open inventory to use/equip an item
-	{
-		Actor* item = chooseFromInventory(owner);
-		if (item) {
-			if (item->equippable && owner->equipment) {
-				// Equippable item — equip it instead of using it
-				Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
-				if (previous) {
-					engine.gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
-				} else {
-					engine.gui->message(Colors::uiText, "You equip the #.", item->name);
-				}
-			} else {
-				// Non-equippable item — use it normally
-				for (auto& slot : owner->container->inventory) {
-					if (slot.get() == item) {
-						item->pickable->use(slot.get(), owner);
-						break;
-					}
-				}
-			}
-			engine.gameStatus = Engine::NEW_TURN;
-		}
-		break;
-	}
+		engine.beginInventory(owner, InventoryState::Action::USE);
+		return;
 
 	case 'd': // drop an item from inventory
-	{
-		Actor* item = chooseFromInventory(owner);
-		if (item) {
-			item->pickable->drop(item, owner);
-			engine.gameStatus = Engine::NEW_TURN;
-		}
-		break;
-	}
+		engine.beginInventory(owner, InventoryState::Action::DROP);
+		return;
 
 	case '<': // ascend stairs
 		if (engine.stairsUp

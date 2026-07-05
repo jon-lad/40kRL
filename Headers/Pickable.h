@@ -1,5 +1,8 @@
 #pragma once
 
+// Forward declarations
+class Effect;
+
 // ─── Target selection ────────────────────────────────────────────────────────
 
 // Determines which actors are affected when a Pickable item is used.
@@ -16,8 +19,13 @@ public:
 
 	TargetSelector(SelectorType type, float range);
 
-	// Fills list with the selected targets. May enter interactive tile-pick mode.
-	void selectTargets(Actor* wearer, TCODList<Actor*>& list);
+	// Fills list with the selected targets for immediate-resolution selectors (SELF, CLOSEST_MONSTER, WEARER_RANGE).
+	// For SELECTED_MONSTER/SELECTED_RANGE: initiates targeting mode and returns false (effect not yet applied).
+	// Returns true if targets were resolved immediately, false if targeting mode was started.
+	bool selectTargets(Actor* wearer, Actor* itemActor, Effect* effect, TCODList<Actor*>& list);
+
+	float getRange() const { return range; }
+	SelectorType getType() const { return type; }
 
 	void save(TCODZip& zip) override;
 	void load(TCODZip& zip) override;

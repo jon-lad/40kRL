@@ -37,7 +37,10 @@ bool Pickable::use(Actor* owner, Actor* wearer)
 
 	TCODList<Actor*> targets;
 	if (selector) {
-		selector->selectTargets(wearer, targets);
+		if (!selector->selectTargets(wearer, owner, effect.get(), targets)) {
+			// Targeting mode initiated — effect will be applied by Engine on confirmation.
+			return false;
+		}
 	} else {
 		targets.push(wearer); // no selector means self-targeting
 	}
@@ -161,7 +164,7 @@ TargetSelector::TargetSelector(SelectorType type, float range)
 	: type{ type }, range{ range }
 {}
 
-void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list)
+bool TargetSelector::selectTargets(Actor* wearer, Actor* itemActor, Effect* effect, TCODList<Actor*>& list)
 {
 	switch (type) {
 
@@ -171,19 +174,18 @@ void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list)
 
 	case SelectorType::CLOSEST_MONSTER: {
 		Actor* closest = engine.getClosestMonster(wearer->getX(), wearer->getY(), range);
-		if (closest) { list.push(closest); }
-		break;
-	}
-
-	case SelectorType::SELECTED_MONSTER: {
-		int x, y;
-		engine.gui->message(Colors::cyan, "Left-click to select an enemy, or right-click to cancel.");
-		if (engine.pickAtTile(&x, &y, range)) {
-			Actor* target = engine.getActorAt(x, y);
-			if (target) { list.push(target); }
+		if (closest) {
+			list.push(closest);
+		} else {
+			engine.gui->message(Colors::uiText, "No enemy is close enough.");
 		}
 		break;
 	}
+
+	case SelectorType::SELECTED_MONSTER:
+		// Initiate non-blocking targeting mode — the Engine handles confirmation/cancellation.
+		engine.beginTargeting(itemActor, wearer, range, SelectorType::SELECTED_MONSTER, effect, 0.0f);
+		return false;
 
 	case SelectorType::WEARER_RANGE:
 		for (const auto& actorPtr : engine.actors) {
@@ -196,24 +198,11 @@ void TargetSelector::selectTargets(Actor* wearer, TCODList<Actor*>& list)
 		}
 		break;
 
-	case SelectorType::SELECTED_RANGE: {
-		int x, y;
-		engine.gui->message(Colors::cyan, "Left-click to select a tile, or right-click to cancel.");
-		if (engine.pickAtTile(&x, &y)) {
-			for (const auto& actorPtr : engine.actors) {
-				Actor* actor = actorPtr.get();
-				if (actor->destructible && !actor->destructible->isDead()
-					&& actor->getDistance(x, y) <= range)
-				{
-					list.push(actor);
-				}
-			}
-		}
-		break;
-	}
+	case SelectorType::SELECTED_RANGE:
+		// Initiate non-blocking targeting mode — the Engine handles confirmation/cancellation.
+		engine.beginTargeting(itemActor, wearer, range, SelectorType::SELECTED_RANGE, effect, range);
+		return false;
 	}
 
-	if (list.isEmpty()) {
-		engine.gui->message(Colors::uiText, "No enemy is close enough.");
-	}
+	return true;
 }

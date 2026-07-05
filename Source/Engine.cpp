@@ -28,10 +28,23 @@ Engine::Engine(int screenWidth, int screenHeight)
 
 void Engine::update()
 {
-	if (gameStatus == STARTUP) { map->computeFOV(); }
-	gameStatus = IDLE;
+	if (gameStatus == STARTUP) { map->computeFOV(); gameStatus = IDLE; }
 
 	pollInput(inputState);
+
+	// Handle targeting state — skip all normal game logic.
+	if (gameStatus == TARGETING) {
+		updateTargeting();
+		return;
+	}
+
+	// Handle inventory state — skip all normal game logic.
+	if (gameStatus == INVENTORY) {
+		updateInventory();
+		return;
+	}
+
+	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
 		save();
@@ -67,6 +80,16 @@ void Engine::render()
 		if (isVisible || isExplored) {
 			actor->render();
 		}
+	}
+
+	// Render targeting overlay (highlights + cursor) when in TARGETING state.
+	if (gameStatus == TARGETING) {
+		renderTargeting();
+	}
+
+	// Render inventory overlay when in INVENTORY state.
+	if (gameStatus == INVENTORY) {
+		renderInventory();
 	}
 
 	gui->render();
@@ -173,68 +196,248 @@ Actor* Engine::getActorAt(int x, int y) const
 	return nullptr;
 }
 
-bool Engine::pickAtTile(int* x, int* y, float maxRange)
+void Engine::beginTargeting(Actor* item, Actor* owner, float maxRange,
+                            TargetSelector::SelectorType type, Effect* effect,
+                            float aoeRange)
 {
-	while (!TCODConsole::isWindowClosed()) {
-		render();
+	// Validate pointers — abort without state change if any are null.
+	if (!item) {
+		gui->message(Colors::damage, "Warning: beginTargeting called with null item.");
+		return;
+	}
+	if (!owner) {
+		gui->message(Colors::damage, "Warning: beginTargeting called with null owner.");
+		return;
+	}
+	if (!effect) {
+		gui->message(Colors::damage, "Warning: beginTargeting called with null effect.");
+		return;
+	}
 
-		// Brighten all in-range, in-FOV tiles to indicate they are selectable.
-		for (int cx = 0; cx < map->getWidth(); cx++) {
-			for (int cy = 0; cy < map->getHeight(); cy++) {
-				if (map->isInFOV(cx, cy) && (maxRange == 0.0f || player->getDistance(cx, cy) <= maxRange)) {
-					auto [screenX, screenY] = camera->apply(cx, cy);
-					TCODColor col = TCODConsole::root->getCharForeground(screenX, screenY);
-					TCOD_ColorRGB bright = {
-						static_cast<uint8_t>(std::min(255, col.r * 6 / 5)),
-						static_cast<uint8_t>(std::min(255, col.g * 6 / 5)),
-						static_cast<uint8_t>(std::min(255, col.b * 6 / 5))
-					};
-					TCOD_console_put_rgb(TCODConsole::root->get_data(), screenX, screenY, 0, &bright, nullptr, TCOD_BKGND_NONE);
-				}
+	// Populate targeting context and transition to TARGETING state.
+	targetingCtx = TargetingContext{ item, owner, maxRange, type, effect, aoeRange };
+	gameStatus = TARGETING;
+
+	gui->message(Colors::uiText, "Left-click to confirm, right-click or ESC to cancel.");
+}
+
+void Engine::renderTargeting()
+{
+	if (!targetingCtx) return;
+
+	const float maxRange = targetingCtx->maxRange;
+
+	// Brighten all in-range, in-FOV tiles to indicate they are selectable.
+	for (int cx = 0; cx < map->getWidth(); cx++) {
+		for (int cy = 0; cy < map->getHeight(); cy++) {
+			if (map->isInFOV(cx, cy)
+				&& (maxRange == 0.0f || player->getDistance(cx, cy) <= maxRange))
+			{
+				auto [screenX, screenY] = camera->apply(cx, cy);
+				TCODColor col = TCODConsole::root->getCharForeground(screenX, screenY);
+				TCOD_ColorRGB bright = {
+					static_cast<uint8_t>(std::min(255, col.r * 6 / 5)),
+					static_cast<uint8_t>(std::min(255, col.g * 6 / 5)),
+					static_cast<uint8_t>(std::min(255, col.b * 6 / 5))
+				};
+				TCOD_console_put_rgb(TCODConsole::root->get_data(), screenX, screenY, 0, &bright, nullptr, TCOD_BKGND_NONE);
 			}
-		}
-
-		TCODConsole::flush();
-
-		// Use SDL_GetMouseState for reliable mouse position and button state.
-		// This bypasses the event queue which libtcod's flush() may drain.
-		float mouseXf, mouseYf;
-		Uint32 buttons = SDL_GetMouseState(&mouseXf, &mouseYf);
-		int mousePixelX = static_cast<int>(mouseXf);
-		int mousePixelY = static_cast<int>(mouseYf);
-		int mouseCellX = mousePixelX / DEFAULT_CELL_WIDTH;
-		int mouseCellY = mousePixelY / DEFAULT_CELL_HEIGHT;
-
-		auto [worldX, worldY] = camera->getWorldLocation(mouseCellX, mouseCellY);
-
-		if (map->isInFOV(worldX, worldY)
-			&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
-		{
-			renderSetBg(TCODConsole::root->get_data(), mouseCellX, mouseCellY, {255, 255, 255});
-			if (buttons & SDL_BUTTON_LMASK) {
-				*x = worldX;
-				*y = worldY;
-				// Wait for button release to avoid repeat
-				while (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK) {
-					SDL_Delay(10);
-				}
-				return true;
-			}
-			if (buttons & SDL_BUTTON_RMASK) {
-				while (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) {
-					SDL_Delay(10);
-				}
-				return false;
-			}
-		}
-
-		// Also check keyboard for cancel (ESC or any key)
-		pollInput(inputState);
-		if (inputState.key.key != SDLK_UNKNOWN) {
-			return false;
 		}
 	}
-	return false;
+
+	// Show cursor highlight on the tile under the mouse, only if valid (in FOV + in range).
+	int mouseCellX = inputState.mouse.cellX;
+	int mouseCellY = inputState.mouse.cellY;
+	auto [worldX, worldY] = camera->getWorldLocation(mouseCellX, mouseCellY);
+
+	if (map->isInFOV(worldX, worldY)
+		&& (maxRange == 0.0f || player->getDistance(worldX, worldY) <= maxRange))
+	{
+		renderSetBg(TCODConsole::root->get_data(), mouseCellX, mouseCellY, {255, 255, 255});
+	}
+}
+
+void Engine::updateTargeting()
+{
+	if (!targetingCtx) {
+		// Safety: should not be called without a valid context.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Cancellation: ESC key or right-click ---
+	if ((inputState.key.key == SDLK_ESCAPE && inputState.key.pressed)
+		|| inputState.mouse.rbutton_pressed)
+	{
+		gui->message(Colors::uiText, "Targeting cancelled.");
+		targetingCtx = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Confirmation: left-click ---
+	if (inputState.mouse.lbutton_pressed) {
+		// Convert mouse cell coords to world coords.
+		auto [worldX, worldY] = camera->getWorldLocation(inputState.mouse.cellX, inputState.mouse.cellY);
+
+		// Validate tile: must be in FOV.
+		if (!map->isInFOV(worldX, worldY)) {
+			return; // ignore click, remain in TARGETING
+		}
+
+		// Validate tile: must be in range (maxRange == 0 means unlimited).
+		if (targetingCtx->maxRange > 0.0f
+			&& player->getDistance(worldX, worldY) > targetingCtx->maxRange)
+		{
+			return; // ignore click, remain in TARGETING
+		}
+
+		// --- Stale-pointer check: verify item still exists in owner's inventory ---
+		bool itemFound = false;
+		if (targetingCtx->owner && targetingCtx->owner->container) {
+			for (const auto& slot : targetingCtx->owner->container->inventory) {
+				if (slot.get() == targetingCtx->item) {
+					itemFound = true;
+					break;
+				}
+			}
+		}
+		if (!itemFound) {
+			gui->message(Colors::damage, "Targeting cancelled — item no longer available.");
+			targetingCtx = std::nullopt;
+			gameStatus = IDLE;
+			return;
+		}
+
+		// --- SELECTED_MONSTER: require a living non-player actor on tile ---
+		if (targetingCtx->type == TargetSelector::SelectorType::SELECTED_MONSTER) {
+			Actor* target = getActorAt(worldX, worldY);
+			if (!target || target == player) {
+				return; // no valid target, remain in TARGETING
+			}
+			// Apply effect to the targeted actor.
+			targetingCtx->effect->applyTo(target);
+		}
+		// --- SELECTED_RANGE: AoE around confirmed tile ---
+		else if (targetingCtx->type == TargetSelector::SelectorType::SELECTED_RANGE) {
+			for (const auto& actorPtr : actors) {
+				Actor* actor = actorPtr.get();
+				if (actor != player
+					&& actor->destructible
+					&& !actor->destructible->isDead()
+					&& actor->getDistance(worldX, worldY) <= targetingCtx->aoeRange)
+				{
+					targetingCtx->effect->applyTo(actor);
+				}
+			}
+		}
+
+		// --- Successful confirmation: remove item from owner's inventory ---
+		if (targetingCtx->owner && targetingCtx->owner->container) {
+			targetingCtx->owner->container->remove(targetingCtx->item);
+		}
+
+		// Clear context and advance turn.
+		targetingCtx = std::nullopt;
+		gameStatus = NEW_TURN;
+	}
+}
+
+void Engine::beginInventory(Actor* owner, InventoryState::Action action)
+{
+	if (!owner || !owner->container) {
+		gui->message(Colors::damage, "Warning: beginInventory called with invalid owner.");
+		return;
+	}
+	inventoryState = InventoryState{ owner, action };
+	gameStatus = INVENTORY;
+}
+
+void Engine::updateInventory()
+{
+	if (!inventoryState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Cancellation: ESC key ---
+	if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+		inventoryState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Item selection: a-z key ---
+	if (inputState.key.pressed && inputState.key.c >= 'a' && inputState.key.c <= 'z') {
+		const int itemIndex = inputState.key.c - 'a';
+		Actor* owner = inventoryState->owner;
+
+		if (itemIndex < static_cast<int>(owner->container->inventory.size())) {
+			// Get the item at that index.
+			auto it = owner->container->inventory.begin();
+			std::advance(it, itemIndex);
+			Actor* item = it->get();
+
+			if (item) {
+				if (inventoryState->pendingAction == InventoryState::Action::USE) {
+					// Equippable items get equipped; others are used normally.
+					if (item->equippable && owner->equipment) {
+						Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
+						if (previous) {
+							gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
+						} else {
+							gui->message(Colors::uiText, "You equip the #.", item->name);
+						}
+						gameStatus = NEW_TURN;
+					} else {
+						// use() may initiate TARGETING (returns false) or apply immediately (returns true).
+						// If targeting was initiated, gameStatus is already TARGETING — don't override.
+						if (item->pickable->use(item, owner)) {
+							gameStatus = NEW_TURN;
+						}
+						// If use returned false and gameStatus == TARGETING, leave it.
+					}
+				} else {
+					// DROP action
+					item->pickable->drop(item, owner);
+					gameStatus = NEW_TURN;
+				}
+			}
+
+			inventoryState = std::nullopt;
+			return;
+		}
+		// Invalid index — ignore, remain in INVENTORY.
+	}
+}
+
+void Engine::renderInventory()
+{
+	if (!inventoryState) return;
+
+	static constexpr int INVENTORY_WIDTH  = 50;
+	static constexpr int INVENTORY_HEIGHT = 28;
+	static TCODConsole inventoryConsole(INVENTORY_WIDTH, INVENTORY_HEIGHT);
+
+	inventoryConsole.setDefaultForeground(Colors::menuFrame);
+	inventoryConsole.printFrame(0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT, true, TCOD_BKGND_DEFAULT, "inventory");
+
+	inventoryConsole.setDefaultForeground(Colors::white);
+	int shortcutKey = 'a';
+	int row = 1;
+	for (const auto& itemPtr : inventoryState->owner->container->inventory) {
+		if (itemPtr) {
+			inventoryConsole.printf(2, row, "(%c) %s", shortcutKey, itemPtr->name.c_str());
+			row++;
+			shortcutKey++;
+		}
+	}
+
+	TCODConsole::blit(&inventoryConsole, 0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - INVENTORY_WIDTH  / 2,
+		screenHeight / 2 - INVENTORY_HEIGHT / 2);
 }
 
 void Engine::sendToBack(Actor* actor)
