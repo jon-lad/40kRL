@@ -227,6 +227,9 @@ void Engine::renderTargeting()
 
 	const float maxRange = targetingCtx->maxRange;
 
+	// DEBUG: unconditional marker to confirm renderTargeting is being called
+	renderSetBg(TCODConsole::root->get_data(), 0, 0, {255, 0, 0}); // red pixel at top-left
+
 	// Brighten all in-range, in-FOV tiles to indicate they are selectable.
 	for (int cx = 0; cx < map->getWidth(); cx++) {
 		for (int cy = 0; cy < map->getHeight(); cy++) {
@@ -263,6 +266,12 @@ void Engine::updateTargeting()
 		// Safety: should not be called without a valid context.
 		gameStatus = IDLE;
 		return;
+	}
+
+	// DEBUG: Check if mouse events are being received
+	if (inputState.mouse.lbutton_pressed) {
+		gui->message(Colors::yellow, "DEBUG: Left-click detected at cell (#,#)", 
+			std::to_string(inputState.mouse.cellX), std::to_string(inputState.mouse.cellY));
 	}
 
 	// --- Cancellation: ESC key or right-click ---
