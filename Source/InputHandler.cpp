@@ -9,6 +9,25 @@ void pollInput(InputState& state, int cellWidth, int cellHeight) {
     state.mouse.rbutton_pressed = false;
     state.windowClosed = false;
 
+    // Compute actual cell size from the window dimensions.
+    // SDL3 reports mouse coords in window pixels, which may differ from the
+    // base resolution (800x500) if the window is scaled or HiDPI is active.
+    // We derive cell size = windowPixels / consoleCells.
+    int actualCellW = cellWidth;
+    int actualCellH = cellHeight;
+    SDL_Window* window = SDL_GetKeyboardFocus();
+    if (window) {
+        int winW = 0, winH = 0;
+        SDL_GetWindowSize(window, &winW, &winH);
+        if (winW > 0 && winH > 0) {
+            // Console is 80x50 cells (from TCODConsole::initRoot)
+            actualCellW = winW / 80;
+            actualCellH = winH / 50;
+            if (actualCellW < 1) actualCellW = 1;
+            if (actualCellH < 1) actualCellH = 1;
+        }
+    }
+
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
@@ -73,10 +92,8 @@ void pollInput(InputState& state, int cellWidth, int cellHeight) {
             case SDL_EVENT_MOUSE_MOTION:
                 state.mouse.pixelX = static_cast<int>(event.motion.x);
                 state.mouse.pixelY = static_cast<int>(event.motion.y);
-                if (cellWidth > 0 && cellHeight > 0) {
-                    state.mouse.cellX = state.mouse.pixelX / cellWidth;
-                    state.mouse.cellY = state.mouse.pixelY / cellHeight;
-                }
+                state.mouse.cellX = state.mouse.pixelX / actualCellW;
+                state.mouse.cellY = state.mouse.pixelY / actualCellH;
                 break;
 
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -87,10 +104,8 @@ void pollInput(InputState& state, int cellWidth, int cellHeight) {
                 }
                 state.mouse.pixelX = static_cast<int>(event.button.x);
                 state.mouse.pixelY = static_cast<int>(event.button.y);
-                if (cellWidth > 0 && cellHeight > 0) {
-                    state.mouse.cellX = state.mouse.pixelX / cellWidth;
-                    state.mouse.cellY = state.mouse.pixelY / cellHeight;
-                }
+                state.mouse.cellX = state.mouse.pixelX / actualCellW;
+                state.mouse.cellY = state.mouse.pixelY / actualCellH;
                 break;
 
             default:

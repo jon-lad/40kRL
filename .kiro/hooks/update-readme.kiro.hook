@@ -1,19 +1,13 @@
 {
   "enabled": true,
-  "name": "Update README on changes",
-  "description": "When source or header files are edited, prompts the agent to review and update README.md if the changes affect build instructions, features, or project structure.",
+  "name": "Update README on new features",
+  "description": "After a spec task completes, checks if README.md needs updating to reflect new features, build changes, or controls. Skips bugfixes and internal refactors.",
   "version": "1",
   "when": {
-    "type": "fileEdited",
-    "patterns": [
-      "*.h",
-      "*.cpp",
-      "*.vcxproj",
-      "*.yml"
-    ]
+    "type": "postTaskExecution"
   },
   "then": {
     "type": "askAgent",
-    "prompt": "A source file, project file, or CI workflow was just edited. Check if README.md needs updating to reflect changes in build instructions, dependencies, features, project structure, or controls. If it does, update it. If not, do nothing."
+    "prompt": "A spec task just completed. Check if this task added user-facing functionality (new features, new controls, new dependencies, or changed build steps). If it did, update README.md to reflect the changes. If the task was a bugfix, internal refactor, or test-only change, do NOT update the README."
   }
 }
