@@ -44,6 +44,11 @@ struct InventoryState {
 	enum class Action { USE, DROP } pendingAction = Action::USE;
 };
 
+// Stores state for the pickup selection menu overlay.
+struct PickupMenuState {
+	std::vector<Actor*> items;
+};
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -56,7 +61,8 @@ public:
 		VICTORY,
 		DEFEAT,
 		TARGETING,  // tile selection in progress
-		INVENTORY   // inventory menu is open
+		INVENTORY,  // inventory menu is open
+		PICKUP_MENU // pickup selection menu is open
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -83,6 +89,7 @@ public:
 
 	std::optional<TargetingContext> targetingCtx;  // active only during TARGETING state
 	std::optional<InventoryState> inventoryState; // active only during INVENTORY state
+	std::optional<PickupMenuState> pickupMenuState; // active only during PICKUP_MENU state
 
 	Engine(int screenWidth, int screenHeight);
 
@@ -121,6 +128,15 @@ public:
 
 	// Renders inventory overlay. Called from render() when INVENTORY.
 	void renderInventory();
+
+	// Enters pickup selection mode. Called when player presses 'g' on a multi-item tile.
+	void beginPickupMenu(const std::vector<Actor*>& items);
+
+	// Processes one frame of pickup menu input. Called from update() when PICKUP_MENU.
+	void updatePickupMenu();
+
+	// Renders pickup menu overlay. Called from render() when PICKUP_MENU.
+	void renderPickupMenu();
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);
