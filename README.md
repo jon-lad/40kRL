@@ -78,7 +78,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | Key | Action |
 |-----|--------|
 | Arrow keys / Numpad | Move / Attack |
-| `g` | Pick up item |
+| `g` | Pick up item (shows selection menu when multiple items on tile) |
 | `i` | Open inventory (use or equip items) |
 | `e` | Open equipment menu |
 | `d` | Drop item |

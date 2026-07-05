@@ -124,29 +124,41 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 	switch (ascii) {
 	case 'g': // pick up item on current tile
 	{
-		bool pickedUp = false;
-		for (auto actor = engine.actors.begin(); actor != engine.actors.end(); ++actor) {
-			Actor* item = actor->get();
+		// Collect all pickable items at the player's position.
+		std::vector<Actor*> pickableItems;
+		for (auto& actorPtr : engine.actors) {
+			Actor* item = actorPtr.get();
 			if (item->pickable && item->getX() == owner->getX() && item->getY() == owner->getY()) {
-				if (item->pickable->pick(std::move(*actor), owner)) {
-					pickedUp = true;
-					engine.gui->message(Colors::uiText, "You pick up the #.", item->name);
-					// Erase the now-null slot left by the move.
-					auto i = engine.actors.begin();
-					while (i != engine.actors.end()) {
-						i = (i->get() == nullptr) ? engine.actors.erase(i) : std::next(i);
-					}
-					break;
-				} else if (!pickedUp) {
-					pickedUp = true; // suppress the "nothing here" message
-					engine.gui->message(Colors::damage, "Your inventory is full!");
-				}
+				pickableItems.push_back(item);
 			}
 		}
-		if (!pickedUp) {
+
+		if (pickableItems.empty()) {
+			// No items on tile.
 			engine.gui->message(Colors::uiText, "There is nothing here to pick up.");
+			engine.gameStatus = Engine::NEW_TURN;
+		} else if (pickableItems.size() == 1) {
+			// Single item — auto-pickup.
+			Actor* item = pickableItems[0];
+			// Find the owning unique_ptr in the actors list.
+			for (auto it = engine.actors.begin(); it != engine.actors.end(); ++it) {
+				if (it->get() == item) {
+					if (item->pickable->pick(std::move(*it), owner)) {
+						engine.gui->message(Colors::uiText, "You pick up the #.", item->name);
+						// Erase the now-null slot left by the move.
+						engine.actors.erase(it);
+					} else {
+						engine.gui->message(Colors::damage, "Your inventory is full!");
+					}
+					break;
+				}
+			}
+			engine.gameStatus = Engine::NEW_TURN;
+		} else {
+			// Multiple items — open the pickup menu.
+			engine.beginPickupMenu(pickableItems);
+			return;
 		}
-		engine.gameStatus = Engine::NEW_TURN;
 		break;
 	}
 

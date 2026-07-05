@@ -459,12 +459,78 @@ void Engine::renderInventory()
 
 void Engine::updatePickupMenu()
 {
-	// Stub — full implementation in Task 2.1.
+	if (!pickupMenuState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Cancellation: ESC key ---
+	if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+		pickupMenuState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Item selection: a-z key ---
+	if (inputState.key.pressed && inputState.key.c >= 'a' && inputState.key.c <= 'z') {
+		const int itemIndex = inputState.key.c - 'a';
+
+		if (itemIndex < static_cast<int>(pickupMenuState->items.size())) {
+			Actor* item = pickupMenuState->items[itemIndex];
+
+			// Find the matching unique_ptr in actors and attempt pickup.
+			for (auto it = actors.begin(); it != actors.end(); ++it) {
+				if (it->get() == item) {
+					if (item->pickable->pick(std::move(*it), player)) {
+						gui->message(Colors::uiText, "You pick up the #.", item->name);
+						// Erase null slots left by the move.
+						auto i = actors.begin();
+						while (i != actors.end()) {
+							i = (i->get() == nullptr) ? actors.erase(i) : std::next(i);
+						}
+						pickupMenuState = std::nullopt;
+						gameStatus = NEW_TURN;
+					} else {
+						// Inventory full.
+						gui->message(Colors::damage, "Your inventory is full!");
+						pickupMenuState = std::nullopt;
+						gameStatus = IDLE;
+					}
+					return;
+				}
+			}
+		}
+		// Invalid index — ignore, remain in PICKUP_MENU.
+	}
 }
 
 void Engine::renderPickupMenu()
 {
-	// Stub — full implementation in Task 2.2.
+	if (!pickupMenuState) return;
+
+	static constexpr int PICKUP_WIDTH  = 50;
+	static constexpr int PICKUP_HEIGHT = 28;
+	static TCODConsole pickupConsole(PICKUP_WIDTH, PICKUP_HEIGHT);
+
+	pickupConsole.setDefaultForeground(Colors::menuFrame);
+	pickupConsole.printFrame(0, 0, PICKUP_WIDTH, PICKUP_HEIGHT, true, TCOD_BKGND_DEFAULT, "pick up");
+
+	pickupConsole.setDefaultForeground(Colors::white);
+	int shortcutKey = 'a';
+	int row = 1;
+	for (Actor* item : pickupMenuState->items) {
+		if (item && shortcutKey <= 'z') {
+			pickupConsole.printf(2, row, "(%c) %s", shortcutKey, item->name.c_str());
+			row++;
+			shortcutKey++;
+		}
+	}
+
+	TCODConsole::blit(&pickupConsole, 0, 0, PICKUP_WIDTH, PICKUP_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - PICKUP_WIDTH  / 2,
+		screenHeight / 2 - PICKUP_HEIGHT / 2);
 }
 
 void Engine::sendToBack(Actor* actor)
