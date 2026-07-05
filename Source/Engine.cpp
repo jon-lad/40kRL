@@ -50,6 +50,12 @@ void Engine::update()
 		return;
 	}
 
+	// Handle look mode — skip all normal game logic.
+	if (gameStatus == LOOK) {
+		updateLook();
+		return;
+	}
+
 	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
@@ -858,6 +864,70 @@ void Engine::init()
 		}
 	} catch (const sol::error&) {
 		// Equipment.lua missing or malformed — no equipment templates loaded.
+	}
+
+	// Load decoration templates from Decorations.lua.
+	// Must run before map->init() because decoration spawning references decorationTemplates.
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Decorations.lua");
+
+		sol::table decoTable = lua["decorations"];
+		if (decoTable.valid()) {
+			for (size_t i = 1; i <= decoTable.size(); i++) {
+				sol::table entry = decoTable[i];
+
+				// Required fields
+				std::string emptyStr;
+				std::string glyphStr    = entry.get_or("glyph", emptyStr);
+				std::string name        = entry.get_or("name", emptyStr);
+				std::string colorName   = entry.get_or("color", emptyStr);
+				std::string description = entry.get_or("description", emptyStr);
+
+				// 'blocks' is required — use sol::optional to detect missing field
+				sol::optional<bool> blocksOpt = entry["blocks"];
+
+				// Validate required fields
+				if (glyphStr.empty() || name.empty() || colorName.empty() || description.empty() || !blocksOpt.has_value()) {
+					gui->message(Colors::damage, "Decorations.lua: skipping entry # — missing required field.", static_cast<int>(i));
+					continue;
+				}
+
+				// Resolve colour — black is the sentinel for invalid names
+				TCODColor color = Colors::colorFromName(colorName);
+				if (color.r == 0 && color.g == 0 && color.b == 0) {
+					gui->message(Colors::damage, "Decorations.lua: skipping entry # — invalid colour '#'.", static_cast<int>(i), colorName);
+					continue;
+				}
+
+				// Read optional cover_value (default 0), clamp to [0, 100]
+				int coverValue = entry.get_or("cover_value", 0);
+				if (coverValue < 0 || coverValue > 100) {
+					gui->message(Colors::damage, "Decorations.lua: entry # cover_value # clamped to [0,100].", static_cast<int>(i), coverValue);
+					if (coverValue < 0) coverValue = 0;
+					if (coverValue > 100) coverValue = 100;
+				}
+
+				// Truncate name to 30 chars, description to 120 chars
+				if (name.size() > 30) name = name.substr(0, 30);
+				if (description.size() > 120) description = description.substr(0, 120);
+
+				// Create template and push to registry
+				DecorationTemplate tmpl;
+				tmpl.glyph       = static_cast<int>(glyphStr[0]);
+				tmpl.name        = name;
+				tmpl.color       = color;
+				tmpl.description = description;
+				tmpl.blocks      = blocksOpt.value();
+				tmpl.coverValue  = coverValue;
+
+				decorationTemplates.push_back(tmpl);
+			}
+		}
+	} catch (const sol::error&) {
+		// Decorations.lua missing or malformed — log warning, continue with empty vector.
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Decorations.lua — no decorations will spawn.");
 	}
 
 	// Create the player.
