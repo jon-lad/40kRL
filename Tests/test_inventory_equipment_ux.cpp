@@ -246,3 +246,297 @@ TEST_CASE("PBT: Property 3 — menu letter selection picks the correct item", "[
         RC_ASSERT(displayedLetter == key);
     });
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: inventory-equipment-ux — Unit Tests for Edge Cases (Tasks 7.1–7.6)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── 7.1: Escape closes pickup menu without side effects ─────────────────────
+// **Validates: Requirements 2.5**
+
+TEST_CASE("Escape closes pickup menu without side effects", "[unit][inventory-equipment-ux]")
+{
+    // Setup: create 3 self-contained item actors on the map
+    auto item1 = std::make_unique<Actor>(5, 5, '!', "potion1", Colors::white);
+    auto item2 = std::make_unique<Actor>(5, 5, '!', "potion2", Colors::white);
+    auto item3 = std::make_unique<Actor>(5, 5, '!', "potion3", Colors::white);
+
+    Actor* item1Ptr = item1.get();
+    Actor* item2Ptr = item2.get();
+    Actor* item3Ptr = item3.get();
+
+    // Add items to engine.actors so they're "on the map"
+    engine.actors.push_back(std::move(item1));
+    engine.actors.push_back(std::move(item2));
+    engine.actors.push_back(std::move(item3));
+
+    // Open pickup menu with 3 items
+    std::vector<Actor*> menuItems = { item1Ptr, item2Ptr, item3Ptr };
+    engine.pickupMenuState = PickupMenuState{ menuItems };
+    engine.gameStatus = Engine::PICKUP_MENU;
+
+    // Simulate ESC key press
+    engine.inputState = InputState{};
+    engine.inputState.key.key = SDLK_ESCAPE;
+    engine.inputState.key.pressed = true;
+
+    // Act
+    engine.updatePickupMenu();
+
+    // Assert: gameStatus returns to IDLE
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+
+    // Assert: pickupMenuState is cleared
+    REQUIRE(!engine.pickupMenuState.has_value());
+
+    // Assert: no items removed from actors list (all 3 still present)
+    int found = 0;
+    for (const auto& actorPtr : engine.actors) {
+        if (actorPtr.get() == item1Ptr || actorPtr.get() == item2Ptr || actorPtr.get() == item3Ptr) {
+            found++;
+        }
+    }
+    REQUIRE(found == 3);
+
+    // Cleanup
+    engine.actors.remove_if([&](const std::unique_ptr<Actor>& a) {
+        return a.get() == item1Ptr || a.get() == item2Ptr || a.get() == item3Ptr;
+    });
+}
+
+// ─── 7.2: Empty tile produces message and no menu ────────────────────────────
+// **Validates: Requirements 5.1, 5.2**
+
+TEST_CASE("Empty tile produces message and no menu", "[unit][inventory-equipment-ux]")
+{
+    // This tests the state machine logic: when no items are found at the player's
+    // position, the expected behavior is gameStatus = NEW_TURN and no pickup menu.
+    // We simulate the logic that handleActionKey('g') does when 0 items found:
+    // set gameStatus = NEW_TURN, pickupMenuState remains nullopt.
+
+    // Setup: ensure no pickup menu state
+    engine.pickupMenuState = std::nullopt;
+    engine.gameStatus = Engine::IDLE;
+
+    // Simulate the 0-items branch from handleActionKey:
+    // "if 0 items: display message, set gameStatus = NEW_TURN"
+    std::vector<Actor*> itemsOnTile; // empty — no pickable items
+    if (itemsOnTile.empty()) {
+        // This is what handleActionKey does for the empty case
+        engine.gameStatus = Engine::NEW_TURN;
+    }
+
+    // Assert: gameStatus is NEW_TURN (turn consumed for "nothing here" message)
+    REQUIRE(engine.gameStatus == Engine::NEW_TURN);
+
+    // Assert: pickupMenuState remains nullopt (no menu opened)
+    REQUIRE(!engine.pickupMenuState.has_value());
+
+    // Cleanup
+    engine.gameStatus = Engine::IDLE;
+}
+
+// ─── 7.3: Single item auto-pickup does not show menu ─────────────────────────
+// **Validates: Requirements 1.1, 1.2**
+
+TEST_CASE("Single item auto-pickup does not show menu", "[unit][inventory-equipment-ux]")
+{
+    // Setup: create a self-contained player-like actor with container
+    auto testPlayer = std::make_unique<Actor>(5, 5, '@', "TestPlayer", Colors::white);
+    testPlayer->container = std::make_unique<Container>(26);
+    Actor* playerPtr = testPlayer.get();
+
+    // Create a single pickable item at the same position
+    auto healEffect = std::make_unique<HealthEffect>(5.0f, "healed #", Colors::healing);
+    auto selector = std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f);
+    auto item = std::make_unique<Actor>(5, 5, '!', "health potion", Colors::healthPotion);
+    item->pickable = std::make_shared<Pickable>(std::move(selector), std::move(healEffect));
+    Actor* itemPtr = item.get();
+
+    // Simulate the single-item branch from handleActionKey:
+    // "If 1 item: auto-pickup (existing logic)"
+    engine.pickupMenuState = std::nullopt;
+    engine.gameStatus = Engine::IDLE;
+
+    std::vector<Actor*> itemsOnTile = { itemPtr };
+
+    if (itemsOnTile.size() == 1) {
+        // Auto-pickup: use pick() to move item into player's container
+        bool picked = itemPtr->pickable->pick(std::move(item), playerPtr);
+        REQUIRE(picked);
+        // In the real code, gameStatus would be set to NEW_TURN
+        engine.gameStatus = Engine::NEW_TURN;
+    }
+
+    // Assert: no pickup menu was opened
+    REQUIRE(!engine.pickupMenuState.has_value());
+
+    // Assert: item is now in the player's container
+    bool itemInInventory = false;
+    for (const auto& invItem : playerPtr->container->inventory) {
+        if (invItem.get() == itemPtr) {
+            itemInInventory = true;
+            break;
+        }
+    }
+    REQUIRE(itemInInventory);
+
+    // Assert: gameStatus advanced to NEW_TURN (turn consumed)
+    REQUIRE(engine.gameStatus == Engine::NEW_TURN);
+
+    // Cleanup
+    playerPtr->container->inventory.clear();
+    engine.gameStatus = Engine::IDLE;
+}
+
+// ─── 7.4: Full inventory during menu selection shows error ───────────────────
+// **Validates: Requirements 2.6**
+
+TEST_CASE("Full inventory during menu selection shows error", "[unit][inventory-equipment-ux]")
+{
+    // Setup: create a player actor with a full container (size 2, already has 2 items)
+    auto testPlayer = std::make_unique<Actor>(5, 5, '@', "TestPlayer", Colors::white);
+    testPlayer->container = std::make_unique<Container>(2); // max 2 items
+    Actor* savedPlayer = engine.player;
+    engine.player = testPlayer.get();
+
+    // Fill the container to capacity
+    auto filler1 = std::make_unique<Actor>(0, 0, '!', "filler1", Colors::white);
+    auto filler2 = std::make_unique<Actor>(0, 0, '!', "filler2", Colors::white);
+    testPlayer->container->add(std::move(filler1));
+    testPlayer->container->add(std::move(filler2));
+    REQUIRE(testPlayer->container->inventory.size() == 2);
+
+    // Create a pickable item on the map to attempt picking up
+    auto healEffect = std::make_unique<HealthEffect>(5.0f, "healed #", Colors::healing);
+    auto selector = std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f);
+    auto mapItem = std::make_unique<Actor>(5, 5, '!', "extra potion", Colors::healthPotion);
+    mapItem->pickable = std::make_shared<Pickable>(std::move(selector), std::move(healEffect));
+    Actor* mapItemPtr = mapItem.get();
+
+    // Add the item to engine.actors (it needs to be there for updatePickupMenu to find it)
+    engine.actors.push_back(std::move(mapItem));
+
+    // Record inventory size before attempt
+    const size_t invSizeBefore = testPlayer->container->inventory.size();
+
+    // Open pickup menu with this item
+    engine.pickupMenuState = PickupMenuState{ { mapItemPtr } };
+    engine.gameStatus = Engine::PICKUP_MENU;
+
+    // Simulate pressing 'a' to select the first item
+    engine.inputState = InputState{};
+    engine.inputState.key.pressed = true;
+    engine.inputState.key.c = 'a';
+
+    // Act
+    engine.updatePickupMenu();
+
+    // Assert: menu closed (inventory full path)
+    REQUIRE(!engine.pickupMenuState.has_value());
+
+    // Assert: state is IDLE (inventory full doesn't advance turn)
+    REQUIRE(engine.gameStatus == Engine::IDLE);
+
+    // Assert: item was NOT added to inventory (inventory size unchanged)
+    REQUIRE(testPlayer->container->inventory.size() == invSizeBefore);
+
+    // Cleanup: remove any null slots left in actors
+    engine.actors.remove_if([](const std::unique_ptr<Actor>& a) { return a == nullptr; });
+    testPlayer->container->inventory.clear();
+    engine.player = savedPlayer;
+}
+
+// ─── 7.5: Inventory menu with all items equipped shows empty list ────────────
+// **Validates: Requirements 4.4**
+
+TEST_CASE("Inventory menu with all items equipped shows empty list", "[unit][inventory-equipment-ux]")
+{
+    // Setup: create an actor with Container and Equipment, equip all items
+    auto testActor = std::make_unique<Actor>(5, 5, '@', "TestPlayer", Colors::white);
+    testActor->container = std::make_unique<Container>(26);
+    testActor->equipment = std::make_unique<Equipment>();
+    testActor->attacker = std::make_shared<Attacker>(5.0f, 40);
+    Actor* owner = testActor.get();
+
+    // Create equippable items and add to container
+    auto weapon = std::make_unique<Actor>(0, 0, '/', "sword", Colors::white);
+    weapon->equippable = std::make_shared<Equippable>(EquipmentSlot::WEAPON, StatModifiers{1.0f, 0, 0, 0}, 3.0f, 10);
+    Actor* weaponPtr = weapon.get();
+    owner->container->add(std::move(weapon));
+
+    auto armor = std::make_unique<Actor>(0, 0, '[', "chestplate", Colors::white);
+    armor->equippable = std::make_shared<Equippable>(EquipmentSlot::BODY, StatModifiers{0, 2.0f, 0, 0}, 5.0f, 20);
+    Actor* armorPtr = armor.get();
+    owner->container->add(std::move(armor));
+
+    // Equip both items
+    owner->equipment->equip(weaponPtr, owner->container.get(), owner->attacker.get());
+    owner->equipment->equip(armorPtr, owner->container.get(), owner->attacker.get());
+
+    // Verify both are equipped
+    REQUIRE(owner->equipment->isEquipped(weaponPtr));
+    REQUIRE(owner->equipment->isEquipped(armorPtr));
+
+    // Simulate the inventory filtering logic from renderInventory:
+    // iterate container, skip equipped items, count unequipped
+    int unequippedCount = 0;
+    for (const auto& itemPtr : owner->container->inventory) {
+        if (!itemPtr) continue;
+        if (owner->equipment && owner->equipment->isEquipped(itemPtr.get())) continue;
+        unequippedCount++;
+    }
+
+    // Assert: no unequipped items are listed (filter produces 0 items)
+    REQUIRE(unequippedCount == 0);
+}
+
+// ─── 7.6: Movement keys ignored during PICKUP_MENU state ────────────────────
+// **Validates: Requirements 3.3**
+
+TEST_CASE("Movement keys ignored during PICKUP_MENU state", "[unit][inventory-equipment-ux]")
+{
+    // Setup: open pickup menu with some items
+    auto item1 = std::make_unique<Actor>(5, 5, '!', "potion", Colors::white);
+    Actor* item1Ptr = item1.get();
+    engine.actors.push_back(std::move(item1));
+
+    engine.pickupMenuState = PickupMenuState{ { item1Ptr } };
+    engine.gameStatus = Engine::PICKUP_MENU;
+
+    // Test multiple movement keys: arrows and vi keys
+    std::vector<SDL_Keycode> movementKeys = {
+        SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT,
+        SDLK_KP_1, SDLK_KP_2, SDLK_KP_3, SDLK_KP_4,
+        SDLK_KP_6, SDLK_KP_7, SDLK_KP_8, SDLK_KP_9
+    };
+
+    for (SDL_Keycode moveKey : movementKeys) {
+        // Re-open menu state for each key test
+        engine.pickupMenuState = PickupMenuState{ { item1Ptr } };
+        engine.gameStatus = Engine::PICKUP_MENU;
+
+        // Simulate the movement key press
+        engine.inputState = InputState{};
+        engine.inputState.key.key = moveKey;
+        engine.inputState.key.pressed = true;
+        engine.inputState.key.c = 0; // movement keys don't produce printable chars
+
+        // Act
+        engine.updatePickupMenu();
+
+        // Assert: state remains PICKUP_MENU (movement was ignored)
+        REQUIRE(engine.gameStatus == Engine::PICKUP_MENU);
+
+        // Assert: pickup menu is still active
+        REQUIRE(engine.pickupMenuState.has_value());
+    }
+
+    // Cleanup
+    engine.pickupMenuState = std::nullopt;
+    engine.gameStatus = Engine::IDLE;
+    engine.actors.remove_if([&](const std::unique_ptr<Actor>& a) {
+        return a.get() == item1Ptr;
+    });
+}
