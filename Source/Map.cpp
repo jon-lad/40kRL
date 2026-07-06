@@ -676,11 +676,35 @@ void Map::addMonster(int x, int y)
 			float power           = entry.get_or(std::string("power"), 1.0f);
 			int skill             = entry.get_or(std::string("skill"), 40);
 
+			// ── Characteristic fields (default 20 for enemies) ──
+			int charWS  = entry.get_or(std::string("ws"),  20);
+			int charBS  = entry.get_or(std::string("bs"),  20);
+			int charS   = entry.get_or(std::string("s"),   20);
+			int charT   = entry.get_or(std::string("t"),   20);
+			int charAg  = entry.get_or(std::string("ag"),  20);
+			int charInt = entry.get_or(std::string("int"), 20);
+			int charPer = entry.get_or(std::string("per"), 20);
+			int charWP  = entry.get_or(std::string("wp"),  20);
+			int charFel = entry.get_or(std::string("fel"), 20);
+
 			TCODColor col = colorFromName(colorName);
 			auto monster = std::make_unique<Actor>(ax, ay, glyph, name, col);
 			monster->destructible = std::make_unique<MonsterDestructible>(hp, defense, corpse, xp);
 			monster->attacker     = std::make_unique<Attacker>(power, skill);
 			monster->ai           = std::make_unique<MonsterAi>();
+
+			// ── Attach Characteristics component ──
+			auto chars = std::make_shared<Characteristics>(20);
+			chars->set(CharId::WS,  charWS);
+			chars->set(CharId::BS,  charBS);
+			chars->set(CharId::S,   charS);
+			chars->set(CharId::T,   charT);
+			chars->set(CharId::Ag,  charAg);
+			chars->set(CharId::Int, charInt);
+			chars->set(CharId::Per, charPer);
+			chars->set(CharId::WP,  charWP);
+			chars->set(CharId::Fel, charFel);
+			monster->characteristics = chars;
 
 			// ── Parse equipment config from the Lua table ──
 			EnemyEquipmentConfig equipConfig;

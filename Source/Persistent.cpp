@@ -384,6 +384,11 @@ void Actor::save(TCODZip& zip)
 	if (pickable)     pickable->save(zip);
 	if (container)    container->save(zip);
 	if (equippable)   equippable->save(zip);
+
+	// Characteristics presence flag — appended AFTER existing components for backward
+	// compatibility (old saves that lack this field will read 0 from archive end).
+	zip.putInt(characteristics != nullptr);
+	if (characteristics) characteristics->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -433,6 +438,14 @@ void Actor::load(TCODZip& zip)
 	if (hasEquippable) {
 		equippable = std::make_shared<Equippable>(EquipmentSlot::WEAPON, StatModifiers{}, 0.0f, 0);
 		equippable->load(zip);
+	}
+
+	// Characteristics presence flag — appended AFTER existing components for backward
+	// compatibility (old saves that lack this field will read 0 from archive end).
+	const bool hasCharacteristics = zip.getInt();
+	if (hasCharacteristics) {
+		characteristics = std::make_shared<Characteristics>();
+		characteristics->load(zip);
 	}
 }
 

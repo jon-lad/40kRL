@@ -10,6 +10,7 @@ class Actor;
 #include "Persistent.h"
 #include "Destructible.h"
 #include "Attacker.h"
+#include "Characteristics.h"
 #include "Ai.h"
 #include "Pickable.h"
 #include "Container.h"

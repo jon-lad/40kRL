@@ -66,6 +66,9 @@ struct LookState {
 	int cursorY;
 };
 
+// Stores state for the character sheet overlay.
+struct CharacterSheetState {};
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -80,7 +83,8 @@ public:
 		TARGETING,  // tile selection in progress
 		INVENTORY,  // inventory menu is open
 		PICKUP_MENU, // pickup selection menu is open
-		LOOK        // look-mode cursor active
+		LOOK,        // look-mode cursor active
+		CHARACTER_SHEET // character sheet overlay is open
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -112,6 +116,7 @@ public:
 	std::optional<InventoryState> inventoryState; // active only during INVENTORY state
 	std::optional<PickupMenuState> pickupMenuState; // active only during PICKUP_MENU state
 	std::optional<LookState> lookState; // active only during LOOK state
+	std::optional<CharacterSheetState> characterSheetState; // active only during CHARACTER_SHEET state
 
 	Engine(int screenWidth, int screenHeight);
 
@@ -168,6 +173,15 @@ public:
 
 	// Renders look-mode cursor highlight. Called from render() when LOOK.
 	void renderLook();
+
+	// Enters character sheet display mode. Called when player presses 'c' in IDLE state.
+	void beginCharacterSheet();
+
+	// Processes one frame of character sheet input. Called from update() when CHARACTER_SHEET.
+	void updateCharacterSheet();
+
+	// Renders character sheet overlay. Called from render() when CHARACTER_SHEET.
+	void renderCharacterSheet();
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);

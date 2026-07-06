@@ -121,6 +121,7 @@
     <ClCompile Include="test_inventory_equipment_ux.cpp" />
     <ClCompile Include="test_persistent_levels.cpp" />
     <ClCompile Include="test_look_and_decorations.cpp" />
+    <ClCompile Include="test_characteristics.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -138,6 +139,7 @@
     <ClCompile Include="..\Source\Equippable.cpp" />
     <ClCompile Include="..\Source\Equipment.cpp" />
     <ClCompile Include="..\Source\LevelCache.cpp" />
+    <ClCompile Include="..\Source\Characteristics.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -154,6 +156,7 @@
     <ClInclude Include="..\Headers\Map.h" />
     <ClInclude Include="..\Headers\Persistent.h" />
     <ClInclude Include="..\Headers\Pickable.h" />
+    <ClInclude Include="..\Headers\Characteristics.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />

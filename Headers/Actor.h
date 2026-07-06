@@ -27,6 +27,7 @@ public:
 	std::shared_ptr<Pickable>    pickable;
 	std::shared_ptr<Container>   container;
 	std::shared_ptr<Equippable>  equippable;
+	std::shared_ptr<Characteristics> characteristics;
 	std::unique_ptr<Equipment>   equipment;  // non-null on any actor with equipment
 
 	// Parsed equipment config from Lua (used during spawn to resolve equipment in task 2.2).

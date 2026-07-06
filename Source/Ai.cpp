@@ -174,6 +174,10 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		engine.beginLook();
 		return;
 
+	case 'c': // open character sheet
+		engine.beginCharacterSheet();
+		return;
+
 	case '<': // ascend stairs
 		if (engine.stairsUp
 			&& engine.stairsUp->getX() == owner->getX()

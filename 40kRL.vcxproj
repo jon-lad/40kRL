@@ -161,6 +161,7 @@
     <ClCompile Include="Source\Equippable.cpp" />
     <ClCompile Include="Source\Equipment.cpp" />
     <ClCompile Include="Source\LevelCache.cpp" />
+    <ClCompile Include="Source\Characteristics.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -182,6 +183,7 @@
     <ClInclude Include="Headers\Equipment.h" />
     <ClInclude Include="Headers\RenderUtils.h" />
     <ClInclude Include="Headers\LevelCache.h" />
+    <ClInclude Include="Headers\Characteristics.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

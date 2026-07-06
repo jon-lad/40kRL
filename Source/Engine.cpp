@@ -57,6 +57,12 @@ void Engine::update()
 		return;
 	}
 
+	// Handle character sheet state — skip all normal game logic.
+	if (gameStatus == CHARACTER_SHEET) {
+		updateCharacterSheet();
+		return;
+	}
+
 	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
@@ -116,6 +122,11 @@ void Engine::render()
 	// text in the HUD panel area is not overwritten by the gui blit.
 	if (gameStatus == LOOK) {
 		renderLook();
+	}
+
+	// Render character sheet overlay when in CHARACTER_SHEET state.
+	if (gameStatus == CHARACTER_SHEET) {
+		renderCharacterSheet();
 	}
 }
 
@@ -729,6 +740,77 @@ void Engine::updateLook()
 	// No turn advancement, no AI updates.
 }
 
+void Engine::beginCharacterSheet()
+{
+	characterSheetState = CharacterSheetState{};
+	gameStatus = CHARACTER_SHEET;
+}
+
+void Engine::updateCharacterSheet()
+{
+	if (!characterSheetState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Exit: ESC key or 'c' key ---
+	if ((inputState.key.key == SDLK_ESCAPE && inputState.key.pressed)
+		|| (inputState.key.c == 'c' && inputState.key.pressed))
+	{
+		characterSheetState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// Ignore all other keys — no gameplay actions while sheet is open.
+}
+
+void Engine::renderCharacterSheet()
+{
+	if (!characterSheetState) return;
+
+	static constexpr int SHEET_WIDTH  = 40;
+	static constexpr int SHEET_HEIGHT = 16;
+	static TCODConsole sheetConsole(SHEET_WIDTH, SHEET_HEIGHT);
+
+	sheetConsole.setDefaultForeground(Colors::menuFrame);
+	sheetConsole.printFrame(0, 0, SHEET_WIDTH, SHEET_HEIGHT, true, TCOD_BKGND_DEFAULT, "character sheet");
+
+	// Display player name at the top.
+	sheetConsole.setDefaultForeground(Colors::white);
+	sheetConsole.printf(2, 2, "%s", player->name.c_str());
+
+	// Column headers.
+	sheetConsole.setDefaultForeground(Colors::uiText);
+	sheetConsole.printf(2, 4, "Stat  Value  Bonus");
+
+	// Display all 9 characteristics.
+	int row = 5;
+	for (int i = 0; i < static_cast<int>(CharId::COUNT); i++) {
+		CharId id = static_cast<CharId>(i);
+		sheetConsole.setDefaultForeground(Colors::white);
+
+		if (player->characteristics) {
+			int value = player->characteristics->get(id);
+			int bonus = player->characteristics->bonus(id);
+			sheetConsole.printf(2, row, "%-4s  %3d    %d",
+				std::string(Characteristics::abbreviation(id)).c_str(),
+				value, bonus);
+		} else {
+			// Defensive fallback: characteristics is nullptr.
+			sheetConsole.printf(2, row, "%-4s  N/A    N/A",
+				std::string(Characteristics::abbreviation(id)).c_str());
+		}
+		row++;
+	}
+
+	TCODConsole::blit(&sheetConsole, 0, 0, SHEET_WIDTH, SHEET_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - SHEET_WIDTH  / 2,
+		screenHeight / 2 - SHEET_HEIGHT / 2);
+}
+
 void Engine::sendToBack(Actor* actor)
 {
 	for (auto i = actors.begin(); i != actors.end(); ++i) {
@@ -791,6 +873,17 @@ void Engine::init()
 	int   playerSkill   = 40;
 	int   playerInvSize = 26;
 
+	// Characteristic defaults (all default to 30 if not specified in Lua).
+	int playerCharWS  = 30;
+	int playerCharBS  = 30;
+	int playerCharS   = 30;
+	int playerCharT   = 30;
+	int playerCharAg  = 30;
+	int playerCharInt = 30;
+	int playerCharPer = 30;
+	int playerCharWP  = 30;
+	int playerCharFel = 30;
+
 	try {
 		sol::state lua;
 		lua.open_libraries(sol::lib::base);
@@ -803,6 +896,16 @@ void Engine::init()
 			playerPower   = cls.get_or("power",   playerPower);
 			playerSkill   = cls.get_or("skill",   playerSkill);
 			playerInvSize = cls.get_or("invSize", playerInvSize);
+
+			playerCharWS  = cls.get_or("ws",  playerCharWS);
+			playerCharBS  = cls.get_or("bs",  playerCharBS);
+			playerCharS   = cls.get_or("s",   playerCharS);
+			playerCharT   = cls.get_or("t",   playerCharT);
+			playerCharAg  = cls.get_or("ag",  playerCharAg);
+			playerCharInt = cls.get_or("int", playerCharInt);
+			playerCharPer = cls.get_or("per", playerCharPer);
+			playerCharWP  = cls.get_or("wp",  playerCharWP);
+			playerCharFel = cls.get_or("fel", playerCharFel);
 		}
 	} catch (const sol::error&) {
 		// Classes.lua missing or malformed — use defaults above.
@@ -982,6 +1085,20 @@ void Engine::init()
 	newPlayer->ai           = std::make_unique<PlayerAi>();
 	newPlayer->container    = std::make_unique<Container>(playerInvSize);
 	newPlayer->equipment    = std::make_unique<Equipment>();
+
+	// Attach player characteristics loaded from Classes.lua.
+	auto playerChars = std::make_shared<Characteristics>(30);
+	playerChars->set(CharId::WS,  playerCharWS);
+	playerChars->set(CharId::BS,  playerCharBS);
+	playerChars->set(CharId::S,   playerCharS);
+	playerChars->set(CharId::T,   playerCharT);
+	playerChars->set(CharId::Ag,  playerCharAg);
+	playerChars->set(CharId::Int, playerCharInt);
+	playerChars->set(CharId::Per, playerCharPer);
+	playerChars->set(CharId::WP,  playerCharWP);
+	playerChars->set(CharId::Fel, playerCharFel);
+	newPlayer->characteristics = playerChars;
+
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create stairsUp (always visible, never blocks). Starting level is depth 20 (deepest),
