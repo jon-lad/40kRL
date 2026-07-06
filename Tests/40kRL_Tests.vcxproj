@@ -126,6 +126,9 @@
     <ClCompile Include="test_hit_location.cpp" />
     <ClCompile Include="test_combat_formulas.cpp" />
     <ClCompile Include="test_armour_system.cpp" />
+    <ClCompile Include="test_attacker_serialization.cpp" />
+    <ClCompile Include="test_melee_pipeline.cpp" />
+    <ClCompile Include="test_equipment_parsing.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
