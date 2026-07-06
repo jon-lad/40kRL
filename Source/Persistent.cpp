@@ -1,14 +1,128 @@
+#include <fstream>
 #include <sstream>
 #include <filesystem>
 #include "main.h"
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
 
+std::vector<char> Engine::serializeCurrentLevel() const
+{
+	TCODZip zip;
+
+	// Write map dimensions so the snapshot is self-describing.
+	zip.putInt(map->getWidth());
+	zip.putInt(map->getHeight());
+
+	// Write full map state (sentinel, levelType, seed, tiles, currentScentValue).
+	map->save(zip);
+
+	// Count non-player actors.
+	int actorCount = 0;
+	for (const auto& actorPtr : actors) {
+		if (actorPtr.get() != player) actorCount++;
+	}
+	zip.putInt(actorCount);
+
+	// Serialize each non-player actor.
+	for (const auto& actorPtr : actors) {
+		if (actorPtr.get() != player) {
+			actorPtr->save(zip);
+		}
+	}
+
+	// TCODZip has no save-to-buffer API — save to a temp file, read it back.
+	static constexpr const char* TEMP_FILE = "_level_cache_temp.sav";
+	zip.saveToFile(TEMP_FILE);
+
+	std::ifstream file(TEMP_FILE, std::ios::binary | std::ios::ate);
+	const auto fileSize = file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	std::vector<char> buffer(static_cast<size_t>(fileSize));
+	file.read(buffer.data(), fileSize);
+	file.close();
+
+	std::filesystem::remove(TEMP_FILE);
+
+	return buffer;
+}
+
+bool Engine::deserializeLevel(const std::vector<char>& snapshot)
+{
+	// Write the byte vector to a temp file (TCODZip only supports loadFromFile).
+	static constexpr const char* TEMP_FILE = "_level_cache_temp.sav";
+	{
+		std::ofstream file(TEMP_FILE, std::ios::binary);
+		file.write(snapshot.data(), static_cast<std::streamsize>(snapshot.size()));
+	}
+
+	TCODZip zip;
+	zip.loadFromFile(TEMP_FILE);
+	std::filesystem::remove(TEMP_FILE);
+
+	// Read map dimensions written by serializeCurrentLevel.
+	const int mapWidth  = zip.getInt();
+	const int mapHeight = zip.getInt();
+
+	// Create new Map and load its state.
+	map = std::make_unique<Map>(mapWidth, mapHeight);
+	map->load(zip);
+
+	// Read actor count and load each actor.
+	const int actorCount = zip.getInt();
+	for (int i = 0; i < actorCount; i++) {
+		auto actor = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
+		actor->load(zip);
+		actors.emplace_front(std::move(actor));
+	}
+
+	// Assign stair pointers by scanning for glyph '<' and '>'.
+	stairsUp = nullptr;
+	stairsDown = nullptr;
+	for (const auto& actorPtr : actors) {
+		if (actorPtr.get() == player) continue;
+		if (actorPtr->getGlyph() == '<') stairsUp = actorPtr.get();
+		if (actorPtr->getGlyph() == '>') stairsDown = actorPtr.get();
+	}
+
+	// Validate stair presence based on depth.
+	// Depth 0 has no up stairs, depth 20 has no down stairs — those are expected nullptr.
+	// But if depth > 0 and no stairsUp, or depth < 20 and no stairsDown, snapshot is corrupted.
+	const bool needsUp   = (dungeonLevel > 0);
+	const bool needsDown = (dungeonLevel < 20);
+
+	if ((needsUp && stairsUp == nullptr) || (needsDown && stairsDown == nullptr)) {
+		// Corrupted snapshot — discard restored actors (except player) and signal failure.
+		for (auto it = actors.begin(); it != actors.end(); ) {
+			it = (it->get() != player) ? actors.erase(it) : std::next(it);
+		}
+		map.reset();
+		stairsUp = nullptr;
+		stairsDown = nullptr;
+		return false;
+	}
+
+	// Order dead actors behind living actors using sendToBack().
+	for (auto it = actors.begin(); it != actors.end(); ++it) {
+		Actor* actor = it->get();
+		if (actor != player && actor->destructible && actor->destructible->isDead()) {
+			sendToBack(actor);
+		}
+	}
+
+	// Update camera dimensions to match restored map.
+	camera->mapWidth  = map->getWidth();
+	camera->mapHeight = map->getHeight();
+
+	return true;
+}
+
 void Engine::save()
 {
 	if (player->destructible->isDead()) {
 		// Dead players don't keep their save — clear it.
 		std::remove("game.sav");
+		levelCache.clear();
 		return;
 	}
 
@@ -61,6 +175,12 @@ void Engine::save()
 
 	gui->save(zip);
 	zip.putInt(dungeonLevel);
+
+	// Level cache sentinel and data — signals presence of cache section to Engine::load().
+	static constexpr int LEVEL_CACHE_SENTINEL = 0x4C564C43; // "LVLC"
+	zip.putInt(LEVEL_CACHE_SENTINEL);
+	levelCache.save(zip);
+
 	zip.saveToFile("game.sav");
 }
 
@@ -157,6 +277,19 @@ void Engine::load()
 	int loadedLevel = zip.getInt();
 	dungeonLevel = (loadedLevel > 0) ? loadedLevel : 1;
 
+	// Check for level cache sentinel after dungeonLevel.
+	// If sentinel matches: restore cached level snapshots from save file.
+	// If not: old save format — leave levelCache empty (already cleared by term()).
+	static constexpr int LEVEL_CACHE_SENTINEL = 0x4C564C43; // "LVLC"
+	int maybeSentinel = zip.getInt();
+	if (maybeSentinel == LEVEL_CACHE_SENTINEL) {
+		levelCache.load(zip);
+	}
+	// Old saves: getInt() returns 0 when exhausted, which won't match sentinel.
+
+	// Note: The active level is saved separately in the main save format above,
+	// so it won't be present in the cache. No removal needed.
+
 	gameStatus = STARTUP; // force FOV recomputation on the first frame
 }
 
@@ -173,6 +306,18 @@ void Map::save(TCODZip& zip)
 		zip.putInt(tile.scent);
 	}
 	zip.putInt(currentScentValue);
+
+	// Extended format: dimensions and terrain data for snapshot self-description.
+	static constexpr int DIMS_SENTINEL = 0x44494D53; // "DIMS"
+	zip.putInt(DIMS_SENTINEL);
+	zip.putInt(width);
+	zip.putInt(height);
+	// For OUTDOOR levels, persist terrain classification to avoid re-running Perlin.
+	if (levelType == LevelType::OUTDOOR) {
+		for (const auto& t : terrainTypes) {
+			zip.putInt(static_cast<int>(t));
+		}
+	}
 }
 
 void Map::load(TCODZip& zip)
@@ -194,6 +339,22 @@ void Map::load(TCODZip& zip)
 		tile.scent    = zip.getInt();
 	}
 	currentScentValue = zip.getInt();
+
+	// Extended format: check for DIMS sentinel to read dimensions and terrain.
+	static constexpr int DIMS_SENTINEL = 0x44494D53;
+	int maybeDims = zip.getInt();
+	if (maybeDims == DIMS_SENTINEL) {
+		width  = zip.getInt();
+		height = zip.getInt();
+		// For OUTDOOR levels, restore terrain classification from saved data.
+		if (levelType == LevelType::OUTDOOR) {
+			terrainTypes.resize(width * height);
+			for (int i = 0; i < width * height; i++) {
+				terrainTypes[i] = static_cast<TerrainType>(zip.getInt());
+			}
+		}
+	}
+	// If sentinel not present: old format, terrain was already regenerated from seed via init().
 }
 
 // ─── Actor ───────────────────────────────────────────────────────────────────

@@ -37,4 +37,8 @@ config = {
 
     -- Carrying capacity (max total weight the player can carry; 0 = unlimited)
     carryingCapacity = 50.0,
+
+    -- Maximum number of previously-visited levels kept in memory.
+    -- Minimum: 2, Maximum: 200, Default: 30.
+    maxCachedLevels = 30,
 }

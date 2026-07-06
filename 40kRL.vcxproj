@@ -160,6 +160,7 @@
     <ClCompile Include="Source\Pickable.cpp" />
     <ClCompile Include="Source\Equippable.cpp" />
     <ClCompile Include="Source\Equipment.cpp" />
+    <ClCompile Include="Source\LevelCache.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -180,6 +181,7 @@
     <ClInclude Include="Headers\Equippable.h" />
     <ClInclude Include="Headers\Equipment.h" />
     <ClInclude Include="Headers\RenderUtils.h" />
+    <ClInclude Include="Headers\LevelCache.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

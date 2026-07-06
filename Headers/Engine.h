@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "Equippable.h"
+#include "LevelCache.h"
 #include "TargetingContext.h"
 
 // Rarity tier for equipment items — used for weighted random selection during enemy spawning.
@@ -85,6 +86,8 @@ public:
 	int dungeonLevel;
 	bool debugMode;  // toggled with F12, enables level-skip and other dev tools
 
+	LevelCache levelCache; // LRU cache of serialized level snapshots
+
 	std::vector<EquipmentTemplate> equipmentTemplates; // loaded from Equipment.lua
 
 	std::optional<TargetingContext> targetingCtx;  // active only during TARGETING state
@@ -152,6 +155,14 @@ public:
 
 	// Clears all actors and the map. Called before loading a save file or starting a new game.
 	void term();
+
+	// Serialize current map + non-player actors into a byte buffer for caching.
+	std::vector<char> serializeCurrentLevel() const;
+
+	// Deserialize a byte buffer into the active map + actors.
+	// Assigns stairsUp/stairsDown pointers, orders dead actors behind living.
+	// Returns false if expected stairs are missing (snapshot is corrupted).
+	bool deserializeLevel(const std::vector<char>& snapshot);
 
 	void save();
 	void load();

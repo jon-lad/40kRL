@@ -117,6 +117,7 @@
     <ClCompile Include="test_enemy_equipment.cpp" />
     <ClCompile Include="test_tile_targeting.cpp" />
     <ClCompile Include="test_inventory_equipment_ux.cpp" />
+    <ClCompile Include="test_persistent_levels.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -133,6 +134,7 @@
     <ClCompile Include="..\Source\Pickable.cpp" />
     <ClCompile Include="..\Source\Equippable.cpp" />
     <ClCompile Include="..\Source\Equipment.cpp" />
+    <ClCompile Include="..\Source\LevelCache.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
