@@ -791,6 +791,17 @@ void Engine::init()
 	int   playerSkill   = 40;
 	int   playerInvSize = 26;
 
+	// Characteristic defaults (all default to 30 if not specified in Lua).
+	int playerCharWS  = 30;
+	int playerCharBS  = 30;
+	int playerCharS   = 30;
+	int playerCharT   = 30;
+	int playerCharAg  = 30;
+	int playerCharInt = 30;
+	int playerCharPer = 30;
+	int playerCharWP  = 30;
+	int playerCharFel = 30;
+
 	try {
 		sol::state lua;
 		lua.open_libraries(sol::lib::base);
@@ -803,6 +814,16 @@ void Engine::init()
 			playerPower   = cls.get_or("power",   playerPower);
 			playerSkill   = cls.get_or("skill",   playerSkill);
 			playerInvSize = cls.get_or("invSize", playerInvSize);
+
+			playerCharWS  = cls.get_or("ws",  playerCharWS);
+			playerCharBS  = cls.get_or("bs",  playerCharBS);
+			playerCharS   = cls.get_or("s",   playerCharS);
+			playerCharT   = cls.get_or("t",   playerCharT);
+			playerCharAg  = cls.get_or("ag",  playerCharAg);
+			playerCharInt = cls.get_or("int", playerCharInt);
+			playerCharPer = cls.get_or("per", playerCharPer);
+			playerCharWP  = cls.get_or("wp",  playerCharWP);
+			playerCharFel = cls.get_or("fel", playerCharFel);
 		}
 	} catch (const sol::error&) {
 		// Classes.lua missing or malformed — use defaults above.
@@ -982,6 +1003,20 @@ void Engine::init()
 	newPlayer->ai           = std::make_unique<PlayerAi>();
 	newPlayer->container    = std::make_unique<Container>(playerInvSize);
 	newPlayer->equipment    = std::make_unique<Equipment>();
+
+	// Attach player characteristics loaded from Classes.lua.
+	auto playerChars = std::make_shared<Characteristics>(30);
+	playerChars->set(CharId::WS,  playerCharWS);
+	playerChars->set(CharId::BS,  playerCharBS);
+	playerChars->set(CharId::S,   playerCharS);
+	playerChars->set(CharId::T,   playerCharT);
+	playerChars->set(CharId::Ag,  playerCharAg);
+	playerChars->set(CharId::Int, playerCharInt);
+	playerChars->set(CharId::Per, playerCharPer);
+	playerChars->set(CharId::WP,  playerCharWP);
+	playerChars->set(CharId::Fel, playerCharFel);
+	newPlayer->characteristics = playerChars;
+
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create stairsUp (always visible, never blocks). Starting level is depth 20 (deepest),
