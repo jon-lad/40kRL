@@ -10,6 +10,7 @@ Attacker::Attacker(float power, int skillValue)
 	: power{ power }
 	, skillValue{ clampSkill(skillValue) }
 	, rollD100{ defaultRoll }
+	, rollDie{ nullptr }
 {
 }
 
@@ -97,4 +98,12 @@ void Attacker::load(TCODZip& zip) {
 		std::memcpy(&power, &marker, sizeof(float));
 		skillValue = DEFAULT_SKILL;
 	}
+}
+
+void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
+	// Stub — full implementation in tasks 7.2-7.5
+}
+
+void Attacker::resolveDestructibleAttack(Actor* owner, Actor* target) {
+	// Stub — full implementation in task 7.6
 }
