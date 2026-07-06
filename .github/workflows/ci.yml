@@ -48,9 +48,6 @@ jobs:
             exit 1
           }
 
-      - name: Build tests
-        run: msbuild Tests\40kRL_Tests.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
-
       - name: Copy runtime DLLs to test output
         run: |
           $outDir = "${{ matrix.platform }}\${{ matrix.configuration }}"
