@@ -5,6 +5,8 @@
 #include <numeric>
 #include <cstring>
 #include "main.h"
+#include "CriticalEffects.h"
+#include "DiceRoller.h"
 
 Attacker::Attacker(float power, int skillValue)
 	: power{ power }
@@ -145,7 +147,68 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 		}
 	}
 
-	// Damage calculation — task 7.4
+	// ── Damage Calculation (Task 7.4) ──
+	// Get weapon MeleeStats
+	MeleeStats weaponStats{ DiceSpec{1, 5}, 0, {} }; // default unarmed
+	if (owner->equipment) {
+		Actor* weaponItem = owner->equipment->getSlot(EquipmentSlot::WEAPON);
+		if (weaponItem && weaponItem->equippable && weaponItem->equippable->meleeStats) {
+			weaponStats = *weaponItem->equippable->meleeStats;
+		}
+	}
+
+	// Calculate Strength Bonus
+	const int sb = owner->characteristics->bonus(CharId::S);
+
+	// Roll raw damage
+	const int rawDamage = DiceRoller::roll(weaponStats.damageDice, rollDie) + sb;
+
+	// Calculate effective armour at hit location
+	int locArmour = 0;
+	if (target->equipment) {
+		locArmour = target->equipment->getArmourAtLocation(loc);
+	}
+	const int effectiveArmour = std::max(0, locArmour - weaponStats.penetration);
+
+	// Calculate Toughness Bonus
+	const int tb = target->characteristics->bonus(CharId::T);
+
+	// Calculate final damage
+	const int finalDamage = std::max(0, rawDamage - effectiveArmour - tb);
+
+	// If no effective damage, log and return
+	if (finalDamage <= 0) {
+		engine.gui->message(Colors::uiText, "...but it has no effect!");
+		return;
+	}
+
+	// ── Critical Hit Logic (Task 7.5) ──
+	const float currentHp = target->destructible->hp;
+
+	// Apply damage directly to hp (bypass legacy defense reduction)
+	target->destructible->hp -= static_cast<float>(finalDamage);
+
+	if (target->destructible->hp <= 0) {
+		// Critical hit: damage exceeded remaining wounds
+		const int critMagnitude = finalDamage - static_cast<int>(currentHp);
+		const auto critEffect = CriticalEffects::resolve(loc, critMagnitude);
+
+		engine.gui->message(Colors::damage,
+			"Critical Hit on #! #",
+			HitLocationTable::name(loc), critEffect.description);
+
+		// Trigger death — die() handles corpse transformation
+		if (critEffect.fatal || critMagnitude >= 5) {
+			target->destructible->die(target);
+		} else {
+			// Non-fatal critical but HP <= 0: still die
+			target->destructible->die(target);
+		}
+	} else {
+		// Normal damage — target survives
+		engine.gui->message(Colors::damage, "# deals # damage to #'s #.",
+			owner->name, finalDamage, target->name, HitLocationTable::name(loc));
+	}
 }
 
 void Attacker::resolveDestructibleAttack(Actor* owner, Actor* target) {
