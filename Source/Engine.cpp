@@ -995,6 +995,70 @@ void Engine::init()
 				if (tierStr == "uncommon")     tier = ItemTier::UNCOMMON;
 				else if (tierStr == "rare")    tier = ItemTier::RARE;
 
+				// Parse optional melee table for weapons
+				std::optional<MeleeStats> meleeStats;
+				sol::optional<sol::table> meleeTable = entry["melee"];
+				if (meleeTable) {
+					std::string damageDiceStr = (*meleeTable).get_or("damageDice", std::string(""));
+					auto parsed = DiceRoller::parse(damageDiceStr);
+					if (!parsed.has_value()) {
+						gui->message(Colors::damage, "Equipment.lua: skipping '#' — invalid damageDice '#'.", name, damageDiceStr);
+						continue;
+					}
+					MeleeStats ms;
+					ms.damageDice = parsed.value();
+					ms.penetration = (*meleeTable).get_or("penetration", 0);
+					sol::optional<sol::table> qualTable = (*meleeTable)["qualities"];
+					if (qualTable) {
+						for (size_t q = 1; q <= (*qualTable).size(); q++) {
+							sol::optional<std::string> qual = (*qualTable)[q];
+							if (qual) {
+								ms.qualities.push_back(*qual);
+							}
+						}
+					}
+					meleeStats = ms;
+				} else if (slot == EquipmentSlot::WEAPON) {
+					// Weapons without melee table get default stats
+					meleeStats = MeleeStats{ DiceSpec{1, 5}, 0, {} };
+				}
+
+				// Parse optional armourLocations table for armour
+				std::optional<ArmourProfile> armourProfile;
+				sol::optional<sol::table> armourTable = entry["armourLocations"];
+				if (armourTable) {
+					ArmourProfile ap;
+					ap.values[static_cast<int>(HitLocation::HEAD)]      = (*armourTable).get_or("head", 0);
+					ap.values[static_cast<int>(HitLocation::BODY)]      = (*armourTable).get_or("body", 0);
+					ap.values[static_cast<int>(HitLocation::LEFT_ARM)]  = (*armourTable).get_or("leftArm", 0);
+					ap.values[static_cast<int>(HitLocation::RIGHT_ARM)] = (*armourTable).get_or("rightArm", 0);
+					ap.values[static_cast<int>(HitLocation::LEFT_LEG)]  = (*armourTable).get_or("leftLeg", 0);
+					ap.values[static_cast<int>(HitLocation::RIGHT_LEG)] = (*armourTable).get_or("rightLeg", 0);
+					armourProfile = ap;
+				} else if (slot == EquipmentSlot::BODY) {
+					// Body armour without armourLocations: defense applied to body, arms, legs; head = 0
+					ArmourProfile ap;
+					int defVal = static_cast<int>(defense);
+					ap.values[static_cast<int>(HitLocation::HEAD)]      = 0;
+					ap.values[static_cast<int>(HitLocation::BODY)]      = defVal;
+					ap.values[static_cast<int>(HitLocation::LEFT_ARM)]  = defVal;
+					ap.values[static_cast<int>(HitLocation::RIGHT_ARM)] = defVal;
+					ap.values[static_cast<int>(HitLocation::LEFT_LEG)]  = defVal;
+					ap.values[static_cast<int>(HitLocation::RIGHT_LEG)] = defVal;
+					armourProfile = ap;
+				} else if (slot == EquipmentSlot::HEAD) {
+					// Head armour without armourLocations: defense applied to head only; all others = 0
+					ArmourProfile ap;
+					int defVal = static_cast<int>(defense);
+					ap.values[static_cast<int>(HitLocation::HEAD)]      = defVal;
+					ap.values[static_cast<int>(HitLocation::BODY)]      = 0;
+					ap.values[static_cast<int>(HitLocation::LEFT_ARM)]  = 0;
+					ap.values[static_cast<int>(HitLocation::RIGHT_ARM)] = 0;
+					ap.values[static_cast<int>(HitLocation::LEFT_LEG)]  = 0;
+					ap.values[static_cast<int>(HitLocation::RIGHT_LEG)] = 0;
+					armourProfile = ap;
+				}
+
 				// Create template
 				EquipmentTemplate tmpl;
 				tmpl.name      = name;
@@ -1005,6 +1069,8 @@ void Engine::init()
 				tmpl.value     = value;
 				tmpl.modifiers = { power, defense, maxHp, skill };
 				tmpl.tier      = tier;
+				tmpl.meleeStats    = meleeStats;
+				tmpl.armourProfile = armourProfile;
 
 				equipmentTemplates.push_back(tmpl);
 			}

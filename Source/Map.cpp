@@ -828,6 +828,8 @@ void Map::addMonster(int x, int y)
 					item->blocks = false;
 					item->equippable = std::make_shared<Equippable>(
 						tmpl->slot, tmpl->modifiers, tmpl->weight, tmpl->value);
+					item->equippable->meleeStats = tmpl->meleeStats;
+					item->equippable->armourProfile = tmpl->armourProfile;
 
 					// Equip the item (pass nullptr for Container since enemies don't use inventory)
 					Actor* itemPtr = item.get();
@@ -876,6 +878,8 @@ void Map::addItem(int x, int y)
 		item->pickable->weight = tmpl.weight;
 		item->pickable->value = tmpl.value;
 		item->equippable = std::make_shared<Equippable>(tmpl.slot, tmpl.modifiers, tmpl.weight, tmpl.value);
+		item->equippable->meleeStats = tmpl.meleeStats;
+		item->equippable->armourProfile = tmpl.armourProfile;
 		engine.actors.emplace_front(std::move(item));
 		return;
 	}

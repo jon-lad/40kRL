@@ -2,6 +2,7 @@
 #include <array>
 #include <memory>
 #include <vector>
+#include "HitLocation.h"
 
 class Actor;
 class Container;
@@ -42,6 +43,9 @@ public:
 
 	// Returns the sum of all equipped skill modifiers.
 	int getTotalSkillModifier() const;
+
+	// Returns the sum of armour values from all equipped items for the given HitLocation.
+	int getArmourAtLocation(HitLocation loc) const;
 
 	// Returns the total weight of all equipped items.
 	float getEquippedWeight() const;

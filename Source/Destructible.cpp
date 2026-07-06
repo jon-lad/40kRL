@@ -80,6 +80,8 @@ void dropEnemyEquipment(Actor* enemy)
 			item->equippable->modifiers,
 			item->equippable->weight,
 			item->equippable->value);
+		droppedItem->equippable->meleeStats = item->equippable->meleeStats;
+		droppedItem->equippable->armourProfile = item->equippable->armourProfile;
 
 		// Add to engine actors list and send to back (draw beneath living actors)
 		Actor* droppedPtr = droppedItem.get();
