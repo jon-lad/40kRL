@@ -48,33 +48,11 @@ void Attacker::clearModifiers() {
 void Attacker::attack(Actor* owner, Actor* target)
 {
 	if (target->destructible && !target->destructible->isDead()) {
-		// ── Hit check ──
-		const int threshold = computeThreshold();
-		const int roll = rollD100();
-
-		if (roll > threshold) {
-			// Miss — log and return early
-			engine.gui->message(Colors::uiText, "# attacks # but misses.",
-				owner->name, target->name);
-			return;
-		}
-
-		// ── Compute effective power (equipment bonus for player) ──
-		float effectivePower = power;
-		if (owner->equipment) {
-			effectivePower += owner->equipment->getTotalPowerModifier();
-		}
-
-		const float effectiveDamage = effectivePower - target->destructible->defense;
-		if (effectiveDamage > 0) {
-			const TCODColor messageColor = (owner == engine.player) ? Colors::damage : Colors::uiText;
-			engine.gui->message(messageColor, "# attacks # for # damage.",
-				owner->name, target->name, effectiveDamage);
+		if (target->characteristics) {
+			resolveCharacterAttack(owner, target);
 		} else {
-			engine.gui->message(Colors::uiText, "# attacks # but it has no effect!",
-				owner->name, target->name);
+			resolveDestructibleAttack(owner, target);
 		}
-		target->destructible->takeDamage(target, effectivePower);
 	} else {
 		engine.gui->message(Colors::uiText, "# attacks # in vain.",
 			owner->name, target->name);
@@ -101,9 +79,62 @@ void Attacker::load(TCODZip& zip) {
 }
 
 void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
-	// Stub — full implementation in tasks 7.2-7.5
+	// ── Attack declaration ──
+	engine.gui->message(Colors::uiText, "# swings at #.",
+		owner->name, target->name);
+
+	// ── Compute effective WS ──
+	const int baseWS = owner->characteristics->get(CharId::WS);
+	const int modSum = std::accumulate(modifiers.begin(), modifiers.end(), 0);
+	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum));
+
+	// ── Roll d100 ──
+	const int roll = rollD100();
+
+	// ── Classify hit/miss ──
+	if (roll > effectiveWS) {
+		// Miss
+		engine.gui->message(Colors::uiText, "# misses #.",
+			owner->name, target->name);
+		return;
+	}
+
+	// ── Hit: compute DoS ──
+	const int dos = std::max(0, (effectiveWS - roll) / 10);
+
+	// ── Determine hit location ──
+	const HitLocation loc = HitLocationTable::resolve(roll);
+
+	// ── Log hit ──
+	engine.gui->message(Colors::damage, "Hit! (# DoS) — #.",
+		dos, HitLocationTable::name(loc));
+
+	// Dodge/parry/damage will be added in subsequent tasks (7.3-7.5)
 }
 
 void Attacker::resolveDestructibleAttack(Actor* owner, Actor* target) {
-	// Stub — full implementation in task 7.6
+	// ── Get weapon MeleeStats ──
+	MeleeStats weaponStats{ DiceSpec{1, 5}, 0, {} }; // default unarmed
+	if (owner->equipment) {
+		Actor* weaponItem = owner->equipment->getSlot(EquipmentSlot::WEAPON);
+		if (weaponItem && weaponItem->equippable && weaponItem->equippable->meleeStats) {
+			weaponStats = *weaponItem->equippable->meleeStats;
+		}
+	}
+
+	// ── Calculate Strength Bonus ──
+	int sb = 3; // default when attacker has no Characteristics
+	if (owner->characteristics) {
+		sb = owner->characteristics->bonus(CharId::S);
+	}
+
+	// ── Roll weapon damage ──
+	const int damage = DiceRoller::roll(weaponStats.damageDice, rollDie) + sb;
+
+	// ── Apply damage directly (no armour, no TB) ──
+	target->destructible->takeDamage(target, static_cast<float>(damage));
+
+	// ── Log simplified message ──
+	engine.gui->message(Colors::damage, "# strikes # for # damage.",
+		owner->name, target->name, damage);
 }
