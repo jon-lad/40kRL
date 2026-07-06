@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <list>
 #include <memory>
 #include <sstream>
@@ -120,12 +121,20 @@ void Engine::render()
 
 void Engine::nextLevel(StairDirection direction)
 {
+	// ─── Phase 1: Serialize departing level into cache ────────────────────────
+	{
+		std::vector<char> snapshot = serializeCurrentLevel();
+		levelCache.store(dungeonLevel, std::move(snapshot));
+	}
+
+	// ─── Phase 2: Update depth, clear actors, reset state ────────────────────
 	if (direction == StairDirection::DOWN) {
 		dungeonLevel++;
 	} else {
 		dungeonLevel--;
 	}
 
+	// Healing and transition messages.
 	gui->message(Colors::healing, "You take a moment to rest and recover your strength.");
 	player->destructible->heal(player->destructible->maxHp / 2.0f);
 
@@ -139,7 +148,7 @@ void Engine::nextLevel(StairDirection direction)
 		gui->message(Colors::damage, "You descend deeper underground.");
 	}
 
-	// Destroy old map and remove all actors except player.
+	// Remove all actors except player; reset stair pointers and map.
 	map.reset();
 	for (auto i = actors.begin(); i != actors.end(); ) {
 		i = (i->get() != player) ? actors.erase(i) : std::next(i);
@@ -147,45 +156,72 @@ void Engine::nextLevel(StairDirection direction)
 	stairsUp = nullptr;
 	stairsDown = nullptr;
 
-	// Create stair actors for the new depth BEFORE map->init() so that
-	// createRoom() can set their positions during BSP generation.
-	const bool needsUp   = (dungeonLevel > 0);
-	const bool needsDown = (dungeonLevel < 20);
+	// ─── Phase 3: Load from cache or generate fresh ──────────────────────────
+	bool restoredFromCache = false;
 
-	if (needsUp) {
-		auto newUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
-		stairsUp = newUp.get();
-		newUp->blocks = false;
-		newUp->fovOnly = false;
-		actors.emplace_front(std::move(newUp));
-	}
-	if (needsDown) {
-		auto newDown = std::make_unique<Actor>(0, 0, '>', "stairs down", Colors::white);
-		stairsDown = newDown.get();
-		newDown->blocks = false;
-		newDown->fovOnly = false;
-		actors.emplace_front(std::move(newDown));
-	}
-
-	// Generate new map — createRoom() sets stair positions during BSP generation.
-	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
-	map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
-
-	// Place player on arrival stair (BSP levels — outdoor handled by placeOutdoorActors).
-	if (!isOutdoor) {
-		if (direction == StairDirection::DOWN && stairsUp) {
-			player->setX(stairsUp->getX());
-			player->setY(stairsUp->getY());
-		} else if (direction == StairDirection::UP && stairsDown) {
-			player->setX(stairsDown->getX());
-			player->setY(stairsDown->getY());
+	if (levelCache.contains(dungeonLevel)) {
+		auto snapshot = levelCache.retrieve(dungeonLevel);
+		if (snapshot.has_value()) {
+			restoredFromCache = deserializeLevel(snapshot.value());
+			// deserializeLevel returns false if snapshot is corrupted (missing stairs).
+			// In that case, state is already cleared — fall through to fresh generation.
 		}
 	}
 
+	if (!restoredFromCache) {
+		// Fresh generation path — create stair actors BEFORE map->init() so that
+		// createRoom() can set their positions during BSP generation.
+		const bool needsUp   = (dungeonLevel > 0);
+		const bool needsDown = (dungeonLevel < 20);
+
+		if (needsUp) {
+			auto newUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
+			stairsUp = newUp.get();
+			newUp->blocks = false;
+			newUp->fovOnly = false;
+			actors.emplace_front(std::move(newUp));
+		}
+		if (needsDown) {
+			auto newDown = std::make_unique<Actor>(0, 0, '>', "stairs down", Colors::white);
+			stairsDown = newDown.get();
+			newDown->blocks = false;
+			newDown->fovOnly = false;
+			actors.emplace_front(std::move(newDown));
+		}
+
+		// Generate new map — createRoom() sets stair positions during BSP generation.
+		map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
+		map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
+	}
+
+	// ─── Player placement at arrival stair ───────────────────────────────────
+	// Descending → place at stairs-up; Ascending → place at stairs-down.
+	if (!isOutdoor) {
+		Actor* arrivalStair = (direction == StairDirection::DOWN) ? stairsUp : stairsDown;
+
+		if (arrivalStair) {
+			player->setX(arrivalStair->getX());
+			player->setY(arrivalStair->getY());
+		} else {
+			// Fallback: try the other stair, then (1,1).
+			Actor* fallback = (direction == StairDirection::DOWN) ? stairsDown : stairsUp;
+			if (fallback) {
+				player->setX(fallback->getX());
+				player->setY(fallback->getY());
+				gui->message(Colors::damage, "Warning: arrival stair missing, placed at alternate stair.");
+			} else {
+				player->setX(1);
+				player->setY(1);
+				gui->message(Colors::damage, "Warning: no stairs found on level, placed at (1,1).");
+			}
+		}
+	}
+
+	// ─── Final: update camera and trigger FOV recompute ──────────────────────
 	camera->mapWidth  = map->getWidth();
 	camera->mapHeight = map->getHeight();
 	camera->update(player, isOutdoor);
-	gameStatus = STARTUP;
+	gameStatus = STARTUP; // triggers computeFOV() on next frame without clearing explored flags
 }
 
 Actor* Engine::getClosestMonster(int x, int y, float range) const
@@ -781,6 +817,14 @@ void Engine::init()
 		sol::table config = lua["config"];
 		if (config.valid()) {
 			carryingCapacity = config.get_or("carryingCapacity", 50.0f);
+
+			int maxCached = 30;
+			maxCached = config.get_or("maxCachedLevels", maxCached);
+			if (maxCached < 2 || maxCached > 200) {
+				maxCached = std::clamp(maxCached, 2, 200);
+				gui->message(Colors::damage, "Warning: maxCachedLevels clamped to %d.", maxCached);
+			}
+			levelCache.setMaxCapacity(maxCached);
 		}
 	} catch (const sol::error&) {
 		// Config.lua missing or malformed — use defaults.
@@ -960,6 +1004,7 @@ void Engine::init()
 
 void Engine::term()
 {
+	levelCache.clear();
 	actors.clear();
 	if (map) { map.reset(); }
 	gui->clear();

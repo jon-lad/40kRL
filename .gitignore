@@ -8,6 +8,9 @@
 
 # Build outputs
 x64/
+
+# Save files and test temp files
+*.sav
 x86/
 Debug/
 Release/
