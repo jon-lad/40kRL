@@ -62,19 +62,32 @@ void Attacker::attack(Actor* owner, Actor* target)
 }
 
 void Attacker::save(TCODZip& zip) {
-	zip.putInt(ATTACKER_SAVE_V2);  // sentinel: -1 (new format marker)
+	zip.putInt(ATTACKER_SAVE_V3);  // sentinel: -2 (V3 format marker)
 	zip.putFloat(power);
 	zip.putInt(skillValue);
+	zip.putInt(static_cast<int>(modifiers.size()));
+	for (int mod : modifiers) {
+		zip.putInt(mod);
+	}
 }
 
 void Attacker::load(TCODZip& zip) {
 	int marker = zip.getInt();
-	if (marker == ATTACKER_SAVE_V2) {
-		// New format: sentinel followed by power and skillValue
+	if (marker == ATTACKER_SAVE_V3) {
+		// V3: power + skillValue + modifiers
+		power = zip.getFloat();
+		skillValue = clampSkill(zip.getInt());
+		int modCount = zip.getInt();
+		modifiers.clear();
+		for (int i = 0; i < modCount; i++) {
+			modifiers.push_back(zip.getInt());
+		}
+	} else if (marker == ATTACKER_SAVE_V2) {
+		// V2: power + skillValue (no modifiers)
 		power = zip.getFloat();
 		skillValue = clampSkill(zip.getInt());
 	} else {
-		// Old format: marker contains the 4 bytes of old power float
+		// V1: marker is the 4 bytes of old power float
 		std::memcpy(&power, &marker, sizeof(float));
 		skillValue = DEFAULT_SKILL;
 	}
