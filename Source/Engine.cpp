@@ -729,6 +729,77 @@ void Engine::updateLook()
 	// No turn advancement, no AI updates.
 }
 
+void Engine::beginCharacterSheet()
+{
+	characterSheetState = CharacterSheetState{};
+	gameStatus = CHARACTER_SHEET;
+}
+
+void Engine::updateCharacterSheet()
+{
+	if (!characterSheetState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Exit: ESC key or 'c' key ---
+	if ((inputState.key.key == SDLK_ESCAPE && inputState.key.pressed)
+		|| (inputState.key.c == 'c' && inputState.key.pressed))
+	{
+		characterSheetState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// Ignore all other keys — no gameplay actions while sheet is open.
+}
+
+void Engine::renderCharacterSheet()
+{
+	if (!characterSheetState) return;
+
+	static constexpr int SHEET_WIDTH  = 40;
+	static constexpr int SHEET_HEIGHT = 16;
+	static TCODConsole sheetConsole(SHEET_WIDTH, SHEET_HEIGHT);
+
+	sheetConsole.setDefaultForeground(Colors::menuFrame);
+	sheetConsole.printFrame(0, 0, SHEET_WIDTH, SHEET_HEIGHT, true, TCOD_BKGND_DEFAULT, "character sheet");
+
+	// Display player name at the top.
+	sheetConsole.setDefaultForeground(Colors::white);
+	sheetConsole.printf(2, 2, "%s", player->name.c_str());
+
+	// Column headers.
+	sheetConsole.setDefaultForeground(Colors::uiText);
+	sheetConsole.printf(2, 4, "Stat  Value  Bonus");
+
+	// Display all 9 characteristics.
+	int row = 5;
+	for (int i = 0; i < static_cast<int>(CharId::COUNT); i++) {
+		CharId id = static_cast<CharId>(i);
+		sheetConsole.setDefaultForeground(Colors::white);
+
+		if (player->characteristics) {
+			int value = player->characteristics->get(id);
+			int bonus = player->characteristics->bonus(id);
+			sheetConsole.printf(2, row, "%-4s  %3d    %d",
+				std::string(Characteristics::abbreviation(id)).c_str(),
+				value, bonus);
+		} else {
+			// Defensive fallback: characteristics is nullptr.
+			sheetConsole.printf(2, row, "%-4s  N/A    N/A",
+				std::string(Characteristics::abbreviation(id)).c_str());
+		}
+		row++;
+	}
+
+	TCODConsole::blit(&sheetConsole, 0, 0, SHEET_WIDTH, SHEET_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - SHEET_WIDTH  / 2,
+		screenHeight / 2 - SHEET_HEIGHT / 2);
+}
+
 void Engine::sendToBack(Actor* actor)
 {
 	for (auto i = actors.begin(); i != actors.end(); ++i) {
