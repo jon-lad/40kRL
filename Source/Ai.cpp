@@ -170,6 +170,10 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		engine.beginInventory(owner, InventoryState::Action::DROP);
 		return;
 
+	case 'l': // enter look mode
+		engine.beginLook();
+		return;
+
 	case '<': // ascend stairs
 		if (engine.stairsUp
 			&& engine.stairsUp->getX() == owner->getX()

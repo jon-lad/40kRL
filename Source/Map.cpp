@@ -343,6 +343,61 @@ void Map::placeOutdoorActors()
 			}
 		}
 	}
+
+	// ── 6. Place decorations on ground tiles ──
+	addOutdoorDecorations();
+}
+
+void Map::addOutdoorDecorations()
+{
+	if (engine.decorationTemplates.empty()) { return; }
+	if (outdoorRegion.empty()) { return; }
+
+	// Load outdoor decoration count from Config.lua (default 8)
+	int decorationCount = 8;
+
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Config.lua");
+
+		sol::table cfg = lua["config"];
+		if (cfg.valid()) {
+			decorationCount = cfg.get_or("outdoorDecorationCount", decorationCount);
+		}
+	} catch (const sol::error&) {
+		// Config load failed — use compiled default.
+	}
+
+	if (decorationCount <= 0) { return; }
+
+	static constexpr int MAX_PLACEMENT_ATTEMPTS = 100;
+	TCODRandom* globalRng = TCODRandom::getInstance();
+
+	for (int d = 0; d < decorationCount; ++d) {
+		// Select a random template
+		int templateIdx = globalRng->getInt(0, static_cast<int>(engine.decorationTemplates.size()) - 1);
+		const auto& tmpl = engine.decorationTemplates[templateIdx];
+
+		// Find a random walkable unoccupied ground tile in outdoorRegion
+		bool placed = false;
+		for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; ++attempt) {
+			int regionIdx = globalRng->getInt(0, static_cast<int>(outdoorRegion.size()) - 1);
+			auto [dx, dy] = outdoorRegion[regionIdx];
+			if (canWalk(dx, dy)) {
+				// Spawn decoration Actor
+				auto decoration = std::make_unique<Actor>(dx, dy, tmpl.glyph, tmpl.name, tmpl.color);
+				decoration->blocks      = tmpl.blocks;
+				decoration->fovOnly     = true;
+				decoration->description = tmpl.description;
+				decoration->coverValue  = tmpl.coverValue;
+				engine.actors.push_back(std::move(decoration));
+				placed = true;
+				break;
+			}
+		}
+		// If no valid tile found after all attempts, skip this placement silently.
+	}
 }
 
 // BFS flood-fill over ground tiles using 4-connectivity (cardinal directions).
@@ -572,6 +627,8 @@ void Map::createRoom(bool isFirstRoom, int x1, int y1, int x2, int y2, bool with
 			const int iy = rng->getInt(y1, y2);
 			if (canWalk(ix, iy)) { addItem(ix, iy); }
 		}
+
+		addDecorations(x1, y1, x2, y2);
 	}
 }
 
@@ -852,6 +909,63 @@ void Map::addItem(int x, int y)
 			std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
 			std::make_unique<HealthEffect>(4.0f, "", Colors::uiText));
 		engine.actors.emplace_front(std::move(potion));
+	}
+}
+
+// ─── Decoration spawning ─────────────────────────────────────────────────────
+
+void Map::addDecorations(int x1, int y1, int x2, int y2)
+{
+	// Skip if no templates available
+	if (engine.decorationTemplates.empty()) { return; }
+
+	// Load maxRoomDecorations from Config.lua (default 3), treat < 0 as 0
+	int maxDecorations = 3;
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Config.lua");
+
+		sol::table cfg = lua["config"];
+		if (cfg.valid()) {
+			maxDecorations = cfg.get_or("maxRoomDecorations", 3);
+		}
+	} catch (const sol::error&) {
+		// Config load failed — use default
+	}
+
+	if (maxDecorations < 0) { maxDecorations = 0; }
+	if (maxDecorations == 0) { return; }
+
+	// Pick random count in [0, maxDecorations]
+	TCODRandom* rng = TCODRandom::getInstance();
+	int count = rng->getInt(0, maxDecorations);
+
+	static constexpr int MAX_PLACEMENT_ATTEMPTS = 20;
+
+	for (int i = 0; i < count; ++i) {
+		// Select a random template
+		int templateIdx = rng->getInt(0, static_cast<int>(engine.decorationTemplates.size()) - 1);
+		const auto& tmpl = engine.decorationTemplates[templateIdx];
+
+		// Find a walkable unoccupied tile within the room bounds
+		bool placed = false;
+		for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; ++attempt) {
+			int dx = rng->getInt(x1, x2);
+			int dy = rng->getInt(y1, y2);
+			if (canWalk(dx, dy)) {
+				auto decoration = std::make_unique<Actor>(dx, dy, tmpl.glyph, tmpl.name, tmpl.color);
+				decoration->blocks      = tmpl.blocks;
+				decoration->fovOnly     = true;
+				decoration->description = tmpl.description;
+				decoration->coverValue  = tmpl.coverValue;
+				// No Ai, Attacker, Destructible, or Pickable — they default to nullptr
+				engine.actors.push_back(std::move(decoration));
+				placed = true;
+				break;
+			}
+		}
+		// If no valid tile found, skip this placement silently
 	}
 }
 
