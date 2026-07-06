@@ -57,6 +57,12 @@ void Engine::update()
 		return;
 	}
 
+	// Handle character sheet state — skip all normal game logic.
+	if (gameStatus == CHARACTER_SHEET) {
+		updateCharacterSheet();
+		return;
+	}
+
 	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
@@ -116,6 +122,11 @@ void Engine::render()
 	// text in the HUD panel area is not overwritten by the gui blit.
 	if (gameStatus == LOOK) {
 		renderLook();
+	}
+
+	// Render character sheet overlay when in CHARACTER_SHEET state.
+	if (gameStatus == CHARACTER_SHEET) {
+		renderCharacterSheet();
 	}
 }
 
