@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Clean up test temp files",
+  "description": "After the agent stops, removes leftover temp files created by test runs: *.sav files, __test_* files, and _level_cache_temp* files from the project root and x64\\Debug directory.",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "powershell -NoProfile -Command \"Set-Location 'c:\\Users\\jonat\\Documents\\Projects\\40kRL'; Remove-Item '*.sav' -Force -ErrorAction SilentlyContinue; Remove-Item '__test_*' -Force -ErrorAction SilentlyContinue; Remove-Item '_level_cache_temp*' -Force -ErrorAction SilentlyContinue; Remove-Item 'test_err.txt' -Force -ErrorAction SilentlyContinue; Remove-Item 'x64\\Debug\\__test_*' -Force -ErrorAction SilentlyContinue; Remove-Item 'x64\\Debug\\*.sav' -Force -ErrorAction SilentlyContinue; Remove-Item 'x64\\Debug\\_level_cache_temp*' -Force -ErrorAction SilentlyContinue\""
+  }
+}

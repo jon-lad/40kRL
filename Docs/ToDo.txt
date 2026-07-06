@@ -1,5 +1,6 @@
 FIXES---
 
+look mode description text overlays the game log — hide log text behind it or suppress log during look mode. Broader UI refresh/layering pass needed eventually.
 map scrolling not fixed on player being centre
 
 Done
