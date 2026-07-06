@@ -4,12 +4,13 @@
 #include <functional>
 
 // Gives an actor the ability to deal melee damage.
-// Damage formula: effective_damage = power - target.defense
-// Hit check: d100 roll-under against effective skill (base + modifiers, clamped 1-99)
+// Uses Rogue Trader melee combat pipeline: hit roll (d100 vs WS) → hit location →
+// dodge/parry → damage (weapon dice + SB - armour - TB) → critical effects.
+// Non-character destructibles use an auto-hit path (no roll, no defences).
 class Attacker : public Persistent {
 public:
-	float power; // raw attack power before the target's defence is applied
-	int skillValue; // [1, 99], percentage chance to hit (d100 roll-under)
+	float power; // legacy field retained for save-compat; not used in damage calculation
+	int skillValue; // legacy field retained for save-compat; attack path uses Characteristics::WS
 	std::vector<int> modifiers; // situational modifiers (signed)
 	std::function<int()> rollD100; // injectable RNG, default: uniform [1,100]
 	std::function<int(int)> rollDie; // injectable RNG for weapon damage dice, takes sides, returns [1, sides]
