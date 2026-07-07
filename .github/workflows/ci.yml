@@ -67,17 +67,25 @@ jobs:
           }
 
       - name: Run tests
+        timeout-minutes: 5
         env:
           SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
         run: |
           $testExe = "x64\${{ matrix.configuration }}\40kRL_Tests.exe"
           if (Test-Path $testExe) {
-            if ("${{ matrix.configuration }}" -eq "Release") {
-              & $testExe --reporter compact "~[pbt]"
-            } else {
-              & $testExe --reporter compact
-            }
+            & $testExe --reporter compact "~[pbt]"
           } else {
             Write-Error "Test executable not found at $testExe"
             exit 1
           }
+
+      - name: Run PBT tests (Debug only)
+        if: matrix.configuration == 'Debug'
+        timeout-minutes: 5
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: |
+          $testExe = "x64\${{ matrix.configuration }}\40kRL_Tests.exe"
+          & $testExe --reporter compact "[pbt]"
