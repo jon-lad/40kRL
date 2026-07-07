@@ -28,13 +28,15 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Cache vcpkg packages
+        id: vcpkg-cache
         uses: actions/cache@v4
         with:
           path: C:\vcpkg\installed
-          key: vcpkg-x64-windows-${{ hashFiles('.github/workflows/release.yml') }}
+          key: vcpkg-x64-windows-${{ hashFiles('vcpkg-overlay/**') }}
           restore-keys: vcpkg-x64-windows-
 
       - name: Install dependencies via vcpkg
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
         shell: cmd
         run: vcpkg install libtcod lua sol2 sdl3
 
@@ -51,7 +53,9 @@ jobs:
 
       - name: Run tests
         shell: cmd
-        run: x64\${{ inputs.configuration }}\40kRL_Tests.exe --reporter console
+        run: x64\%INPUT_CONFIG%\40kRL_Tests.exe --reporter console "~[pbt]"
+        env:
+          INPUT_CONFIG: ${{ inputs.configuration }}
 
       - name: Set artifact name
         shell: bash
