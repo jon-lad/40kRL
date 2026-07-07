@@ -200,6 +200,55 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		}
 		break;
 
+	case 's': // shoot ranged weapon
+	{
+		// Check if player has a ranged weapon equipped in weapon slot.
+		Actor* weaponItem = owner->equipment ? owner->equipment->getSlot(EquipmentSlot::WEAPON) : nullptr;
+		if (!weaponItem || !weaponItem->equippable || !weaponItem->equippable->rangedStats) {
+			engine.gui->message(Colors::uiText, "You have no ranged weapon equipped.");
+			return;
+		}
+		// Check ammo.
+		if (weaponItem->equippable->currentAmmo <= 0) {
+			engine.gui->message(Colors::uiText, "Your weapon is empty. Press 'r' to reload.");
+			return;
+		}
+		// Enter targeting mode for ranged attack.
+		float weaponRange = static_cast<float>(weaponItem->equippable->rangedStats->range);
+		engine.targetingCtx = TargetingContext{
+			weaponItem,                                    // item (the weapon)
+			owner,                                         // owner
+			weaponRange,                                   // maxRange
+			TargetSelector::SelectorType::SELECTED_MONSTER, // type
+			nullptr,                                       // effect (unused for ranged)
+			0.0f,                                          // aoeRange
+			true                                           // isRangedAttack
+		};
+		engine.gameStatus = Engine::TARGETING;
+		engine.gui->message(Colors::uiText, "Left-click to confirm, right-click or ESC to cancel.");
+		return;
+	}
+
+	case 'r': // reload ranged weapon
+	{
+		// Check if player has a ranged weapon equipped in weapon slot.
+		Actor* weaponItem = owner->equipment ? owner->equipment->getSlot(EquipmentSlot::WEAPON) : nullptr;
+		if (!weaponItem || !weaponItem->equippable || !weaponItem->equippable->rangedStats) {
+			engine.gui->message(Colors::uiText, "You have no ranged weapon to reload.");
+			return;
+		}
+		// Check if ammo is already full.
+		if (weaponItem->equippable->currentAmmo >= weaponItem->equippable->rangedStats->clipSize) {
+			engine.gui->message(Colors::uiText, "Your weapon is already fully loaded.");
+			return;
+		}
+		// Perform reload: set currentAmmo to clipSize, display message, advance turn.
+		weaponItem->equippable->currentAmmo = weaponItem->equippable->rangedStats->clipSize;
+		engine.gui->message(Colors::uiText, "# reloads #.", owner->name, weaponItem->name);
+		engine.gameStatus = Engine::NEW_TURN;
+		return;
+	}
+
 	case 'e': // open equipment menu
 	{
 		static constexpr int EQUIP_WIDTH = 50;

@@ -362,6 +362,25 @@ void Engine::updateTargeting()
 			return; // ignore click, remain in TARGETING
 		}
 
+		// --- Ranged attack path ---
+		if (targetingCtx->isRangedAttack) {
+			// Require a living actor (or destructible) on the target tile.
+			Actor* target = getActorAt(worldX, worldY);
+			if (!target || target == player) {
+				return; // no valid target, remain in TARGETING
+			}
+
+			// Resolve the ranged attack.
+			RangedCombat::resolve(targetingCtx->owner, target);
+
+			// Clear context and advance turn.
+			targetingCtx = std::nullopt;
+			gameStatus = NEW_TURN;
+			return;
+		}
+
+		// --- Item targeting path (existing behaviour) ---
+
 		// --- Stale-pointer check: verify item still exists in owner's inventory ---
 		bool itemFound = false;
 		if (targetingCtx->owner && targetingCtx->owner->container) {
