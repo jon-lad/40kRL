@@ -22,6 +22,7 @@ struct EquipmentTemplate {
 	ItemTier tier = ItemTier::COMMON;
 	std::optional<MeleeStats> meleeStats;      // present for weapons
 	std::optional<ArmourProfile> armourProfile; // present for armour
+	std::optional<RangedStats> rangedStats;    // present for ranged weapons
 };
 
 // Parsed from Lua during enemy template loading. Determines how an enemy
