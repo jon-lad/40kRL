@@ -391,7 +391,7 @@ void Map::addOutdoorDecorations()
 				decoration->fovOnly     = true;
 				decoration->description = tmpl.description;
 				decoration->coverValue  = tmpl.coverValue;
-				engine.actors.push_back(std::move(decoration));
+				engine.actors.push_front(std::move(decoration));
 				placed = true;
 				break;
 			}
@@ -997,7 +997,7 @@ void Map::addDecorations(int x1, int y1, int x2, int y2)
 				decoration->description = tmpl.description;
 				decoration->coverValue  = tmpl.coverValue;
 				// No Ai, Attacker, Destructible, or Pickable — they default to nullptr
-				engine.actors.push_back(std::move(decoration));
+				engine.actors.push_front(std::move(decoration));
 				placed = true;
 				break;
 			}

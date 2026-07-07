@@ -102,6 +102,21 @@ bool Engine::deserializeLevel(const std::vector<char>& snapshot)
 		return false;
 	}
 
+	// Move decoration actors (no ai, no destructible, no attacker) to the front
+	// so they render beneath gameplay actors. emplace_front during load reverses
+	// the serialized order, so decorations (which were at the front pre-save) end
+	// up at the back post-load without this pass.
+	for (auto it = actors.begin(); it != actors.end(); ) {
+		Actor* actor = it->get();
+		if (actor != player && !actor->ai && !actor->destructible && !actor->attacker) {
+			auto node = std::move(*it);
+			it = actors.erase(it);
+			actors.push_front(std::move(node));
+		} else {
+			++it;
+		}
+	}
+
 	// Order dead actors behind living actors using sendToBack().
 	for (auto it = actors.begin(); it != actors.end(); ++it) {
 		Actor* actor = it->get();
@@ -269,6 +284,20 @@ void Engine::load()
 		auto actor = std::make_unique<Actor>(0, 0, 0, "", Colors::white);
 		actor->load(zip);
 		actors.emplace_front(std::move(actor));
+	}
+
+	// Move decoration actors (no ai, no destructible, no attacker) to the front
+	// so they render beneath gameplay actors. emplace_front during load reverses
+	// the serialized order, so decorations need to be repositioned.
+	for (auto it = actors.begin(); it != actors.end(); ) {
+		Actor* actor = it->get();
+		if (actor != player && !actor->ai && !actor->destructible && !actor->attacker) {
+			auto node = std::move(*it);
+			it = actors.erase(it);
+			actors.push_front(std::move(node));
+		} else {
+			++it;
+		}
 	}
 
 	gui->load(zip);
