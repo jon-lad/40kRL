@@ -130,6 +130,7 @@
     <ClCompile Include="test_melee_pipeline.cpp" />
     <ClCompile Include="test_equipment_parsing.cpp" />
     <ClCompile Include="test_equipment_ranged.cpp" />
+    <ClCompile Include="test_ranged_combat.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
