@@ -85,6 +85,8 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | `i` | Open inventory (shows only unequipped items) |
 | `e` | Open equipment menu |
 | `d` | Drop item |
+| `s` | Shoot ranged weapon (enters targeting mode — confirm with Enter, ESC to cancel) |
+| `r` | Reload ranged weapon |
 | `l` | Look mode (inspect tiles — move cursor with arrows, ESC to exit) |
 | `c` | Character sheet (view all 9 Rogue Trader characteristics and bonuses) |
 | `<` | Ascend stairs |
