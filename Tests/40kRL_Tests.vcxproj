@@ -131,6 +131,7 @@
     <ClCompile Include="test_equipment_parsing.cpp" />
     <ClCompile Include="test_equipment_ranged.cpp" />
     <ClCompile Include="test_ranged_combat.cpp" />
+    <ClCompile Include="test_ranged_input.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -152,6 +153,7 @@
     <ClCompile Include="..\Source\DiceRoller.cpp" />
     <ClCompile Include="..\Source\HitLocation.cpp" />
     <ClCompile Include="..\Source\CriticalEffects.cpp" />
+    <ClCompile Include="..\Source\RangedCombat.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -172,6 +174,7 @@
     <ClInclude Include="..\Headers\DiceRoller.h" />
     <ClInclude Include="..\Headers\HitLocation.h" />
     <ClInclude Include="..\Headers\CriticalEffects.h" />
+    <ClInclude Include="..\Headers\RangedCombat.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
