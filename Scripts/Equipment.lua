@@ -20,6 +20,11 @@ equipment = {
         maxHp   = 0.0,
         skill   = 5,
         tier    = "common",
+        melee = {
+            damageDice = "1d5",
+            penetration = 0,
+            qualities = {},
+        },
     },
     {
         name    = "Chainsword",
@@ -33,6 +38,11 @@ equipment = {
         maxHp   = 0.0,
         skill   = 0,
         tier    = "uncommon",
+        melee = {
+            damageDice = "1d10",
+            penetration = 2,
+            qualities = {"Tearing", "Balanced"},
+        },
     },
     {
         name    = "Power Sword",
@@ -46,6 +56,11 @@ equipment = {
         maxHp   = 0.0,
         skill   = 10,
         tier    = "rare",
+        melee = {
+            damageDice = "1d10",
+            penetration = 5,
+            qualities = {"Power Field", "Balanced"},
+        },
     },
     {
         name    = "Flak Armor",
@@ -59,6 +74,14 @@ equipment = {
         maxHp   = 0.0,
         skill   = -5,
         tier    = "uncommon",
+        armourLocations = {
+            head     = 0,
+            body     = 3,
+            leftArm  = 3,
+            rightArm = 3,
+            leftLeg  = 3,
+            rightLeg = 3,
+        },
     },
     {
         name    = "Carapace Helm",
@@ -72,6 +95,14 @@ equipment = {
         maxHp   = 5.0,
         skill   = -2,
         tier    = "uncommon",
+        armourLocations = {
+            head     = 4,
+            body     = 0,
+            leftArm  = 0,
+            rightArm = 0,
+            leftLeg  = 0,
+            rightLeg = 0,
+        },
     },
 
     -- ===== Ork Equipment (Enemy-Appropriate) =====
@@ -89,6 +120,11 @@ equipment = {
         maxHp   = 0.0,
         skill   = -5,
         tier    = "common",
+        melee = {
+            damageDice = "1d10",
+            penetration = 0,
+            qualities = {"Unbalanced"},
+        },
     },
     {
         name    = "Slugga",
@@ -102,6 +138,11 @@ equipment = {
         maxHp   = 0.0,
         skill   = 0,
         tier    = "common",
+        melee = {
+            damageDice = "1d10",
+            penetration = 0,
+            qualities = {},
+        },
     },
     {
         name    = "Scrap Shield",
@@ -130,6 +171,11 @@ equipment = {
         maxHp   = 0.0,
         skill   = 5,
         tier    = "uncommon",
+        melee = {
+            damageDice = "1d5",
+            penetration = 0,
+            qualities = {},
+        },
     },
     {
         name    = "Big Choppa",
@@ -143,6 +189,11 @@ equipment = {
         maxHp   = 0.0,
         skill   = -8,
         tier    = "uncommon",
+        melee = {
+            damageDice = "2d5",
+            penetration = 2,
+            qualities = {"Unbalanced"},
+        },
     },
     {
         name    = "Ork Armor",
@@ -156,6 +207,14 @@ equipment = {
         maxHp   = 3.0,
         skill   = -8,
         tier    = "uncommon",
+        armourLocations = {
+            head     = 0,
+            body     = 2,
+            leftArm  = 2,
+            rightArm = 2,
+            leftLeg  = 1,
+            rightLeg = 1,
+        },
     },
 
     -- Rare tier: powerful Ork weapon, strong stats
@@ -171,5 +230,10 @@ equipment = {
         maxHp   = 0.0,
         skill   = -10,
         tier    = "rare",
+        melee = {
+            damageDice = "2d10",
+            penetration = 7,
+            qualities = {"Power Field", "Unwieldy"},
+        },
     },
 }

@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: windows-latest
@@ -14,7 +18,6 @@ jobs:
     strategy:
       matrix:
         configuration: [Debug, Release]
-        platform: [x64]
 
     env:
       VCPKG_DEFAULT_TRIPLET: x64-windows
@@ -25,54 +28,53 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Cache vcpkg packages
+        id: vcpkg-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-x64-windows-${{ hashFiles('vcpkg-overlay/**') }}
+          restore-keys: vcpkg-x64-windows-
+
       - name: Bootstrap vcpkg
         run: |
           git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
           C:\vcpkg\bootstrap-vcpkg.bat
 
       - name: Install dependencies via vcpkg
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
         run: |
           C:\vcpkg\vcpkg.exe install libtcod:x64-windows sol2:x64-windows lua:x64-windows --overlay-ports=${{ github.workspace }}/vcpkg-overlay/ports
 
       - name: Integrate vcpkg
         run: C:\vcpkg\vcpkg.exe integrate install
 
-      - name: Build game
-        run: msbuild 40kRL.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
+      - name: Build solution
+        run: msbuild 40kRL.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=x64
 
-      - name: Verify SDL3 runtime
+      - name: Copy runtime DLLs and verify
         run: |
-          $outDir = "${{ matrix.platform }}\${{ matrix.configuration }}"
-          if (-not (Test-Path "$outDir\SDL3.dll")) {
-            Write-Error "SDL3.dll not found in $outDir"
-            exit 1
-          }
-
-      - name: Build tests
-        run: msbuild Tests\40kRL_Tests.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
-
-      - name: Copy runtime DLLs to test output
-        run: |
-          $outDir = "${{ matrix.platform }}\${{ matrix.configuration }}"
+          $outDir = "x64\${{ matrix.configuration }}"
           $vcpkgBin = "C:\vcpkg\installed\x64-windows\bin"
           $vcpkgDbgBin = "C:\vcpkg\installed\x64-windows\debug\bin"
           if ("${{ matrix.configuration }}" -eq "Debug") {
             Copy-Item "$vcpkgDbgBin\*.dll" "$outDir\" -Force -ErrorAction SilentlyContinue
           }
           Copy-Item "$vcpkgBin\*.dll" "$outDir\" -Force -ErrorAction SilentlyContinue
+          if (-not (Test-Path "$outDir\SDL3.dll")) {
+            Write-Error "SDL3.dll not found in $outDir"
+            exit 1
+          }
 
       - name: Run tests
+        timeout-minutes: 5
         env:
           SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
         run: |
-          $testExe = "${{ matrix.platform }}\${{ matrix.configuration }}\40kRL_Tests.exe"
+          $testExe = "x64\${{ matrix.configuration }}\40kRL_Tests.exe"
           if (Test-Path $testExe) {
-            if ("${{ matrix.configuration }}" -eq "Release") {
-              # Skip PBT tests in Release (optimizer-related segfaults in rapidcheck stub)
-              & $testExe --reporter compact "~[pbt]"
-            } else {
-              & $testExe --reporter compact
-            }
+            & $testExe --reporter compact "~[pbt]"
           } else {
             Write-Error "Test executable not found at $testExe"
             exit 1

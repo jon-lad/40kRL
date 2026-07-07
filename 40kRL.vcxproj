@@ -162,6 +162,9 @@
     <ClCompile Include="Source\Equipment.cpp" />
     <ClCompile Include="Source\LevelCache.cpp" />
     <ClCompile Include="Source\Characteristics.cpp" />
+    <ClCompile Include="Source\DiceRoller.cpp" />
+    <ClCompile Include="Source\HitLocation.cpp" />
+    <ClCompile Include="Source\CriticalEffects.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -184,6 +187,9 @@
     <ClInclude Include="Headers\RenderUtils.h" />
     <ClInclude Include="Headers\LevelCache.h" />
     <ClInclude Include="Headers\Characteristics.h" />
+    <ClInclude Include="Headers\DiceRoller.h" />
+    <ClInclude Include="Headers\HitLocation.h" />
+    <ClInclude Include="Headers\CriticalEffects.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

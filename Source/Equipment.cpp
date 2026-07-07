@@ -95,6 +95,16 @@ int Equipment::getTotalSkillModifier() const {
 	return total;
 }
 
+int Equipment::getArmourAtLocation(HitLocation loc) const {
+	int total = 0;
+	for (const auto& item : slots) {
+		if (item && item->equippable && item->equippable->armourProfile) {
+			total += item->equippable->armourProfile->values[static_cast<int>(loc)];
+		}
+	}
+	return total;
+}
+
 float Equipment::getEquippedWeight() const {
 	float total = 0.0f;
 	for (const auto& item : slots) {
