@@ -830,11 +830,19 @@ void Map::addMonster(int x, int y)
 						tmpl->slot, tmpl->modifiers, tmpl->weight, tmpl->value);
 					item->equippable->meleeStats = tmpl->meleeStats;
 					item->equippable->armourProfile = tmpl->armourProfile;
+					item->equippable->rangedStats = tmpl->rangedStats;
 
 					// Equip the item (pass nullptr for Container since enemies don't use inventory)
 					Actor* itemPtr = item.get();
 					spawned->equipment->ownedItems.push_back(std::move(item));
 					spawned->equipment->equip(itemPtr, nullptr, spawned->attacker.get());
+				}
+
+				// Assign AI based on equipped weapon: RangedAi if weapon has rangedStats,
+				// otherwise keep the default MonsterAi.
+				Actor* weapon = spawned->equipment->getSlot(EquipmentSlot::WEAPON);
+				if (weapon && weapon->equippable && weapon->equippable->rangedStats.has_value()) {
+					spawned->ai = std::make_unique<RangedAi>();
 				}
 
 				// Consume the equipConfig — it's no longer needed
@@ -880,6 +888,7 @@ void Map::addItem(int x, int y)
 		item->equippable = std::make_shared<Equippable>(tmpl.slot, tmpl.modifiers, tmpl.weight, tmpl.value);
 		item->equippable->meleeStats = tmpl.meleeStats;
 		item->equippable->armourProfile = tmpl.armourProfile;
+		item->equippable->rangedStats = tmpl.rangedStats;
 		engine.actors.emplace_front(std::move(item));
 		return;
 	}
