@@ -362,6 +362,25 @@ void Engine::updateTargeting()
 			return; // ignore click, remain in TARGETING
 		}
 
+		// --- Ranged attack path ---
+		if (targetingCtx->isRangedAttack) {
+			// Require a living actor (or destructible) on the target tile.
+			Actor* target = getActorAt(worldX, worldY);
+			if (!target || target == player) {
+				return; // no valid target, remain in TARGETING
+			}
+
+			// Resolve the ranged attack.
+			RangedCombat::resolve(targetingCtx->owner, target);
+
+			// Clear context and advance turn.
+			targetingCtx = std::nullopt;
+			gameStatus = NEW_TURN;
+			return;
+		}
+
+		// --- Item targeting path (existing behaviour) ---
+
 		// --- Stale-pointer check: verify item still exists in owner's inventory ---
 		bool itemFound = false;
 		if (targetingCtx->owner && targetingCtx->owner->container) {
@@ -1023,6 +1042,31 @@ void Engine::init()
 					meleeStats = MeleeStats{ DiceSpec{1, 5}, 0, {} };
 				}
 
+				// Parse optional ranged table for weapons
+				std::optional<RangedStats> rangedStats;
+				sol::optional<sol::table> rangedTable = entry["ranged"];
+				if (rangedTable) {
+					std::string damageDiceStr = (*rangedTable).get_or("damageDice", std::string(""));
+					auto parsed = DiceRoller::parse(damageDiceStr);
+					if (!parsed.has_value()) {
+						gui->message(Colors::damage, "Equipment.lua: skipping '#' — invalid ranged damageDice '#'.", name, damageDiceStr);
+						continue;
+					}
+					RangedStats rs;
+					rs.damageDice   = parsed.value();
+					rs.penetration  = (*rangedTable).get_or("penetration", 0);
+					rs.range        = (*rangedTable).get_or("range", 30);
+					rs.rateOfFire   = (*rangedTable).get_or("rateOfFire", 1);
+					rs.clipSize     = (*rangedTable).get_or("clipSize", 6);
+					rs.reloadTime   = (*rangedTable).get_or("reloadTime", 1);
+					rangedStats = rs;
+
+					// If weapon has ranged table but no melee table, ensure default melee stats are assigned
+					if (!meleeStats.has_value()) {
+						meleeStats = MeleeStats{ DiceSpec{1, 5}, 0, {} };
+					}
+				}
+
 				// Parse optional armourLocations table for armour
 				std::optional<ArmourProfile> armourProfile;
 				sol::optional<sol::table> armourTable = entry["armourLocations"];
@@ -1071,6 +1115,7 @@ void Engine::init()
 				tmpl.tier      = tier;
 				tmpl.meleeStats    = meleeStats;
 				tmpl.armourProfile = armourProfile;
+				tmpl.rangedStats   = rangedStats;
 
 				equipmentTemplates.push_back(tmpl);
 			}

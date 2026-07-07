@@ -17,7 +17,8 @@ protected:
 	enum class AiType {
 		PLAYER          = 0,
 		MONSTER         = 1,
-		CONFUSED_MONSTER = 2
+		CONFUSED_MONSTER = 2,
+		RANGED_MONSTER  = 3
 	};
 };
 
@@ -80,6 +81,22 @@ protected:
 	// Attacks if adjacent; moves toward (targetX, targetY) using FOV line-of-sight
 	// or scent tracking when the player is out of sight.
 	void moveOrAttack(Actor* owner, int targetX, int targetY);
+};
+
+// Ranged AI for enemies with ranged weapons. Prefers shooting at range,
+// falls back to melee when adjacent or moves closer when out of range.
+class RangedAi : public Ai {
+public:
+	void update(Actor* owner) override;
+
+	void save(TCODZip& zip) override;
+	void load(TCODZip& zip) override;
+
+private:
+	void shoot(Actor* owner, Actor* target);
+	void reload(Actor* owner);
+	void moveToward(Actor* owner, int targetX, int targetY);
+	void followScent(Actor* owner);
 };
 
 // Wanders randomly for turnsRemaining turns, then reverts to the monster's normal AI.

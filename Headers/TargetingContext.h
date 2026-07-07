@@ -12,4 +12,5 @@ struct TargetingContext {
 	TargetSelector::SelectorType type;    // SELECTED_MONSTER or SELECTED_RANGE
 	Effect* effect;                       // the effect to apply on confirmation
 	float aoeRange;                       // for SELECTED_RANGE: radius of the AoE
+	bool isRangedAttack = false;          // true when targeting for shoot action (not item use)
 };

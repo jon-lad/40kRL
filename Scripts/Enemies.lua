@@ -11,7 +11,7 @@
 -- Optional equipment fields: equipment (list of strings), dropChance (float), equipTier (table)
 local enemies = {
     {
-        chance  = 60,
+        chance  = 50,
         glyph   = string.byte("g"),
         name    = "Gretchin",
         color   = "desaturatedGreen",
@@ -26,7 +26,7 @@ local enemies = {
         dropChance = 0.3,
     },
     {
-        chance  = 90,
+        chance  = 75,
         glyph   = string.byte("o"),
         name    = "Ork",
         color   = "desaturatedGreen",
@@ -38,6 +38,21 @@ local enemies = {
         skill   = 35,
         ws = 35, bs = 20, s = 40, t = 40, ag = 25, int = 15, per = 25, wp = 25, fel = 15,
         equipTier = { common = 80, uncommon = 18, rare = 2 },
+        dropChance = 0.4,
+    },
+    {
+        chance  = 90,
+        glyph   = string.byte("o"),
+        name    = "Shoota Boy",
+        color   = "desaturatedGreen",
+        hp      = 10.0,
+        defense = 0.0,
+        corpse  = "dead Shoota Boy",
+        xp      = 40,
+        power   = 3.0,
+        skill   = 35,
+        ws = 30, bs = 25, s = 35, t = 40, ag = 25, int = 15, per = 25, wp = 25, fel = 15,
+        equipment = { "Shoota" },
         dropChance = 0.4,
     },
     {

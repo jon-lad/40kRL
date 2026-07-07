@@ -11,9 +11,11 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 - Procedural dungeon generation via BSP (Binary Space Partitioning)
 - Perlin noise outdoor terrain (ground, trees, water) with connectivity guarantee
 - Equipment system with body slots (weapon, offhand, head, body) and stat modifiers
-- Turn-based movement and combat with melee attacks
+- Turn-based movement and combat with melee attacks and ranged shooting
+- Ranged combat system with d100 roll-under vs Ballistic Skill, dodge tests, and ammunition management
 - FOV (field of view) with libtcod's shadow-casting algorithm
 - Scent-tracking monster AI that follows the player even outside line of sight
+- Ranged AI enemies that shoot at range, reload when empty, and melee when cornered
 - Look mode for inspecting tiles and reading actor descriptions
 - Data-driven room decorations (crates, barrels, consoles, pillars, etc.)
 - Lua-driven enemy, item, and decoration definitions for easy modding
@@ -85,6 +87,8 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | `i` | Open inventory (shows only unequipped items) |
 | `e` | Open equipment menu |
 | `d` | Drop item |
+| `s` | Shoot ranged weapon (enters targeting mode — confirm with Enter, ESC to cancel) |
+| `r` | Reload ranged weapon |
 | `l` | Look mode (inspect tiles — move cursor with arrows, ESC to exit) |
 | `c` | Character sheet (view all 9 Rogue Trader characteristics and bonuses) |
 | `<` | Ascend stairs |

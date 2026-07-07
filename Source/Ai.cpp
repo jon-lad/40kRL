@@ -200,6 +200,55 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		}
 		break;
 
+	case 's': // shoot ranged weapon
+	{
+		// Check if player has a ranged weapon equipped in weapon slot.
+		Actor* weaponItem = owner->equipment ? owner->equipment->getSlot(EquipmentSlot::WEAPON) : nullptr;
+		if (!weaponItem || !weaponItem->equippable || !weaponItem->equippable->rangedStats) {
+			engine.gui->message(Colors::uiText, "You have no ranged weapon equipped.");
+			return;
+		}
+		// Check ammo.
+		if (weaponItem->equippable->currentAmmo <= 0) {
+			engine.gui->message(Colors::uiText, "Your weapon is empty. Press 'r' to reload.");
+			return;
+		}
+		// Enter targeting mode for ranged attack.
+		float weaponRange = static_cast<float>(weaponItem->equippable->rangedStats->range);
+		engine.targetingCtx = TargetingContext{
+			weaponItem,                                    // item (the weapon)
+			owner,                                         // owner
+			weaponRange,                                   // maxRange
+			TargetSelector::SelectorType::SELECTED_MONSTER, // type
+			nullptr,                                       // effect (unused for ranged)
+			0.0f,                                          // aoeRange
+			true                                           // isRangedAttack
+		};
+		engine.gameStatus = Engine::TARGETING;
+		engine.gui->message(Colors::uiText, "Left-click to confirm, right-click or ESC to cancel.");
+		return;
+	}
+
+	case 'r': // reload ranged weapon
+	{
+		// Check if player has a ranged weapon equipped in weapon slot.
+		Actor* weaponItem = owner->equipment ? owner->equipment->getSlot(EquipmentSlot::WEAPON) : nullptr;
+		if (!weaponItem || !weaponItem->equippable || !weaponItem->equippable->rangedStats) {
+			engine.gui->message(Colors::uiText, "You have no ranged weapon to reload.");
+			return;
+		}
+		// Check if ammo is already full.
+		if (weaponItem->equippable->currentAmmo >= weaponItem->equippable->rangedStats->clipSize) {
+			engine.gui->message(Colors::uiText, "Your weapon is already fully loaded.");
+			return;
+		}
+		// Perform reload: set currentAmmo to clipSize, display message, advance turn.
+		weaponItem->equippable->currentAmmo = weaponItem->equippable->rangedStats->clipSize;
+		engine.gui->message(Colors::uiText, "# reloads #.", owner->name, weaponItem->name);
+		engine.gameStatus = Engine::NEW_TURN;
+		return;
+	}
+
 	case 'e': // open equipment menu
 	{
 		static constexpr int EQUIP_WIDTH = 50;
@@ -283,6 +332,107 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 	}
 
 	// Player not visible — follow the strongest scent trail in the 8 neighbours.
+	static constexpr int neighbourDX[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
+	static constexpr int neighbourDY[8] = { -1,-1,-1,  0, 0,  1, 1, 1 };
+
+	unsigned int bestScent     = 0;
+	int          bestNeighbour = -1;
+
+	for (int i = 0; i < 8; ++i) {
+		const int cellX = owner->getX() + neighbourDX[i];
+		const int cellY = owner->getY() + neighbourDY[i];
+		if (engine.map->canWalk(cellX, cellY)) {
+			const unsigned int cellScent = engine.map->getScent(cellX, cellY);
+			const bool scentIsFresh = cellScent > engine.map->currentScentValue - SCENT_THRESHOLD;
+			if (scentIsFresh && cellScent > bestScent) {
+				bestScent     = cellScent;
+				bestNeighbour = i;
+			}
+		}
+	}
+
+	if (bestNeighbour != -1) {
+		owner->setX(owner->getX() + neighbourDX[bestNeighbour]);
+		owner->setY(owner->getY() + neighbourDY[bestNeighbour]);
+	}
+}
+
+// ─── RangedAi ────────────────────────────────────────────────────────────────
+
+void RangedAi::update(Actor* owner)
+{
+	if (owner->destructible && owner->destructible->isDead()) { return; }
+
+	const int dx = engine.player->getX() - owner->getX();
+	const int dy = engine.player->getY() - owner->getY();
+	const float distance = sqrtf(static_cast<float>(dx * dx + dy * dy));
+
+	// 1. Adjacent to player → melee attack.
+	if (distance < 2.0f) {
+		if (owner->attacker) {
+			owner->attacker->attack(owner, engine.player);
+		}
+		return;
+	}
+
+	// Determine weapon stats for range/ammo checks.
+	Actor* weaponItem = owner->equipment ? owner->equipment->getSlot(EquipmentSlot::WEAPON) : nullptr;
+	const bool hasRangedWeapon = weaponItem && weaponItem->equippable && weaponItem->equippable->rangedStats;
+	const int currentAmmo = hasRangedWeapon ? weaponItem->equippable->currentAmmo : 0;
+	const int weaponRange = hasRangedWeapon ? weaponItem->equippable->rangedStats->range : 0;
+
+	// 2. Has LoS (monster is in player's FOV) + within weapon range + has ammo → shoot.
+	if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+		if (hasRangedWeapon && currentAmmo > 0 && distance <= static_cast<float>(weaponRange)) {
+			shoot(owner, engine.player);
+			return;
+		}
+
+		// 5. Has LoS but zero ammo and not adjacent → reload.
+		if (hasRangedWeapon && currentAmmo <= 0) {
+			reload(owner);
+			return;
+		}
+
+		// 3. Has LoS but beyond weapon range → move toward player.
+		moveToward(owner, engine.player->getX(), engine.player->getY());
+		return;
+	}
+
+	// 4. No LoS → follow scent trail.
+	followScent(owner);
+}
+
+void RangedAi::shoot(Actor* owner, Actor* target)
+{
+	RangedCombat::resolve(owner, target);
+}
+
+void RangedAi::reload(Actor* owner)
+{
+	Actor* weaponItem = owner->equipment ? owner->equipment->getSlot(EquipmentSlot::WEAPON) : nullptr;
+	if (weaponItem && weaponItem->equippable && weaponItem->equippable->rangedStats) {
+		weaponItem->equippable->currentAmmo = weaponItem->equippable->rangedStats->clipSize;
+		engine.gui->message(Colors::uiText, "# reloads #.", owner->name, weaponItem->name);
+	}
+}
+
+void RangedAi::moveToward(Actor* owner, int targetX, int targetY)
+{
+	const int dx = targetX - owner->getX();
+	const int dy = targetY - owner->getY();
+	const float distance = sqrtf(static_cast<float>(dx * dx + dy * dy));
+
+	const int stepX = static_cast<int>(std::round(dx / distance));
+	const int stepY = static_cast<int>(std::round(dy / distance));
+	if (engine.map->canWalk(owner->getX() + stepX, owner->getY() + stepY)) {
+		owner->setX(owner->getX() + stepX);
+		owner->setY(owner->getY() + stepY);
+	}
+}
+
+void RangedAi::followScent(Actor* owner)
+{
 	static constexpr int neighbourDX[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
 	static constexpr int neighbourDY[8] = { -1,-1,-1,  0, 0,  1, 1, 1 };
 

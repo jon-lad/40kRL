@@ -29,6 +29,15 @@ struct MeleeStats {
 	std::vector<std::string> qualities;  // e.g., "Balanced", "Tearing"
 };
 
+struct RangedStats {
+	DiceSpec damageDice = {1, 10};  // e.g., "1d10" for laspistol
+	int penetration = 0;            // armour penetration value
+	int range = 30;                 // max range in tiles
+	int rateOfFire = 1;             // shots per attack action
+	int clipSize = 6;               // max ammo capacity
+	int reloadTime = 1;             // turns to reload (always 1 for now)
+};
+
 struct ArmourProfile {
 	std::array<int, static_cast<int>(HitLocation::COUNT)> values = {};
 	// Indexed by HitLocation enum
@@ -40,8 +49,10 @@ public:
 	StatModifiers modifiers;
 	float weight = 0.0f;
 	int value = 0;
-	std::optional<MeleeStats> meleeStats;      // present for weapons
+	std::optional<MeleeStats> meleeStats;      // present for melee weapons
 	std::optional<ArmourProfile> armourProfile; // present for armour
+	std::optional<RangedStats> rangedStats;    // present for ranged weapons
+	int currentAmmo = 0;                       // mutable runtime ammo counter
 
 	Equippable(EquipmentSlot slot, StatModifiers modifiers, float weight, int value);
 

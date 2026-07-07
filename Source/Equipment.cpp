@@ -31,6 +31,12 @@ Actor* Equipment::equip(Actor* item, Container* inventory, Attacker* attacker) {
 	// Set slot pointer to new item
 	slots[slotIndex] = item;
 
+	// Initialize ammo for freshly equipped ranged weapons.
+	// Only set if currentAmmo is 0 (i.e., not already loaded from a save file).
+	if (item->equippable->rangedStats.has_value() && item->equippable->currentAmmo == 0) {
+		item->equippable->currentAmmo = item->equippable->rangedStats->clipSize;
+	}
+
 	return previous;
 }
 

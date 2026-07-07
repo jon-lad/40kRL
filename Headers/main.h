@@ -20,3 +20,4 @@ class Actor;
 #include "Map.h"
 #include "Gui.h"
 #include "Engine.h"
+#include "RangedCombat.h"

@@ -505,6 +505,7 @@ std::unique_ptr<Ai> Ai::create(TCODZip& zip)
 	switch (type) {
 	case AiType::PLAYER:          ai = std::make_unique<PlayerAi>();         break;
 	case AiType::MONSTER:         ai = std::make_unique<MonsterAi>();        break;
+	case AiType::RANGED_MONSTER:  ai = std::make_unique<RangedAi>();         break;
 	default: /* CONFUSED_MONSTER */ ai = std::make_unique<ConfusedMonsterAi>(0); break;
 	}
 	ai->load(zip);
@@ -531,6 +532,9 @@ void PlayerAi::load(TCODZip& zip) { xpLevel = zip.getInt(); }
 
 void MonsterAi::save(TCODZip& zip) { zip.putInt(static_cast<int>(AiType::MONSTER)); }
 void MonsterAi::load(TCODZip& zip) {}
+
+void RangedAi::save(TCODZip& zip) { zip.putInt(static_cast<int>(AiType::RANGED_MONSTER)); }
+void RangedAi::load(TCODZip& zip) {}
 
 void ConfusedMonsterAi::save(TCODZip& zip)
 {

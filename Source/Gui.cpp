@@ -50,6 +50,18 @@ void Gui::render()
 	levelLabel << "Dungeon level " << engine.dungeonLevel;
 	hudConsole->printf(3, 3, levelLabel.str().c_str());
 
+	// Display ammo when a ranged weapon is equipped
+	if (engine.player->equipment) {
+		Actor* weapon = engine.player->equipment->getSlot(EquipmentSlot::WEAPON);
+		if (weapon && weapon->equippable && weapon->equippable->rangedStats.has_value()) {
+			std::stringstream ammoLabel;
+			ammoLabel << "Ammo: " << weapon->equippable->currentAmmo
+			          << "/" << weapon->equippable->rangedStats->clipSize;
+			hudConsole->setDefaultForeground(Colors::white);
+			hudConsole->printf(constants::BAR_WIDTH + 3, 3, ammoLabel.str().c_str());
+		}
+	}
+
 	TCODConsole::blit(hudConsole.get(), 0, 0, engine.screenWidth, constants::PANEL_HEIGHT,
 		TCODConsole::root, 0, engine.screenHeight - constants::PANEL_HEIGHT);
 }
