@@ -128,6 +128,7 @@ TEST_CASE("Shoot input: 's' with zero ammo shows 'weapon is empty' message", "[r
     Actor* equipped = owner->equipment->getSlot(EquipmentSlot::WEAPON);
     REQUIRE(equipped != nullptr);
     REQUIRE(equipped->equippable->rangedStats.has_value());
+    equipped->equippable->currentAmmo = 0;  // Force zero ammo after equip init
     REQUIRE(equipped->equippable->currentAmmo == 0);
 
     // Act
@@ -301,6 +302,7 @@ TEST_CASE("Reload input: 'r' with zero ammo reloads to full and advances turn", 
     // Verify precondition
     Actor* equipped = owner->equipment->getSlot(EquipmentSlot::WEAPON);
     REQUIRE(equipped != nullptr);
+    equipped->equippable->currentAmmo = 0;  // Force zero ammo after equip init
     REQUIRE(equipped->equippable->currentAmmo == 0);
 
     // Act

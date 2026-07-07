@@ -291,6 +291,7 @@ TEST_CASE("RangedAi: reloads when out of ammo", "[ranged-ai][integration]") {
     engine.map->computeFOV();
 
     Actor* weaponItem = enemy->equipment->getSlot(EquipmentSlot::WEAPON);
+    weaponItem->equippable->currentAmmo = 0;  // Force zero ammo after equip init
     REQUIRE(weaponItem->equippable->currentAmmo == 0);
 
     int startX = enemy->getX();
