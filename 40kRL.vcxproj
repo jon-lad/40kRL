@@ -165,6 +165,7 @@
     <ClCompile Include="Source\DiceRoller.cpp" />
     <ClCompile Include="Source\HitLocation.cpp" />
     <ClCompile Include="Source\CriticalEffects.cpp" />
+    <ClCompile Include="Source\RangedCombat.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -190,6 +191,7 @@
     <ClInclude Include="Headers\DiceRoller.h" />
     <ClInclude Include="Headers\HitLocation.h" />
     <ClInclude Include="Headers\CriticalEffects.h" />
+    <ClInclude Include="Headers\RangedCombat.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
