@@ -11,6 +11,60 @@
 // Feature: decoration-render-priority — Property-Based Tests
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ─── Property 1: Bug Condition — Decorations Render Beneath Gameplay Actors ──
+// **Validates: Requirements 2.1, 2.2**
+//
+// For any tile where a decoration and a gameplay actor share coordinates,
+// the decoration SHALL appear earlier in the actors list (lower index) than
+// the gameplay actor, ensuring the gameplay actor's glyph renders on top.
+
+TEST_CASE("PBT: Bug Condition — decorations render beneath gameplay actors",
+          "[pbt][property][decoration-render-priority]")
+{
+    SECTION("Bug Condition") {
+        rc::prop("decoration list index < gameplay actor list index when sharing a tile", []() {
+            // Generate random tile coordinates (within typical map bounds)
+            const int x = *rc::gen::inRange(1, 78);
+            const int y = *rc::gen::inRange(1, 48);
+
+            // Create a gameplay actor at (x, y) with an ai component
+            auto gameplayActor = std::make_unique<Actor>(x, y, 'M', "monster", Colors::white);
+            gameplayActor->ai = std::make_shared<MonsterAi>();
+            gameplayActor->destructible = std::make_shared<MonsterDestructible>(10.0f, 0.0f, "corpse", 10);
+            Actor* gameplayPtr = gameplayActor.get();
+            engine.actors.push_back(std::move(gameplayActor));
+
+            // Create a decoration at (x, y) — use push_front (fixed behavior)
+            // The fix inserts decorations at the front so they render beneath actors
+            auto decoration = std::make_unique<Actor>(x, y, '#', "crate", Colors::white);
+            decoration->fovOnly = true;
+            // No ai, no destructible, no attacker — it's a decoration
+            Actor* decoPtr = decoration.get();
+            engine.actors.push_front(std::move(decoration));
+
+            // Find list indices
+            int decoIndex = -1;
+            int gameplayIndex = -1;
+            int idx = 0;
+            for (const auto& actor : engine.actors) {
+                if (actor.get() == decoPtr) decoIndex = idx;
+                if (actor.get() == gameplayPtr) gameplayIndex = idx;
+                ++idx;
+            }
+
+            // Assert: decoration appears before gameplay actor in list (lower index = renders first = underneath)
+            RC_ASSERT(decoIndex >= 0);
+            RC_ASSERT(gameplayIndex >= 0);
+            RC_ASSERT(decoIndex < gameplayIndex);
+
+            // Cleanup
+            engine.actors.remove_if([decoPtr, gameplayPtr](const std::unique_ptr<Actor>& a) {
+                return a.get() == decoPtr || a.get() == gameplayPtr;
+            });
+        });
+    }
+}
+
 // ─── Property 2: Preservation — Non-Overlapping Tile Rendering Unchanged ─────
 // **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
 //

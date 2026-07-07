@@ -1,16 +1,5 @@
-﻿
-  test_ranged_input.cpp
+﻿MSBuild version 18.7.8+1ac568fee for .NET Framework
+
   40kRL_Tests.vcxproj -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\40kRL_Tests.exe
-  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\40kRL_Tests.exe: message: deploying dependencies
-  C:\vcpkg\installed\x64-windows\debug\bin\libtcod.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\libtcod.dll skipped, up to date
-  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\libtcod.dll: message: deploying dependencies
-  C:\vcpkg\installed\x64-windows\debug\bin\SDL3.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\SDL3.dll skipped, up to date
-  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\SDL3.dll: message: deploying dependencies
-  C:\vcpkg\installed\x64-windows\debug\bin\zd.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\zd.dll skipped, up to date
-  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\zd.dll: message: deploying dependencies
-  C:\vcpkg\installed\x64-windows\debug\bin\utf8proc.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\utf8proc.dll skipped, up to date
-  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\utf8proc.dll: message: deploying dependencies
-  C:\vcpkg\installed\x64-windows\debug\bin\lua.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\lua.dll skipped, up to date
-  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\lua.dll: message: deploying dependencies
           1 file(s) copied.
           1 file(s) copied.
