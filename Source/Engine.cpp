@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <list>
 #include <memory>
 #include <sstream>
@@ -1227,6 +1228,14 @@ void Engine::init()
 	camera->update(player, false);
 
 	gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
+
+	// Generate world seed from system clock for deterministic world map generation.
+	worldSeed = static_cast<uint32_t>(
+		std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::system_clock::now().time_since_epoch()
+		).count()
+	);
+
 	gameStatus = STARTUP;
 }
 

@@ -39,6 +39,17 @@ config = {
     maxRoomDecorations     = 3,
     outdoorDecorationCount = 8,
 
+    -- World Map generation parameters
+    worldMapNoiseScale       = 0.03,
+    worldMapOctaves          = 4,
+    worldMapLacunarity       = 2.0,
+    worldMapSwampThreshold   = -0.4,
+    worldMapForestThreshold  = -0.1,
+    worldMapDesertThreshold  = 0.2,
+    worldMapCityCount        = 3,
+    worldMapCitySeparation   = 15,
+    worldMapCityNames        = {"Hive Primus", "Hive Secundus", "Hive Tertius", "Hive Quartus", "Hive Quintus"},
+
     -- Carrying capacity (max total weight the player can carry; 0 = unlimited)
     carryingCapacity = 50.0,
 
