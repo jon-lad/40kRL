@@ -129,6 +129,7 @@
     <ClCompile Include="test_attacker_serialization.cpp" />
     <ClCompile Include="test_melee_pipeline.cpp" />
     <ClCompile Include="test_equipment_parsing.cpp" />
+    <ClCompile Include="test_equipment_ranged.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
