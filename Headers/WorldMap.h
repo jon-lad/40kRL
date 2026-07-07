@@ -35,3 +35,8 @@ struct WorldMapState {
 	std::vector<HiveCity> cities;
 	bool generated = false;          // true after first terrain + city generation
 };
+
+// Classifies a noise value into a biome type based on threshold ordering.
+// Thresholds must satisfy: swampThreshold < forestThreshold < desertThreshold.
+// The function is total: every float input maps to exactly one BiomeType.
+BiomeType classifyBiome(float noiseValue, float swampThreshold, float forestThreshold, float desertThreshold);
