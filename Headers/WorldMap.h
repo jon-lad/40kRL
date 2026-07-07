@@ -40,3 +40,12 @@ struct WorldMapState {
 // Thresholds must satisfy: swampThreshold < forestThreshold < desertThreshold.
 // The function is total: every float input maps to exactly one BiomeType.
 BiomeType classifyBiome(float noiseValue, float swampThreshold, float forestThreshold, float desertThreshold);
+
+// Forward declarations for sol types (avoids pulling sol2 into the header).
+namespace sol { class state; }
+
+// Generates terrain biomes for the world map using Perlin noise.
+// Reads noise parameters (scale, octaves, lacunarity, thresholds) from the Lua
+// config table, with compiled defaults as fallback. Clamps invalid config values
+// to valid bounds and logs warnings via Gui. Fills state.biomes (160×86 flat array).
+void generateWorldMapTerrain(WorldMapState& state, sol::state& lua);
