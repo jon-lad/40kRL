@@ -25,6 +25,7 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 - Level-up system with XP rewards
 - Ascending/descending stairs between dungeon levels and the planet surface
 - World map overlay with Perlin-noise biomes and fast-travel to hive cities
+- WFC-generated hive city interiors with 10 distinct tile types and adjacency-based layouts
 
 ## Building
 
@@ -104,8 +105,6 @@ Enemy and item definitions live in `Scripts/` as Lua tables. You can add new ene
 
 ## Roadmap
 
-- WFC hive city level generator (currently uses BSP placeholder)
-- Ranged combat (guns)
 - Character generation
 - NPC dialogue
 

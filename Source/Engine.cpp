@@ -1121,9 +1121,9 @@ void Engine::updateWorldMap()
 						actors.emplace_front(std::move(newDown));
 					}
 
-					// Generate BSP level (placeholder until WFC hive generator).
+					// Generate WFC hive city level.
 					map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
-					map->init(true, LevelType::BSP);
+					map->init(true, LevelType::WFC);
 
 					// ─── Phase 5: Place player at stairsUp (or fallback) ──────────
 					if (stairsUp) {
