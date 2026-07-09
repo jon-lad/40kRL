@@ -135,6 +135,7 @@
     <ClCompile Include="test_ranged_serialization.cpp" />
     <ClCompile Include="test_ranged_pipeline.cpp" />
     <ClCompile Include="test_decoration_render_priority.cpp" />
+    <ClCompile Include="test_wfc_generator.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
