@@ -24,6 +24,7 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 - Scrolling camera with a 160×86 map viewed through an 80×43 viewport
 - Level-up system with XP rewards
 - Ascending/descending stairs between dungeon levels and the planet surface
+- World map overlay with Perlin-noise biomes and fast-travel to hive cities
 
 ## Building
 
@@ -91,6 +92,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | `r` | Reload ranged weapon |
 | `l` | Look mode (inspect tiles — move cursor with arrows, ESC to exit) |
 | `c` | Character sheet (view all 9 Rogue Trader characteristics and bonuses) |
+| `m` | World map (view biomes, cursor navigation, fast-travel to hive cities) |
 | `<` | Ascend stairs |
 | `>` | Descend stairs |
 | `Esc` | Save and return to menu |
@@ -102,11 +104,10 @@ Enemy and item definitions live in `Scripts/` as Lua tables. You can add new ene
 
 ## Roadmap
 
-- Perlin noise outdoor map generation (level 20+)
+- WFC hive city level generator (currently uses BSP placeholder)
 - Ranged combat (guns)
 - Character generation
 - NPC dialogue
-- World/planet travel system
 
 ## Releases
 
