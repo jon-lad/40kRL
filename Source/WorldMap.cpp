@@ -2,6 +2,7 @@
 #include "main.h"
 #include <sol/sol.hpp>
 #include <algorithm>
+#include <cmath>
 
 BiomeType classifyBiome(float noiseValue, float swampThreshold, float forestThreshold, float desertThreshold) {
 	if (noiseValue < swampThreshold) {
@@ -91,5 +92,123 @@ void generateWorldMapTerrain(WorldMapState& state, sol::state& lua) {
 			state.biomes[x + y * WORLD_MAP_WIDTH] = classifyBiome(
 				value, swampThreshold, forestThreshold, desertThreshold);
 		}
+	}
+}
+
+void placeHiveCities(WorldMapState& state, sol::state& lua) {
+	// ── 1. Load city placement parameters from Lua config (with compiled defaults) ──
+
+	int cityCount = 3;
+	int separation = 15;
+	std::vector<std::string> nameTable;
+
+	try {
+		sol::table cfg = lua["config"];
+		if (cfg.valid()) {
+			cityCount  = cfg.get_or("worldMapCityCount", cityCount);
+			separation = cfg.get_or("worldMapCitySeparation", separation);
+
+			sol::optional<sol::table> namesOpt = cfg["worldMapCityNames"];
+			if (namesOpt) {
+				sol::table names = namesOpt.value();
+				for (size_t i = 1; i <= names.size(); ++i) {
+					sol::optional<std::string> name = names[i];
+					if (name) {
+						nameTable.push_back(name.value());
+					}
+				}
+			}
+		}
+	} catch (const sol::error&) {
+		// Config load failed — use compiled defaults silently.
+	}
+
+	// Clamp city count to valid range [1, 20]
+	if (cityCount < 1) cityCount = 1;
+	if (cityCount > 20) cityCount = 20;
+
+	// Clamp separation to valid range [1, 80]
+	if (separation < 1) separation = 1;
+	if (separation > 80) separation = 80;
+
+	// Provide default name table if none loaded
+	if (nameTable.empty()) {
+		nameTable = {"Hive Primus", "Hive Secundus", "Hive Tertius", "Hive Quartus", "Hive Quintus"};
+	}
+
+	// ── 2. Create deterministic RNG from worldSeed ──
+
+	TCODRandom rng(state.worldSeed, TCOD_RNG_CMWC);
+
+	// ── 3. Place cities using rejection sampling ──
+
+	int failedCities = 0;
+
+	for (int i = 0; i < cityCount; ++i) {
+		bool placed = false;
+
+		for (int attempt = 0; attempt < 100; ++attempt) {
+			int x = rng.getInt(0, WORLD_MAP_WIDTH - 1);
+			int y = rng.getInt(0, WORLD_MAP_HEIGHT - 1);
+
+			// Check biome is WASTELAND or ASH_DESERT
+			BiomeType biome = state.biomes[x + y * WORLD_MAP_WIDTH];
+			if (biome != BiomeType::WASTELAND && biome != BiomeType::ASH_DESERT) {
+				continue;
+			}
+
+			// Check Euclidean distance to all previously placed cities >= separation
+			bool tooClose = false;
+			for (const auto& city : state.cities) {
+				float dx = static_cast<float>(x - city.x);
+				float dy = static_cast<float>(y - city.y);
+				float dist = std::sqrt(dx * dx + dy * dy);
+				if (dist < static_cast<float>(separation)) {
+					tooClose = true;
+					break;
+				}
+			}
+			if (tooClose) {
+				continue;
+			}
+
+			// ── 4. Assign name from Lua table ──
+
+			std::string cityName;
+			int nameIndex = static_cast<int>(state.cities.size());
+			if (nameIndex < static_cast<int>(nameTable.size())) {
+				cityName = nameTable[nameIndex];
+			} else {
+				// Table exhausted: reuse names with numeric suffix
+				int baseIndex = nameIndex % static_cast<int>(nameTable.size());
+				int suffix = (nameIndex / static_cast<int>(nameTable.size())) + 1;
+				cityName = nameTable[baseIndex] + " " + std::to_string(suffix);
+			}
+
+			// Place the city
+			HiveCity city;
+			city.x = x;
+			city.y = y;
+			city.name = cityName;
+			state.cities.push_back(city);
+
+			// Mark biome as HIVE_CITY
+			state.biomes[x + y * WORLD_MAP_WIDTH] = BiomeType::HIVE_CITY;
+
+			placed = true;
+			break;
+		}
+
+		if (!placed) {
+			++failedCities;
+		}
+	}
+
+	// ── 5. Log warning if any cities could not be placed ──
+
+	if (failedCities > 0) {
+		engine.gui->message(Colors::damage,
+			"Warning: could not place # hive cities (separation/biome constraints).",
+			failedCities);
 	}
 }
