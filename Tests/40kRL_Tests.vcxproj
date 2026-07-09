@@ -157,6 +157,7 @@
     <ClCompile Include="..\Source\HitLocation.cpp" />
     <ClCompile Include="..\Source\CriticalEffects.cpp" />
     <ClCompile Include="..\Source\RangedCombat.cpp" />
+    <ClCompile Include="..\Source\WorldMap.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />

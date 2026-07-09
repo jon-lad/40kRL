@@ -64,6 +64,12 @@ void Engine::update()
 		return;
 	}
 
+	// Handle world map state — skip all normal game logic.
+	if (gameStatus == WORLD_MAP) {
+		updateWorldMap();
+		return;
+	}
+
 	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
@@ -982,6 +988,132 @@ void Engine::beginWorldMap()
 	worldMapState->cursorY = worldMapState->playerY;
 
 	gameStatus = WORLD_MAP;
+}
+
+void Engine::updateWorldMap()
+{
+	if (!worldMapState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Exit: ESC key or 'm' key ---
+	if ((inputState.key.key == SDLK_ESCAPE && inputState.key.pressed)
+		|| (inputState.key.c == 'm' && inputState.key.pressed))
+	{
+		worldMapState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Debug seed input: numeric digits followed by Enter (debug mode only) ---
+	static std::string debugSeedBuffer;
+	if (debugMode) {
+		if (inputState.key.pressed && inputState.key.c >= '0' && inputState.key.c <= '9') {
+			// Accumulate digits into the debug seed buffer (max 10 digits for uint32).
+			if (debugSeedBuffer.size() < 10) {
+				debugSeedBuffer += inputState.key.c;
+			}
+			return;
+		}
+
+		if (inputState.key.key == SDLK_RETURN && inputState.key.pressed) {
+			if (!debugSeedBuffer.empty()) {
+				try {
+					uint32_t newSeed = static_cast<uint32_t>(std::stoul(debugSeedBuffer));
+					worldMapState->worldSeed = newSeed;
+					worldMapState->generated = false;
+					worldMapState->cities.clear();
+					worldMapState->biomes.clear();
+
+					sol::state lua;
+					lua.open_libraries(sol::lib::base, sol::lib::math);
+					try { lua.script_file("Scripts/Config.lua"); } catch (...) {}
+					generateWorldMapTerrain(*worldMapState, lua);
+					placeHiveCities(*worldMapState, lua);
+					worldMapState->generated = true;
+					worldSeed = newSeed;
+
+					gui->message(Colors::uiText, "World map regenerated with seed #.", newSeed);
+				} catch (...) {
+					// Non-numeric or overflow — ignore gracefully.
+				}
+				debugSeedBuffer.clear();
+				return;
+			}
+			// If buffer was empty, fall through to normal Enter handling below.
+		}
+	} else {
+		// Clear debug buffer when debug mode is off.
+		debugSeedBuffer.clear();
+	}
+
+	// --- Fast travel: Enter/Return key ---
+	if (inputState.key.key == SDLK_RETURN && inputState.key.pressed) {
+		BiomeType biome = worldMapState->biomes[
+			worldMapState->cursorX + worldMapState->cursorY * WORLD_MAP_WIDTH];
+		if (biome == BiomeType::HIVE_CITY) {
+			// Check if already at this location.
+			if (worldMapState->cursorX == worldMapState->playerX &&
+				worldMapState->cursorY == worldMapState->playerY) {
+				gui->message(Colors::uiText, "Already at this location.");
+			} else {
+				// Fast travel will be fully implemented in task 8.1.
+				// For now, display a placeholder message with the city name.
+				for (const auto& city : worldMapState->cities) {
+					if (city.x == worldMapState->cursorX && city.y == worldMapState->cursorY) {
+						gui->message(Colors::uiText, "Travelling to #...", city.name);
+						break;
+					}
+				}
+			}
+		} else {
+			gui->message(Colors::uiText, "No destination available.");
+		}
+		return;
+	}
+
+	// --- Cursor movement: arrow keys and vi-keys ---
+	int dx = 0, dy = 0;
+
+	// Arrow keys (pressed state is implicit — SDL fires key events on press).
+	switch (inputState.key.key) {
+		case SDLK_UP:    dy = -1; break;
+		case SDLK_DOWN:  dy =  1; break;
+		case SDLK_LEFT:  dx = -1; break;
+		case SDLK_RIGHT: dx =  1; break;
+		default: break;
+	}
+
+	// Vi-keys (only if arrow keys didn't match).
+	if (dx == 0 && dy == 0 && inputState.key.pressed) {
+		switch (inputState.key.c) {
+			case 'h': dx = -1;          break; // left
+			case 'j':          dy =  1; break; // down
+			case 'k':          dy = -1; break; // up
+			case 'l': dx =  1;          break; // right (not look mode here)
+			case 'y': dx = -1; dy = -1; break; // up-left
+			case 'u': dx =  1; dy = -1; break; // up-right
+			case 'b': dx = -1; dy =  1; break; // down-left
+			case 'n': dx =  1; dy =  1; break; // down-right
+			default: break;
+		}
+	}
+
+	if (dx != 0 || dy != 0) {
+		int newX = worldMapState->cursorX + dx;
+		int newY = worldMapState->cursorY + dy;
+
+		// Clamp to map bounds; out-of-bounds moves leave cursor in place (req 4.3).
+		if (newX >= 0 && newX < WORLD_MAP_WIDTH &&
+			newY >= 0 && newY < WORLD_MAP_HEIGHT) {
+			worldMapState->cursorX = newX;
+			worldMapState->cursorY = newY;
+		}
+	}
+
+	// No turn advancement, no AI updates.
 }
 
 void Engine::sendToBack(Actor* actor)
