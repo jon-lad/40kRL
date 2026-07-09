@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <optional>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -61,6 +62,11 @@ struct WfcConfig {
 // algorithm, and outputs a fully-resolved 2D grid of tile assignments.
 class WfcGenerator {
 public:
+	// Internal state for a single generation attempt (public for property-based testing)
+	struct Cell {
+		std::vector<int> domain; // indices into tileset.tiles
+	};
+
 	// Run WFC algorithm. Returns resolved grid or failure indicator.
 	// rngSeed: deterministic seed for generation
 	// tileset: pre-validated tileset with adjacency rules
@@ -72,6 +78,19 @@ public:
 	// (four-directional) and walkable count >= minWalkableCells. Exposed for testing.
 	static bool checkConnectivity(const std::vector<int>& grid, int width, int height,
 	                              const WfcTileset& tileset, int minWalkableCells);
+
+	// Select lowest-entropy cell (fewest domain options). Ties broken by RNG.
+	// Exposed for property-based testing.
+	static int selectLowestEntropy(const std::vector<Cell>& cells, std::mt19937& rng);
+
+	// Collapse a cell: weighted random selection from its domain.
+	// Exposed for property-based testing.
+	static int collapseCell(Cell& cell, const WfcTileset& tileset, std::mt19937& rng);
+
+	// Propagate constraints from a collapsed cell. Returns false on contradiction.
+	// Exposed for property-based testing.
+	static bool propagate(std::vector<Cell>& cells, int startIdx,
+	                      int width, int height, const WfcTileset& tileset);
 };
 
 // Callback type for logging warnings/errors during tileset and config loading.
