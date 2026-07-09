@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <sol/sol.hpp>
 #include "main.h"
+#include "WfcGenerator.h"
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
 
@@ -448,6 +449,16 @@ void Map::save(TCODZip& zip)
 			zip.putInt(static_cast<int>(t));
 		}
 	}
+
+	// WFC tile data — only for WFC levels
+	if (levelType == LevelType::WFC) {
+		static constexpr int WFC_SENTINEL = 0x57464347; // "WFCG"
+		zip.putInt(WFC_SENTINEL);
+		zip.putInt(static_cast<int>(wfcTileset ? wfcTileset->tiles.size() : 0));
+		for (int i = 0; i < width * height; ++i) {
+			zip.putInt(wfcTileIds[i]);
+		}
+	}
 }
 
 void Map::load(TCODZip& zip)
@@ -485,6 +496,60 @@ void Map::load(TCODZip& zip)
 		}
 	}
 	// If sentinel not present: old format, terrain was already regenerated from seed via init().
+
+	// WFC tile data restoration
+	if (levelType == LevelType::WFC) {
+		static constexpr int WFC_SENTINEL = 0x57464347;
+		int maybeSentinel = zip.getInt();
+		if (maybeSentinel == WFC_SENTINEL) {
+			int storedTileCount = zip.getInt();
+
+			// Reload tileset from Lua
+			LogCallback logger = [](const std::string& msg) {
+				engine.gui->message(Colors::damage, msg);
+			};
+			WfcTileset loadedTileset = loadWfcTileset("Scripts/WfcTiles.lua", logger);
+
+			if (loadedTileset.isValid() && static_cast<int>(loadedTileset.tiles.size()) == storedTileCount) {
+				// Tile counts match — load saved tile IDs
+				wfcTileIds.resize(width * height);
+				for (int i = 0; i < width * height; ++i) {
+					wfcTileIds[i] = zip.getInt();
+				}
+				wfcTileset = std::make_shared<WfcTileset>(std::move(loadedTileset));
+
+				// Reapply walkability/transparency from tile definitions
+				for (int y = 0; y < height; ++y) {
+					for (int x = 0; x < width; ++x) {
+						int idx = x + y * width;
+						const WfcTile& tile = wfcTileset->tiles[wfcTileIds[idx]];
+						map->setProperties(x, y, tile.transparent, tile.walkable);
+					}
+				}
+			} else {
+				// Tile count mismatch or invalid tileset — consume stored data and regenerate
+				for (int i = 0; i < width * height; ++i) { zip.getInt(); }
+
+				engine.gui->message(Colors::damage, "WFC tileset changed since save — regenerating level.");
+				// Regenerate from stored seed
+				WfcConfig config = loadWfcConfig("Scripts/Config.lua", logger);
+				config.gridWidth = width;
+				config.gridHeight = height;
+				WfcResult result = WfcGenerator::generate(seed, loadedTileset.isValid() ? loadedTileset : WfcTileset{}, config);
+				if (result.success) {
+					wfcTileIds = std::move(result.grid);
+					wfcTileset = std::make_shared<WfcTileset>(std::move(loadedTileset));
+					for (int y2 = 0; y2 < height; ++y2) {
+						for (int x2 = 0; x2 < width; ++x2) {
+							int idx2 = x2 + y2 * width;
+							const WfcTile& t = wfcTileset->tiles[wfcTileIds[idx2]];
+							map->setProperties(x2, y2, t.transparent, t.walkable);
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 // ─── Actor ───────────────────────────────────────────────────────────────────

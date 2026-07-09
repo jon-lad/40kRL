@@ -167,6 +167,7 @@
     <ClCompile Include="Source\CriticalEffects.cpp" />
     <ClCompile Include="Source\RangedCombat.cpp" />
     <ClCompile Include="Source\WorldMap.cpp" />
+    <ClCompile Include="Source\WfcGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -194,6 +195,7 @@
     <ClInclude Include="Headers\CriticalEffects.h" />
     <ClInclude Include="Headers\RangedCombat.h" />
     <ClInclude Include="Headers\WorldMap.h" />
+    <ClInclude Include="Headers\WfcGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

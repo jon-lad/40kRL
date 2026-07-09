@@ -135,6 +135,7 @@
     <ClCompile Include="test_ranged_serialization.cpp" />
     <ClCompile Include="test_ranged_pipeline.cpp" />
     <ClCompile Include="test_decoration_render_priority.cpp" />
+    <ClCompile Include="test_wfc_generator.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -158,6 +159,7 @@
     <ClCompile Include="..\Source\CriticalEffects.cpp" />
     <ClCompile Include="..\Source\RangedCombat.cpp" />
     <ClCompile Include="..\Source\WorldMap.cpp" />
+    <ClCompile Include="..\Source\WfcGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -179,6 +181,7 @@
     <ClInclude Include="..\Headers\HitLocation.h" />
     <ClInclude Include="..\Headers\CriticalEffects.h" />
     <ClInclude Include="..\Headers\RangedCombat.h" />
+    <ClInclude Include="..\Headers\WfcGenerator.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />

@@ -50,6 +50,15 @@ config = {
     worldMapCitySeparation   = 15,
     worldMapCityNames        = {"Hive Primus", "Hive Secundus", "Hive Tertius", "Hive Quartus", "Hive Quintus"},
 
+    -- WFC hive city generation parameters
+    wfcMaxRestarts         = 10,
+    wfcMinWalkablePercent  = 0.20,
+    wfcMinStairDistance    = 20,
+    wfcMinMonsters         = 8,
+    wfcMaxMonsters         = 16,
+    wfcMinItems            = 3,
+    wfcMaxItems            = 7,
+
     -- Carrying capacity (max total weight the player can carry; 0 = unlimited)
     carryingCapacity = 50.0,
 
