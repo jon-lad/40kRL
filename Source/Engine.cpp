@@ -1059,13 +1059,80 @@ void Engine::updateWorldMap()
 				worldMapState->cursorY == worldMapState->playerY) {
 				gui->message(Colors::uiText, "Already at this location.");
 			} else {
-				// Fast travel will be fully implemented in task 8.1.
-				// For now, display a placeholder message with the city name.
+				// Find the destination city.
+				const HiveCity* destCity = nullptr;
 				for (const auto& city : worldMapState->cities) {
 					if (city.x == worldMapState->cursorX && city.y == worldMapState->cursorY) {
-						gui->message(Colors::uiText, "Travelling to #...", city.name);
+						destCity = &city;
 						break;
 					}
+				}
+
+				if (destCity) {
+					// Display travel message.
+					gui->message(Colors::uiText, "Travelling to #...", destCity->name);
+
+					// ─── Phase 1: Cache current dungeon level ─────────────────────
+					{
+						std::vector<char> snapshot = serializeCurrentLevel();
+						levelCache.store(dungeonLevel, std::move(snapshot));
+					}
+
+					// ─── Phase 2: Update world map player position ────────────────
+					worldMapState->playerX = destCity->x;
+					worldMapState->playerY = destCity->y;
+
+					// ─── Phase 3: Clear actors (except player), reset map/stairs ──
+					map.reset();
+					for (auto i = actors.begin(); i != actors.end(); ) {
+						i = (i->get() != player) ? actors.erase(i) : std::next(i);
+					}
+					stairsUp = nullptr;
+					stairsDown = nullptr;
+
+					// ─── Phase 4: Generate fresh BSP level at destination ─────────
+					// Keep dungeonLevel the same (lateral travel, not vertical).
+
+					// Create stairs for the new level.
+					const bool needsUp   = (dungeonLevel > 0);
+					const bool needsDown = (dungeonLevel < 20);
+
+					if (needsUp) {
+						auto newUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
+						stairsUp = newUp.get();
+						newUp->blocks = false;
+						newUp->fovOnly = false;
+						actors.emplace_front(std::move(newUp));
+					}
+					if (needsDown) {
+						auto newDown = std::make_unique<Actor>(0, 0, '>', "stairs down", Colors::white);
+						stairsDown = newDown.get();
+						newDown->blocks = false;
+						newDown->fovOnly = false;
+						actors.emplace_front(std::move(newDown));
+					}
+
+					// Generate BSP level (placeholder until WFC hive generator).
+					map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
+					map->init(true, LevelType::BSP);
+
+					// ─── Phase 5: Place player at stairsUp (or fallback) ──────────
+					if (stairsUp) {
+						player->setX(stairsUp->getX());
+						player->setY(stairsUp->getY());
+					} else if (stairsDown) {
+						player->setX(stairsDown->getX());
+						player->setY(stairsDown->getY());
+					} else {
+						player->setX(1);
+						player->setY(1);
+					}
+
+					// ─── Phase 6: Update camera, trigger FOV recompute ───────────
+					camera->mapWidth  = map->getWidth();
+					camera->mapHeight = map->getHeight();
+					camera->update(player, false);
+					gameStatus = STARTUP;
 				}
 			}
 		} else {
