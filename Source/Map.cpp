@@ -168,9 +168,152 @@ void Map::initWfc(bool withActors)
 	}
 }
 
+void Map::renderWfc() const
+{
+	if (!wfcTileset || wfcTileIds.empty()) return;
+
+	for (int x = 0; x < width; ++x) {
+		for (int y = 0; y < height; ++y) {
+			auto [screenX, screenY] = engine.camera->apply(x, y);
+			int tileIdx = wfcTileIds[x + y * width];
+			const WfcTile& tile = wfcTileset->tiles[tileIdx];
+			TCODColor color = Colors::colorFromName(tile.colorName);
+
+			if (isInFOV(x, y)) {
+				renderPutChar(TCODConsole::root->get_data(), screenX, screenY, tile.glyph, {color.r, color.g, color.b});
+			} else if (isExplored(x, y)) {
+				// Dim colour for explored-but-not-visible
+				TCODColor dim(color.r / 2, color.g / 2, color.b / 2);
+				renderPutChar(TCODConsole::root->get_data(), screenX, screenY, tile.glyph, {dim.r, dim.g, dim.b});
+			}
+		}
+	}
+}
+
 void Map::placeWfcActors()
 {
-	// Stub — full implementation in task 10.1
+	// ── 1. Load config for monster/item counts and stair distance ──
+	WfcConfig config = loadWfcConfig("Scripts/Config.lua", [](const std::string&) {});
+
+	// ── 2. Collect all walkable cell positions ──
+	std::vector<std::pair<int, int>> walkable;
+	walkable.reserve(width * height / 4); // rough estimate
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			if (!isWall(x, y)) {
+				walkable.emplace_back(x, y);
+			}
+		}
+	}
+	if (walkable.empty()) return;
+
+	// ── 3. Place player on a random walkable cell ──
+	int playerIdx = rng->getInt(0, static_cast<int>(walkable.size()) - 1);
+	auto [playerX, playerY] = walkable[playerIdx];
+	engine.player->setX(playerX);
+	engine.player->setY(playerY);
+
+	// ── 4. Place stairs up and stairs down at least minStairDistance apart ──
+	//       Both must be distinct from player position.
+	static constexpr int MAX_PLACEMENT_ATTEMPTS = 200;
+	const float minDist = static_cast<float>(config.minStairDistance);
+
+	// Place stairsUp: any walkable cell distinct from player
+	if (engine.stairsUp) {
+		for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; ++attempt) {
+			int idx = rng->getInt(0, static_cast<int>(walkable.size()) - 1);
+			auto [sx, sy] = walkable[idx];
+			if (sx == playerX && sy == playerY) continue;
+			engine.stairsUp->setX(sx);
+			engine.stairsUp->setY(sy);
+			break;
+		}
+	}
+
+	// Place stairsDown: walkable cell distinct from player AND at least minStairDistance from stairsUp
+	if (engine.stairsDown) {
+		int stairsUpX = engine.stairsUp ? engine.stairsUp->getX() : -1;
+		int stairsUpY = engine.stairsUp ? engine.stairsUp->getY() : -1;
+
+		bool placed = false;
+		for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; ++attempt) {
+			int idx = rng->getInt(0, static_cast<int>(walkable.size()) - 1);
+			auto [sx, sy] = walkable[idx];
+			if (sx == playerX && sy == playerY) continue;
+			if (sx == stairsUpX && sy == stairsUpY) continue;
+
+			// Check distance from stairsUp
+			float dx = static_cast<float>(sx - stairsUpX);
+			float dy = static_cast<float>(sy - stairsUpY);
+			float dist = std::sqrt(dx * dx + dy * dy);
+			if (dist >= minDist) {
+				engine.stairsDown->setX(sx);
+				engine.stairsDown->setY(sy);
+				placed = true;
+				break;
+			}
+		}
+		// Fallback: furthest walkable cell from stairsUp
+		if (!placed) {
+			float bestDist = 0.0f;
+			int bestIdx = 0;
+			for (int i = 0; i < static_cast<int>(walkable.size()); ++i) {
+				auto [wx, wy] = walkable[i];
+				if (wx == playerX && wy == playerY) continue;
+				if (wx == stairsUpX && wy == stairsUpY) continue;
+				float dx = static_cast<float>(wx - stairsUpX);
+				float dy = static_cast<float>(wy - stairsUpY);
+				float dist = std::sqrt(dx * dx + dy * dy);
+				if (dist > bestDist) {
+					bestDist = dist;
+					bestIdx = i;
+				}
+			}
+			auto [bx, by] = walkable[bestIdx];
+			engine.stairsDown->setX(bx);
+			engine.stairsDown->setY(by);
+		}
+	}
+
+	// ── 5. Spawn monsters — exclude cells within 5-cell radius of player ──
+	std::vector<std::pair<int, int>> monsterCandidates;
+	for (const auto& [wx, wy] : walkable) {
+		float dx = static_cast<float>(wx - playerX);
+		float dy = static_cast<float>(wy - playerY);
+		float dist = std::sqrt(dx * dx + dy * dy);
+		if (dist > 5.0f) {
+			monsterCandidates.emplace_back(wx, wy);
+		}
+	}
+
+	int monsterCount = rng->getInt(config.minMonsters, config.maxMonsters);
+	for (int m = 0; m < monsterCount; ++m) {
+		if (monsterCandidates.empty()) break;
+		for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; ++attempt) {
+			int idx = rng->getInt(0, static_cast<int>(monsterCandidates.size()) - 1);
+			auto [mx, my] = monsterCandidates[idx];
+			if (canWalk(mx, my)) {
+				addMonster(mx, my);
+				break;
+			}
+		}
+	}
+
+	// ── 6. Spawn items on random unoccupied walkable cells ──
+	int itemCount = rng->getInt(config.minItems, config.maxItems);
+	for (int i = 0; i < itemCount; ++i) {
+		for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; ++attempt) {
+			int idx = rng->getInt(0, static_cast<int>(walkable.size()) - 1);
+			auto [ix, iy] = walkable[idx];
+			if (canWalk(ix, iy)) {
+				addItem(ix, iy);
+				break;
+			}
+		}
+	}
+
+	// ── 7. Place decorations across the entire map ──
+	addDecorations(0, 0, width - 1, height - 1);
 }
 
 void Map::initOutdoor(bool withActors)
@@ -626,6 +769,11 @@ static void renderWallTile(int screenX, int screenY, int worldX, int worldY,
 
 void Map::render() const
 {
+	if (levelType == LevelType::WFC) {
+		renderWfc();
+		return;
+	}
+
 	if (levelType == LevelType::OUTDOOR) {
 		renderOutdoor();
 		return;
