@@ -40,6 +40,8 @@ namespace Colors {
     constexpr TCODColor lightBlue{63, 63, 255};      // generic light blue (if needed)
     constexpr TCODColor orange{255, 127, 0};         // generic orange (if needed)
     constexpr TCODColor cyan{0, 255, 255};           // generic cyan (if needed)
+    constexpr TCODColor brown{150, 100, 50};         // hab-unit / rusty metal tones
+    constexpr TCODColor gold{255, 215, 0};           // chapel / ornamental trim
 
     // ─── Legacy aliases (for incremental migration; remove once all
     //     call sites use game-themed names above) ────────────────────────
@@ -75,6 +77,8 @@ namespace Colors {
         if (name == "red")              return damage;
         if (name == "darkRed")          return darkRed;
         if (name == "cyan")             return cyan;
+        if (name == "brown")            return brown;
+        if (name == "gold")             return gold;
         return black;
     }
 }
