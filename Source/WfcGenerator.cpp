@@ -187,18 +187,61 @@ bool WfcGenerator::propagate(std::vector<Cell>& cells, int startIdx,
 }
 
 // ---------------------------------------------------------------------------
-// WfcGenerator::checkConnectivity (stub — real implementation in task 3.1)
+// WfcGenerator::checkConnectivity
 // ---------------------------------------------------------------------------
 
 bool WfcGenerator::checkConnectivity(const std::vector<int>& grid, int width, int height,
                                      const WfcTileset& tileset, int minWalkableCells) {
-	// Stub: always returns true. Task 3.1 will replace with flood-fill implementation.
-	(void)grid;
-	(void)width;
-	(void)height;
-	(void)tileset;
-	(void)minWalkableCells;
-	return true;
+	int totalCells = width * height;
+
+	// Find total walkable cells and the first walkable cell (left-to-right, top-to-bottom)
+	int totalWalkable = 0;
+	int startIdx = -1;
+	for (int i = 0; i < totalCells; ++i) {
+		if (tileset.tiles[grid[i]].walkable) {
+			totalWalkable++;
+			if (startIdx == -1) startIdx = i;
+		}
+	}
+
+	// Check minimum walkable threshold
+	if (totalWalkable < minWalkableCells) return false;
+
+	// If no walkable cells at all, fail
+	if (startIdx == -1) return false;
+
+	// BFS from startIdx using four-directional adjacency
+	std::vector<bool> visited(totalCells, false);
+	std::queue<int> bfsQueue;
+	bfsQueue.push(startIdx);
+	visited[startIdx] = true;
+	int reachedCount = 0;
+
+	while (!bfsQueue.empty()) {
+		int idx = bfsQueue.front();
+		bfsQueue.pop();
+		reachedCount++;
+
+		int x = idx % width;
+		int y = idx / width;
+
+		// Check 4 cardinal neighbours (N, S, E, W)
+		const int dx[] = {0, 0, 1, -1};
+		const int dy[] = {-1, 1, 0, 0};
+		for (int d = 0; d < 4; d++) {
+			int nx = x + dx[d];
+			int ny = y + dy[d];
+			if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+			int nIdx = nx + ny * width;
+			if (!visited[nIdx] && tileset.tiles[grid[nIdx]].walkable) {
+				visited[nIdx] = true;
+				bfsQueue.push(nIdx);
+			}
+		}
+	}
+
+	// All walkable cells must be reachable from the start (single connected component)
+	return (reachedCount == totalWalkable);
 }
 
 // ---------------------------------------------------------------------------
