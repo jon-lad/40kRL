@@ -5,10 +5,14 @@
 #include <vector>
 #include <memory>
 
+// Forward declaration — full definition in Headers/WfcGenerator.h (created by task 1.1)
+struct WfcTileset;
+
 // Identifies the generation algorithm used for a map level.
 enum class LevelType : int {
 	BSP     = 0, // Binary Space Partitioning (rooms + corridors)
-	OUTDOOR = 1  // Perlin-noise open terrain (ground, trees, water)
+	OUTDOOR = 1, // Perlin-noise open terrain (ground, trees, water)
+	WFC     = 2  // Wave Function Collapse (hive city interiors)
 };
 
 // Terrain classification for outdoor tiles, derived from Perlin noise thresholds.
@@ -41,6 +45,13 @@ private:
 	void placeOutdoorActors();
 	void addOutdoorDecorations();
 	std::vector<std::pair<int,int>> findLargestGroundRegion() const;
+
+	// WFC generation, rendering, and actor placement.
+	std::vector<int> wfcTileIds;                  // resolved tile index per cell
+	std::shared_ptr<WfcTileset> wfcTileset;       // cached tileset for rendering
+	void initWfc(bool withActors);
+	void renderWfc() const;
+	void placeWfcActors();
 
 	// BSP generation extracted from init for dispatch clarity.
 	void initBsp(bool withActors);

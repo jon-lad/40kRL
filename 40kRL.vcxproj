@@ -194,6 +194,7 @@
     <ClInclude Include="Headers\CriticalEffects.h" />
     <ClInclude Include="Headers\RangedCombat.h" />
     <ClInclude Include="Headers\WorldMap.h" />
+    <ClInclude Include="Headers\WfcGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

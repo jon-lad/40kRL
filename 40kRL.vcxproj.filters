@@ -122,6 +122,9 @@
     <ClInclude Include="Headers\WorldMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Headers\WfcGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png">
