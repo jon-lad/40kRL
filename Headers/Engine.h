@@ -6,6 +6,7 @@
 #include "Equippable.h"
 #include "LevelCache.h"
 #include "TargetingContext.h"
+#include "WorldMap.h"
 
 // Rarity tier for equipment items — used for weighted random selection during enemy spawning.
 enum class ItemTier { COMMON, UNCOMMON, RARE };
@@ -87,7 +88,8 @@ public:
 		INVENTORY,  // inventory menu is open
 		PICKUP_MENU, // pickup selection menu is open
 		LOOK,        // look-mode cursor active
-		CHARACTER_SHEET // character sheet overlay is open
+		CHARACTER_SHEET, // character sheet overlay is open
+		WORLD_MAP       // world map overlay is open
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -120,6 +122,9 @@ public:
 	std::optional<PickupMenuState> pickupMenuState; // active only during PICKUP_MENU state
 	std::optional<LookState> lookState; // active only during LOOK state
 	std::optional<CharacterSheetState> characterSheetState; // active only during CHARACTER_SHEET state
+	std::optional<WorldMapState> worldMapState; // active only during WORLD_MAP state
+
+	uint32_t worldSeed = 0; // deterministic seed for world map generation, set during init()
 
 	Engine(int screenWidth, int screenHeight);
 
@@ -185,6 +190,15 @@ public:
 
 	// Renders character sheet overlay. Called from render() when CHARACTER_SHEET.
 	void renderCharacterSheet();
+
+	// Enters world map display mode. Called when player presses 'm' in IDLE state.
+	void beginWorldMap();
+
+	// Processes one frame of world map input. Called from update() when WORLD_MAP.
+	void updateWorldMap();
+
+	// Renders world map overlay. Called from render() when WORLD_MAP.
+	void renderWorldMap();
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);

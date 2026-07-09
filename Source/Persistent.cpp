@@ -1,6 +1,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <sol/sol.hpp>
 #include "main.h"
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
@@ -102,6 +103,21 @@ bool Engine::deserializeLevel(const std::vector<char>& snapshot)
 		return false;
 	}
 
+	// Move decoration actors (no ai, no destructible, no attacker) to the front
+	// so they render beneath gameplay actors. emplace_front during load reverses
+	// the serialized order, so decorations (which were at the front pre-save) end
+	// up at the back post-load without this pass.
+	for (auto it = actors.begin(); it != actors.end(); ) {
+		Actor* actor = it->get();
+		if (actor != player && !actor->ai && !actor->destructible && !actor->attacker) {
+			auto node = std::move(*it);
+			it = actors.erase(it);
+			actors.push_front(std::move(node));
+		} else {
+			++it;
+		}
+	}
+
 	// Order dead actors behind living actors using sendToBack().
 	for (auto it = actors.begin(); it != actors.end(); ++it) {
 		Actor* actor = it->get();
@@ -180,6 +196,30 @@ void Engine::save()
 	static constexpr int LEVEL_CACHE_SENTINEL = 0x4C564C43; // "LVLC"
 	zip.putInt(LEVEL_CACHE_SENTINEL);
 	levelCache.save(zip);
+
+	// World map save section — sentinel 0x574D ('WM') indicates presence.
+	static constexpr int WORLD_MAP_SENTINEL = 0x574D;
+	zip.putInt(WORLD_MAP_SENTINEL);
+	zip.putInt(static_cast<int>(worldSeed));
+
+	// Player world-map position (persist even if worldMapState is not active).
+	int wmPlayerX = worldMapState ? worldMapState->playerX : 0;
+	int wmPlayerY = worldMapState ? worldMapState->playerY : 0;
+	zip.putInt(wmPlayerX);
+	zip.putInt(wmPlayerY);
+
+	// City data — persist from worldMapState if available, else write empty.
+	if (worldMapState && worldMapState->generated) {
+		int cityCount = static_cast<int>(worldMapState->cities.size());
+		zip.putInt(cityCount);
+		for (const auto& city : worldMapState->cities) {
+			zip.putInt(city.x);
+			zip.putInt(city.y);
+			zip.putString(city.name.c_str());
+		}
+	} else {
+		zip.putInt(0); // no cities to save
+	}
 
 	zip.saveToFile("game.sav");
 }
@@ -271,6 +311,20 @@ void Engine::load()
 		actors.emplace_front(std::move(actor));
 	}
 
+	// Move decoration actors (no ai, no destructible, no attacker) to the front
+	// so they render beneath gameplay actors. emplace_front during load reverses
+	// the serialized order, so decorations need to be repositioned.
+	for (auto it = actors.begin(); it != actors.end(); ) {
+		Actor* actor = it->get();
+		if (actor != player && !actor->ai && !actor->destructible && !actor->attacker) {
+			auto node = std::move(*it);
+			it = actors.erase(it);
+			actors.push_front(std::move(node));
+		} else {
+			++it;
+		}
+	}
+
 	gui->load(zip);
 
 	// dungeonLevel appended at end of save stream; old saves yield 0 (archive exhausted).
@@ -289,6 +343,82 @@ void Engine::load()
 
 	// Note: The active level is saved separately in the main save format above,
 	// so it won't be present in the cache. No removal needed.
+
+	// ─── World Map Deserialization ───────────────────────────────────────────────
+	static constexpr int WORLD_MAP_SENTINEL = 0x574D;
+	int wmMarker = zip.getInt();  // returns 0 if archive exhausted
+
+	if (wmMarker == WORLD_MAP_SENTINEL) {
+		// Saved world map data found — restore it.
+		worldSeed = static_cast<uint32_t>(zip.getInt());
+		int wmPlayerX = zip.getInt();
+		int wmPlayerY = zip.getInt();
+		int cityCount = zip.getInt();
+
+		if (cityCount >= 0 && cityCount <= 20) {
+			// Valid city count — read city data, then regenerate terrain from seed.
+			WorldMapState state;
+			state.worldSeed = worldSeed;
+			state.playerX = wmPlayerX;
+			state.playerY = wmPlayerY;
+
+			for (int i = 0; i < cityCount; ++i) {
+				HiveCity city;
+				city.x = zip.getInt();
+				city.y = zip.getInt();
+				const char* name = zip.getString();
+				city.name = name ? name : "";
+				state.cities.push_back(city);
+			}
+
+			// Regenerate terrain from seed (deterministic).
+			sol::state lua;
+			lua.open_libraries(sol::lib::base, sol::lib::math);
+			try { lua.script_file("Scripts/Config.lua"); } catch (...) {}
+			generateWorldMapTerrain(state, lua);
+
+			// Re-mark city tiles in the biome array.
+			for (const auto& city : state.cities) {
+				state.biomes[city.x + city.y * WORLD_MAP_WIDTH] = BiomeType::HIVE_CITY;
+			}
+			state.generated = true;
+			worldMapState = state;
+		} else {
+			// Invalid city count — discard and regenerate fresh.
+			gui->message(Colors::damage, "Warning: world map data corrupted, regenerating.");
+			worldSeed = static_cast<uint32_t>(dungeonLevel * 7919 + 42);
+			WorldMapState state;
+			state.worldSeed = worldSeed;
+			sol::state lua;
+			lua.open_libraries(sol::lib::base, sol::lib::math);
+			try { lua.script_file("Scripts/Config.lua"); } catch (...) {}
+			generateWorldMapTerrain(state, lua);
+			placeHiveCities(state, lua);
+			if (!state.cities.empty()) {
+				state.playerX = state.cities[0].x;
+				state.playerY = state.cities[0].y;
+			}
+			state.generated = true;
+			worldMapState = state;
+		}
+	} else {
+		// Pre-world-map save file — generate fresh world map.
+		worldSeed = static_cast<uint32_t>(dungeonLevel * 7919 + 42);
+		WorldMapState state;
+		state.worldSeed = worldSeed;
+		sol::state lua;
+		lua.open_libraries(sol::lib::base, sol::lib::math);
+		try { lua.script_file("Scripts/Config.lua"); } catch (...) {}
+		generateWorldMapTerrain(state, lua);
+		placeHiveCities(state, lua);
+		if (!state.cities.empty()) {
+			state.playerX = state.cities[0].x;
+			state.playerY = state.cities[0].y;
+		}
+		state.generated = true;
+		worldMapState = state;
+		gui->message(Colors::uiText, "A new world map has been generated.");
+	}
 
 	gameStatus = STARTUP; // force FOV recomputation on the first frame
 }

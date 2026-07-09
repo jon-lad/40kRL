@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <list>
 #include <memory>
 #include <sstream>
@@ -60,6 +61,12 @@ void Engine::update()
 	// Handle character sheet state — skip all normal game logic.
 	if (gameStatus == CHARACTER_SHEET) {
 		updateCharacterSheet();
+		return;
+	}
+
+	// Handle world map state — skip all normal game logic.
+	if (gameStatus == WORLD_MAP) {
+		updateWorldMap();
 		return;
 	}
 
@@ -127,6 +134,11 @@ void Engine::render()
 	// Render character sheet overlay when in CHARACTER_SHEET state.
 	if (gameStatus == CHARACTER_SHEET) {
 		renderCharacterSheet();
+	}
+
+	// Render world map overlay when in WORLD_MAP state.
+	if (gameStatus == WORLD_MAP) {
+		renderWorldMap();
 	}
 }
 
@@ -830,6 +842,356 @@ void Engine::renderCharacterSheet()
 		screenHeight / 2 - SHEET_HEIGHT / 2);
 }
 
+void Engine::renderWorldMap()
+{
+	if (!worldMapState) return;
+
+	static constexpr int WORLD_MAP_OVERLAY_W = 80;
+	static constexpr int WORLD_MAP_OVERLAY_H = 50;
+	static TCODConsole wmConsole(WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H);
+
+	// Clear the console before drawing.
+	wmConsole.clear();
+
+	// Draw box-drawing border with centred "World Map" title.
+	wmConsole.setDefaultForeground(Colors::menuFrame);
+	wmConsole.printFrame(0, 0, WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H, true, TCOD_BKGND_DEFAULT, "World Map");
+
+	// Interior dimensions: 78 wide (cols 1-78), 48 tall (rows 1-48).
+	static constexpr int INTERIOR_W = 78;
+	static constexpr int INTERIOR_H = 48;
+
+	// Viewport scrolling: keep cursor centred, clamp to map bounds.
+	int viewX = worldMapState->cursorX - INTERIOR_W / 2;
+	int viewY = worldMapState->cursorY - INTERIOR_H / 2;
+	if (viewX < 0) viewX = 0;
+	if (viewX > WORLD_MAP_WIDTH - INTERIOR_W) viewX = WORLD_MAP_WIDTH - INTERIOR_W;
+	if (viewY < 0) viewY = 0;
+	if (viewY > WORLD_MAP_HEIGHT - INTERIOR_H) viewY = WORLD_MAP_HEIGHT - INTERIOR_H;
+
+	// Cursor highlight background colour (dark blue, distinct from all biome backgrounds).
+	const TCOD_ColorRGB cursorBg = {0, 0, 180};
+
+	// Render each visible tile.
+	for (int sy = 0; sy < INTERIOR_H; ++sy) {
+		for (int sx = 0; sx < INTERIOR_W; ++sx) {
+			int worldX = sx + viewX;
+			int worldY = sy + viewY;
+
+			// Screen position within the overlay console (offset by 1 for border).
+			int screenX = sx + 1;
+			int screenY = sy + 1;
+
+			BiomeType biome = worldMapState->biomes[worldX + worldY * WORLD_MAP_WIDTH];
+
+			// Determine glyph and foreground colour based on biome.
+			int glyph = '.';
+			TCOD_ColorRGB fg = {180, 150, 80};
+
+			switch (biome) {
+				case BiomeType::TOXIC_SWAMP:
+					glyph = '~';
+					fg = {0, 180, 0};
+					break;
+				case BiomeType::DEAD_FOREST:
+					glyph = 0x06; // spade glyph
+					fg = {80, 80, 80};
+					break;
+				case BiomeType::ASH_DESERT:
+					glyph = '.';
+					fg = {180, 150, 80};
+					break;
+				case BiomeType::WASTELAND:
+					glyph = ',';
+					fg = {140, 100, 40};
+					break;
+				case BiomeType::HIVE_CITY:
+					glyph = '#';
+					fg = {255, 255, 255};
+					break;
+			}
+
+			// Player position takes precedence over biome glyph.
+			if (worldX == worldMapState->playerX && worldY == worldMapState->playerY) {
+				glyph = '@';
+				fg = {255, 255, 255};
+			}
+
+			// Render the tile. If cursor is on this tile, use cursor background.
+			if (worldX == worldMapState->cursorX && worldY == worldMapState->cursorY) {
+				renderPutCharBg(wmConsole.get_data(), screenX, screenY, glyph, fg, cursorBg);
+			} else {
+				renderPutChar(wmConsole.get_data(), screenX, screenY, glyph, fg);
+			}
+		}
+	}
+
+	// Status line on bottom border row (row 49): biome name + city name for tile under cursor.
+	BiomeType cursorBiome = worldMapState->biomes[
+		worldMapState->cursorX + worldMapState->cursorY * WORLD_MAP_WIDTH];
+
+	std::string biomeName;
+	switch (cursorBiome) {
+		case BiomeType::TOXIC_SWAMP: biomeName = "Toxic Swamp"; break;
+		case BiomeType::DEAD_FOREST: biomeName = "Dead Forest"; break;
+		case BiomeType::ASH_DESERT:  biomeName = "Ash Desert";  break;
+		case BiomeType::WASTELAND:   biomeName = "Wasteland";   break;
+		case BiomeType::HIVE_CITY:   biomeName = "Hive City";   break;
+	}
+
+	// If cursor is on a hive city, append the city name.
+	std::string statusText = biomeName;
+	if (cursorBiome == BiomeType::HIVE_CITY) {
+		for (const auto& city : worldMapState->cities) {
+			if (city.x == worldMapState->cursorX && city.y == worldMapState->cursorY) {
+				statusText += " - " + city.name;
+				break;
+			}
+		}
+	}
+
+	// Render status text on the bottom border row, starting at col 2.
+	wmConsole.setDefaultForeground(Colors::white);
+	wmConsole.printf(2, WORLD_MAP_OVERLAY_H - 1, "%s", statusText.c_str());
+
+	// Debug mode: show world seed on the status line (right-aligned).
+	if (debugMode) {
+		std::string seedStr = "Seed: " + std::to_string(worldMapState->worldSeed);
+		int seedX = WORLD_MAP_OVERLAY_W - static_cast<int>(seedStr.length()) - 2;
+		if (seedX < 2) seedX = 2;
+		wmConsole.setDefaultForeground(Colors::uiText);
+		wmConsole.printf(seedX, WORLD_MAP_OVERLAY_H - 1, "%s", seedStr.c_str());
+	}
+
+	// Blit overlay onto root console at position (0, 0).
+	TCODConsole::blit(&wmConsole, 0, 0, WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H,
+		TCODConsole::root, 0, 0);
+}
+
+void Engine::beginWorldMap()
+{
+	// Initialize or retrieve existing world map state.
+	if (!worldMapState) {
+		WorldMapState state;
+		state.worldSeed = worldSeed;
+		state.playerX = 0;  // world-map player position (starts at 0,0 until fast-travel used)
+		state.playerY = 0;
+		worldMapState = state;
+	}
+
+	// Generate terrain and cities if not yet done.
+	if (!worldMapState->generated) {
+		worldMapState->worldSeed = worldSeed;
+		// Load Lua state for config
+		sol::state lua;
+		lua.open_libraries(sol::lib::base, sol::lib::math);
+		try { lua.script_file("Scripts/Config.lua"); } catch (...) {}
+
+		generateWorldMapTerrain(*worldMapState, lua);
+		placeHiveCities(*worldMapState, lua);
+		worldMapState->generated = true;
+	}
+
+	// Set cursor to player world-map position.
+	worldMapState->cursorX = worldMapState->playerX;
+	worldMapState->cursorY = worldMapState->playerY;
+
+	gameStatus = WORLD_MAP;
+}
+
+void Engine::updateWorldMap()
+{
+	if (!worldMapState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Exit: ESC key or 'm' key ---
+	if ((inputState.key.key == SDLK_ESCAPE && inputState.key.pressed)
+		|| (inputState.key.c == 'm' && inputState.key.pressed))
+	{
+		worldMapState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Debug seed input: numeric digits followed by Enter (debug mode only) ---
+	static std::string debugSeedBuffer;
+	if (debugMode) {
+		if (inputState.key.pressed && inputState.key.c >= '0' && inputState.key.c <= '9') {
+			// Accumulate digits into the debug seed buffer (max 10 digits for uint32).
+			if (debugSeedBuffer.size() < 10) {
+				debugSeedBuffer += inputState.key.c;
+			}
+			return;
+		}
+
+		if (inputState.key.key == SDLK_RETURN && inputState.key.pressed) {
+			if (!debugSeedBuffer.empty()) {
+				try {
+					uint32_t newSeed = static_cast<uint32_t>(std::stoul(debugSeedBuffer));
+					worldMapState->worldSeed = newSeed;
+					worldMapState->generated = false;
+					worldMapState->cities.clear();
+					worldMapState->biomes.clear();
+
+					sol::state lua;
+					lua.open_libraries(sol::lib::base, sol::lib::math);
+					try { lua.script_file("Scripts/Config.lua"); } catch (...) {}
+					generateWorldMapTerrain(*worldMapState, lua);
+					placeHiveCities(*worldMapState, lua);
+					worldMapState->generated = true;
+					worldSeed = newSeed;
+
+					gui->message(Colors::uiText, "World map regenerated with seed #.", newSeed);
+				} catch (...) {
+					// Non-numeric or overflow — ignore gracefully.
+				}
+				debugSeedBuffer.clear();
+				return;
+			}
+			// If buffer was empty, fall through to normal Enter handling below.
+		}
+	} else {
+		// Clear debug buffer when debug mode is off.
+		debugSeedBuffer.clear();
+	}
+
+	// --- Fast travel: Enter/Return key ---
+	if (inputState.key.key == SDLK_RETURN && inputState.key.pressed) {
+		BiomeType biome = worldMapState->biomes[
+			worldMapState->cursorX + worldMapState->cursorY * WORLD_MAP_WIDTH];
+		if (biome == BiomeType::HIVE_CITY) {
+			// Check if already at this location.
+			if (worldMapState->cursorX == worldMapState->playerX &&
+				worldMapState->cursorY == worldMapState->playerY) {
+				gui->message(Colors::uiText, "Already at this location.");
+			} else {
+				// Find the destination city.
+				const HiveCity* destCity = nullptr;
+				for (const auto& city : worldMapState->cities) {
+					if (city.x == worldMapState->cursorX && city.y == worldMapState->cursorY) {
+						destCity = &city;
+						break;
+					}
+				}
+
+				if (destCity) {
+					// Display travel message.
+					gui->message(Colors::uiText, "Travelling to #...", destCity->name);
+
+					// ─── Phase 1: Cache current dungeon level ─────────────────────
+					{
+						std::vector<char> snapshot = serializeCurrentLevel();
+						levelCache.store(dungeonLevel, std::move(snapshot));
+					}
+
+					// ─── Phase 2: Update world map player position ────────────────
+					worldMapState->playerX = destCity->x;
+					worldMapState->playerY = destCity->y;
+
+					// ─── Phase 3: Clear actors (except player), reset map/stairs ──
+					map.reset();
+					for (auto i = actors.begin(); i != actors.end(); ) {
+						i = (i->get() != player) ? actors.erase(i) : std::next(i);
+					}
+					stairsUp = nullptr;
+					stairsDown = nullptr;
+
+					// ─── Phase 4: Generate fresh BSP level at destination ─────────
+					// Keep dungeonLevel the same (lateral travel, not vertical).
+
+					// Create stairs for the new level.
+					const bool needsUp   = (dungeonLevel > 0);
+					const bool needsDown = (dungeonLevel < 20);
+
+					if (needsUp) {
+						auto newUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
+						stairsUp = newUp.get();
+						newUp->blocks = false;
+						newUp->fovOnly = false;
+						actors.emplace_front(std::move(newUp));
+					}
+					if (needsDown) {
+						auto newDown = std::make_unique<Actor>(0, 0, '>', "stairs down", Colors::white);
+						stairsDown = newDown.get();
+						newDown->blocks = false;
+						newDown->fovOnly = false;
+						actors.emplace_front(std::move(newDown));
+					}
+
+					// Generate BSP level (placeholder until WFC hive generator).
+					map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
+					map->init(true, LevelType::BSP);
+
+					// ─── Phase 5: Place player at stairsUp (or fallback) ──────────
+					if (stairsUp) {
+						player->setX(stairsUp->getX());
+						player->setY(stairsUp->getY());
+					} else if (stairsDown) {
+						player->setX(stairsDown->getX());
+						player->setY(stairsDown->getY());
+					} else {
+						player->setX(1);
+						player->setY(1);
+					}
+
+					// ─── Phase 6: Update camera, trigger FOV recompute ───────────
+					camera->mapWidth  = map->getWidth();
+					camera->mapHeight = map->getHeight();
+					camera->update(player, false);
+					gameStatus = STARTUP;
+				}
+			}
+		} else {
+			gui->message(Colors::uiText, "No destination available.");
+		}
+		return;
+	}
+
+	// --- Cursor movement: arrow keys and vi-keys ---
+	int dx = 0, dy = 0;
+
+	// Arrow keys (pressed state is implicit — SDL fires key events on press).
+	switch (inputState.key.key) {
+		case SDLK_UP:    dy = -1; break;
+		case SDLK_DOWN:  dy =  1; break;
+		case SDLK_LEFT:  dx = -1; break;
+		case SDLK_RIGHT: dx =  1; break;
+		default: break;
+	}
+
+	// Vi-keys (only if arrow keys didn't match).
+	if (dx == 0 && dy == 0 && inputState.key.pressed) {
+		switch (inputState.key.c) {
+			case 'h': dx = -1;          break; // left
+			case 'j':          dy =  1; break; // down
+			case 'k':          dy = -1; break; // up
+			case 'l': dx =  1;          break; // right (not look mode here)
+			case 'y': dx = -1; dy = -1; break; // up-left
+			case 'u': dx =  1; dy = -1; break; // up-right
+			case 'b': dx = -1; dy =  1; break; // down-left
+			case 'n': dx =  1; dy =  1; break; // down-right
+			default: break;
+		}
+	}
+
+	if (dx != 0 || dy != 0) {
+		int newX = worldMapState->cursorX + dx;
+		int newY = worldMapState->cursorY + dy;
+
+		// Clamp to map bounds; out-of-bounds moves leave cursor in place (req 4.3).
+		if (newX >= 0 && newX < WORLD_MAP_WIDTH &&
+			newY >= 0 && newY < WORLD_MAP_HEIGHT) {
+			worldMapState->cursorX = newX;
+			worldMapState->cursorY = newY;
+		}
+	}
+
+	// No turn advancement, no AI updates.
+}
+
 void Engine::sendToBack(Actor* actor)
 {
 	for (auto i = actors.begin(); i != actors.end(); ++i) {
@@ -1227,6 +1589,14 @@ void Engine::init()
 	camera->update(player, false);
 
 	gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
+
+	// Generate world seed from system clock for deterministic world map generation.
+	worldSeed = static_cast<uint32_t>(
+		std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::system_clock::now().time_since_epoch()
+		).count()
+	);
+
 	gameStatus = STARTUP;
 }
 

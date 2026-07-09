@@ -178,6 +178,10 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		engine.beginCharacterSheet();
 		return;
 
+	case 'm': // open world map
+		engine.beginWorldMap();
+		return;
+
 	case '<': // ascend stairs
 		if (engine.stairsUp
 			&& engine.stairsUp->getX() == owner->getX()

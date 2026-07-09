@@ -134,6 +134,7 @@
     <ClCompile Include="test_ranged_input.cpp" />
     <ClCompile Include="test_ranged_serialization.cpp" />
     <ClCompile Include="test_ranged_pipeline.cpp" />
+    <ClCompile Include="test_decoration_render_priority.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -156,6 +157,7 @@
     <ClCompile Include="..\Source\HitLocation.cpp" />
     <ClCompile Include="..\Source\CriticalEffects.cpp" />
     <ClCompile Include="..\Source\RangedCombat.cpp" />
+    <ClCompile Include="..\Source\WorldMap.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
