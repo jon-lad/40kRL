@@ -129,6 +129,11 @@ void Engine::render()
 	if (gameStatus == CHARACTER_SHEET) {
 		renderCharacterSheet();
 	}
+
+	// Render world map overlay when in WORLD_MAP state.
+	if (gameStatus == WORLD_MAP) {
+		renderWorldMap();
+	}
 }
 
 void Engine::nextLevel(StairDirection direction)
@@ -829,6 +834,154 @@ void Engine::renderCharacterSheet()
 		TCODConsole::root,
 		screenWidth  / 2 - SHEET_WIDTH  / 2,
 		screenHeight / 2 - SHEET_HEIGHT / 2);
+}
+
+void Engine::renderWorldMap()
+{
+	if (!worldMapState) return;
+
+	static constexpr int WORLD_MAP_OVERLAY_W = 80;
+	static constexpr int WORLD_MAP_OVERLAY_H = 50;
+	static TCODConsole wmConsole(WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H);
+
+	// Clear the console before drawing.
+	wmConsole.clear();
+
+	// Draw box-drawing border with centred "World Map" title.
+	wmConsole.setDefaultForeground(Colors::menuFrame);
+	wmConsole.printFrame(0, 0, WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H, true, TCOD_BKGND_DEFAULT, "World Map");
+
+	// Interior dimensions: 78 wide (cols 1-78), 48 tall (rows 1-48).
+	static constexpr int INTERIOR_W = 78;
+	static constexpr int INTERIOR_H = 48;
+
+	// Viewport scrolling: keep cursor centred, clamp to map bounds.
+	int viewX = worldMapState->cursorX - INTERIOR_W / 2;
+	int viewY = worldMapState->cursorY - INTERIOR_H / 2;
+	if (viewX < 0) viewX = 0;
+	if (viewX > WORLD_MAP_WIDTH - INTERIOR_W) viewX = WORLD_MAP_WIDTH - INTERIOR_W;
+	if (viewY < 0) viewY = 0;
+	if (viewY > WORLD_MAP_HEIGHT - INTERIOR_H) viewY = WORLD_MAP_HEIGHT - INTERIOR_H;
+
+	// Cursor highlight background colour (dark blue, distinct from all biome backgrounds).
+	const TCOD_ColorRGB cursorBg = {0, 0, 180};
+
+	// Render each visible tile.
+	for (int sy = 0; sy < INTERIOR_H; ++sy) {
+		for (int sx = 0; sx < INTERIOR_W; ++sx) {
+			int worldX = sx + viewX;
+			int worldY = sy + viewY;
+
+			// Screen position within the overlay console (offset by 1 for border).
+			int screenX = sx + 1;
+			int screenY = sy + 1;
+
+			BiomeType biome = worldMapState->biomes[worldX + worldY * WORLD_MAP_WIDTH];
+
+			// Determine glyph and foreground colour based on biome.
+			int glyph = '.';
+			TCOD_ColorRGB fg = {180, 150, 80};
+
+			switch (biome) {
+				case BiomeType::TOXIC_SWAMP:
+					glyph = '~';
+					fg = {0, 180, 0};
+					break;
+				case BiomeType::DEAD_FOREST:
+					glyph = 0x06; // spade glyph
+					fg = {80, 80, 80};
+					break;
+				case BiomeType::ASH_DESERT:
+					glyph = '.';
+					fg = {180, 150, 80};
+					break;
+				case BiomeType::WASTELAND:
+					glyph = ',';
+					fg = {140, 100, 40};
+					break;
+				case BiomeType::HIVE_CITY:
+					glyph = '#';
+					fg = {255, 255, 255};
+					break;
+			}
+
+			// Player position takes precedence over biome glyph.
+			if (worldX == worldMapState->playerX && worldY == worldMapState->playerY) {
+				glyph = '@';
+				fg = {255, 255, 255};
+			}
+
+			// Render the tile. If cursor is on this tile, use cursor background.
+			if (worldX == worldMapState->cursorX && worldY == worldMapState->cursorY) {
+				renderPutCharBg(wmConsole.get_data(), screenX, screenY, glyph, fg, cursorBg);
+			} else {
+				renderPutChar(wmConsole.get_data(), screenX, screenY, glyph, fg);
+			}
+		}
+	}
+
+	// Status line on bottom border row (row 49): biome name + city name for tile under cursor.
+	BiomeType cursorBiome = worldMapState->biomes[
+		worldMapState->cursorX + worldMapState->cursorY * WORLD_MAP_WIDTH];
+
+	std::string biomeName;
+	switch (cursorBiome) {
+		case BiomeType::TOXIC_SWAMP: biomeName = "Toxic Swamp"; break;
+		case BiomeType::DEAD_FOREST: biomeName = "Dead Forest"; break;
+		case BiomeType::ASH_DESERT:  biomeName = "Ash Desert";  break;
+		case BiomeType::WASTELAND:   biomeName = "Wasteland";   break;
+		case BiomeType::HIVE_CITY:   biomeName = "Hive City";   break;
+	}
+
+	// If cursor is on a hive city, append the city name.
+	std::string statusText = biomeName;
+	if (cursorBiome == BiomeType::HIVE_CITY) {
+		for (const auto& city : worldMapState->cities) {
+			if (city.x == worldMapState->cursorX && city.y == worldMapState->cursorY) {
+				statusText += " - " + city.name;
+				break;
+			}
+		}
+	}
+
+	// Render status text on the bottom border row, starting at col 2.
+	wmConsole.setDefaultForeground(Colors::white);
+	wmConsole.printf(2, WORLD_MAP_OVERLAY_H - 1, "%s", statusText.c_str());
+
+	// Blit overlay onto root console at position (0, 0).
+	TCODConsole::blit(&wmConsole, 0, 0, WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H,
+		TCODConsole::root, 0, 0);
+}
+
+void Engine::beginWorldMap()
+{
+	// Initialize or retrieve existing world map state.
+	if (!worldMapState) {
+		WorldMapState state;
+		state.worldSeed = worldSeed;
+		state.playerX = 0;  // world-map player position (starts at 0,0 until fast-travel used)
+		state.playerY = 0;
+		worldMapState = state;
+	}
+
+	// Generate terrain and cities if not yet done.
+	if (!worldMapState->generated) {
+		worldMapState->worldSeed = worldSeed;
+		// Load Lua state for config
+		sol::state lua;
+		lua.open_libraries(sol::lib::base, sol::lib::math);
+		try { lua.script_file("Scripts/Config.lua"); } catch (...) {}
+
+		generateWorldMapTerrain(*worldMapState, lua);
+		placeHiveCities(*worldMapState, lua);
+		worldMapState->generated = true;
+	}
+
+	// Set cursor to player world-map position.
+	worldMapState->cursorX = worldMapState->playerX;
+	worldMapState->cursorY = worldMapState->playerY;
+
+	gameStatus = WORLD_MAP;
 }
 
 void Engine::sendToBack(Actor* actor)
