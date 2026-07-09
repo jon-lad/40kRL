@@ -568,3 +568,65 @@ WfcTileset loadWfcTileset(const std::string& filepath, LogCallback logger) {
 
 	return tileset;
 }
+
+
+// ---------------------------------------------------------------------------
+// loadWfcConfig — Load WFC config parameters from Config.lua
+// ---------------------------------------------------------------------------
+
+WfcConfig loadWfcConfig(const std::string& filepath, LogCallback logger) {
+	WfcConfig config;
+
+	sol::state lua;
+	lua.open_libraries(sol::lib::base);
+
+	try {
+		lua.script_file(filepath);
+	} catch (const sol::error&) {
+		// Config load failed — use compiled defaults silently.
+		return config;
+	}
+
+	sol::table cfg = lua["config"];
+	if (!cfg.valid()) {
+		return config; // No config table — use defaults
+	}
+
+	// Read values with defaults
+	config.maxRestarts = cfg.get_or("wfcMaxRestarts", config.maxRestarts);
+	config.minWalkablePercent = cfg.get_or("wfcMinWalkablePercent", config.minWalkablePercent);
+	config.minStairDistance = cfg.get_or("wfcMinStairDistance", config.minStairDistance);
+	config.minMonsters = cfg.get_or("wfcMinMonsters", config.minMonsters);
+	config.maxMonsters = cfg.get_or("wfcMaxMonsters", config.maxMonsters);
+	config.minItems = cfg.get_or("wfcMinItems", config.minItems);
+	config.maxItems = cfg.get_or("wfcMaxItems", config.maxItems);
+
+	// Read optional seed override
+	sol::optional<long> seedOpt = cfg["wfcSeed"];
+	if (seedOpt.has_value()) {
+		config.seedOverride = seedOpt.value();
+	}
+
+	// Clamp maxRestarts to minimum 1
+	if (config.maxRestarts < 1) {
+		config.maxRestarts = 1;
+		if (logger) {
+			logger("Config.lua: wfcMaxRestarts clamped to minimum 1.");
+		}
+	}
+
+	// Clamp minWalkablePercent to [0.05, 0.95]
+	if (config.minWalkablePercent < 0.05f) {
+		config.minWalkablePercent = 0.05f;
+		if (logger) {
+			logger("Config.lua: wfcMinWalkablePercent clamped to minimum 0.05.");
+		}
+	} else if (config.minWalkablePercent > 0.95f) {
+		config.minWalkablePercent = 0.95f;
+		if (logger) {
+			logger("Config.lua: wfcMinWalkablePercent clamped to maximum 0.95.");
+		}
+	}
+
+	return config;
+}

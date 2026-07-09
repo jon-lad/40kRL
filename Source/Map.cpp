@@ -7,6 +7,7 @@
 #include <sstream>
 #include <sol/sol.hpp>
 #include "main.h"
+#include "WfcGenerator.h"
 
 static constexpr int ROOM_MAX_SIZE     = 12;
 static constexpr int ROOM_MIN_SIZE     = 6;
@@ -78,7 +79,9 @@ void Map::init(bool withActors, LevelType type)
 	map   = std::make_unique<TCODMap>(width, height);
 	levelType = type;
 
-	if (type == LevelType::OUTDOOR) {
+	if (type == LevelType::WFC) {
+		initWfc(withActors);
+	} else if (type == LevelType::OUTDOOR) {
 		initOutdoor(withActors);
 	} else {
 		initBsp(withActors);
@@ -92,6 +95,82 @@ void Map::initBsp(bool withActors)
 
 	BspListener listener(*this);
 	bsp.traverseInvertedLevelOrder(&listener, reinterpret_cast<void*>(withActors));
+}
+
+// ─── WFC Generation ──────────────────────────────────────────────────────────
+
+void Map::initWfc(bool withActors)
+{
+	// Logger callback that forwards messages to the GUI
+	LogCallback logger = [](const std::string& msg) {
+		engine.gui->message(Colors::damage, msg);
+	};
+
+	// ── 1. Load tileset ──
+	WfcTileset loadedTileset = loadWfcTileset("Scripts/WfcTiles.lua", logger);
+	if (!loadedTileset.isValid()) {
+		// Fewer than 5 tiles — fall back to BSP
+		engine.gui->message(Colors::damage,
+			"WFC tileset invalid (fewer than 5 tiles). Falling back to BSP.");
+		levelType = LevelType::BSP;
+		initBsp(withActors);
+		return;
+	}
+
+	// ── 2. Load config ──
+	WfcConfig config = loadWfcConfig("Scripts/Config.lua", logger);
+	config.gridWidth = width;
+	config.gridHeight = height;
+
+	// Apply seed override from config if present
+	long wfcSeed = seed;
+	if (config.seedOverride.has_value()) {
+		wfcSeed = config.seedOverride.value();
+	}
+
+	// ── 3. Run WFC generation ──
+	WfcResult result = WfcGenerator::generate(wfcSeed, loadedTileset, config);
+
+	if (!result.success) {
+		// All restarts exhausted — fall back to BSP
+		engine.gui->message(Colors::damage,
+			"WFC generation failed after # restarts. Falling back to BSP.",
+			std::to_string(result.attemptsUsed));
+		levelType = LevelType::BSP;
+		initBsp(withActors);
+		return;
+	}
+
+	// ── 4. Store results ──
+	wfcTileIds = std::move(result.grid);
+	wfcTileset = std::make_shared<WfcTileset>(std::move(loadedTileset));
+
+	// ── 5. Set TCODMap walkability/transparency from resolved tiles ──
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			int idx = x + y * width;
+			const WfcTile& tile = wfcTileset->tiles[wfcTileIds[idx]];
+			map->setProperties(x, y, tile.transparent, tile.walkable);
+		}
+	}
+
+	// ── 6. Debug logging ──
+	if (engine.debugMode) {
+		engine.gui->message(Colors::lightGrey,
+			"WFC: seed=#, attempts=#",
+			std::to_string(result.seedUsed),
+			std::to_string(result.attemptsUsed));
+	}
+
+	// ── 7. Place actors ──
+	if (withActors) {
+		placeWfcActors();
+	}
+}
+
+void Map::placeWfcActors()
+{
+	// Stub — full implementation in task 10.1
 }
 
 void Map::initOutdoor(bool withActors)
