@@ -55,6 +55,10 @@ struct WfcConfig {
 	int gridWidth = 160;
 	int gridHeight = 86;
 	std::optional<long> seedOverride; // from Config.lua wfcSeed
+	int minMonsters = 8;
+	int maxMonsters = 16;
+	int minItems = 3;
+	int maxItems = 7;
 };
 
 // Standalone WFC level generator. No dependency on Map, Engine, or libtcod.
