@@ -158,6 +158,7 @@
     <ClCompile Include="..\Source\CriticalEffects.cpp" />
     <ClCompile Include="..\Source\RangedCombat.cpp" />
     <ClCompile Include="..\Source\WorldMap.cpp" />
+    <ClCompile Include="..\Source\WfcGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -179,6 +180,7 @@
     <ClInclude Include="..\Headers\HitLocation.h" />
     <ClInclude Include="..\Headers\CriticalEffects.h" />
     <ClInclude Include="..\Headers\RangedCombat.h" />
+    <ClInclude Include="..\Headers\WfcGenerator.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
