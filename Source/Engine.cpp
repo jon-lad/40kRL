@@ -954,6 +954,15 @@ void Engine::renderWorldMap()
 	wmConsole.setDefaultForeground(Colors::white);
 	wmConsole.printf(2, WORLD_MAP_OVERLAY_H - 1, "%s", statusText.c_str());
 
+	// Debug mode: show world seed on the status line (right-aligned).
+	if (debugMode) {
+		std::string seedStr = "Seed: " + std::to_string(worldMapState->worldSeed);
+		int seedX = WORLD_MAP_OVERLAY_W - static_cast<int>(seedStr.length()) - 2;
+		if (seedX < 2) seedX = 2;
+		wmConsole.setDefaultForeground(Colors::uiText);
+		wmConsole.printf(seedX, WORLD_MAP_OVERLAY_H - 1, "%s", seedStr.c_str());
+	}
+
 	// Blit overlay onto root console at position (0, 0).
 	TCODConsole::blit(&wmConsole, 0, 0, WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H,
 		TCODConsole::root, 0, 0);
