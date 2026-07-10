@@ -75,6 +75,12 @@ struct LookState {
 // Stores state for the character sheet overlay.
 struct CharacterSheetState {};
 
+// Stores state for the in-game advance purchase overlay.
+struct AdvancesState {
+	int selectedIndex = 0;       // cursor position in the advance list
+	std::string statusMessage;   // purchase feedback message
+};
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -91,6 +97,7 @@ public:
 		PICKUP_MENU, // pickup selection menu is open
 		LOOK,        // look-mode cursor active
 		CHARACTER_SHEET, // character sheet overlay is open
+		ADVANCES,        // advance purchase overlay is open
 		WORLD_MAP,      // world map overlay is open
 		CHARACTER_GEN   // character generation overlay is active
 	} gameStatus;
@@ -129,6 +136,7 @@ public:
 	std::optional<PickupMenuState> pickupMenuState; // active only during PICKUP_MENU state
 	std::optional<LookState> lookState; // active only during LOOK state
 	std::optional<CharacterSheetState> characterSheetState; // active only during CHARACTER_SHEET state
+	std::optional<AdvancesState> advancesState; // active only during ADVANCES state
 	std::optional<WorldMapState> worldMapState; // active only during WORLD_MAP state
 	std::optional<CharGenState> charGenState; // active only during CHARACTER_GEN state
 
@@ -198,6 +206,15 @@ public:
 
 	// Renders character sheet overlay. Called from render() when CHARACTER_SHEET.
 	void renderCharacterSheet();
+
+	// Enters advance purchase mode. Called when player presses 'x' in IDLE state.
+	void beginAdvances();
+
+	// Processes one frame of advance purchase input. Called from update() when ADVANCES.
+	void updateAdvances();
+
+	// Renders advance purchase overlay. Called from render() when ADVANCES.
+	void renderAdvances();
 
 	// Enters character generation mode. Called when starting a new game.
 	void beginCharGen();

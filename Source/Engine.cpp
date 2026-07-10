@@ -71,6 +71,12 @@ void Engine::update()
 		return;
 	}
 
+	// Handle advance purchase state — skip all normal game logic.
+	if (gameStatus == ADVANCES) {
+		updateAdvances();
+		return;
+	}
+
 	// Handle world map state — skip all normal game logic.
 	if (gameStatus == WORLD_MAP) {
 		updateWorldMap();
@@ -141,6 +147,11 @@ void Engine::render()
 	// Render character sheet overlay when in CHARACTER_SHEET state.
 	if (gameStatus == CHARACTER_SHEET) {
 		renderCharacterSheet();
+	}
+
+	// Render advance purchase overlay when in ADVANCES state.
+	if (gameStatus == ADVANCES) {
+		renderAdvances();
 	}
 
 	// Render world map overlay when in WORLD_MAP state.
@@ -855,6 +866,219 @@ void Engine::renderCharacterSheet()
 		TCODConsole::root,
 		screenWidth  / 2 - SHEET_WIDTH  / 2,
 		screenHeight / 2 - SHEET_HEIGHT / 2);
+}
+
+void Engine::beginAdvances()
+{
+	if (!player || !player->career) {
+		gui->message(Colors::uiText, "No career progression available.");
+		return;
+	}
+	advancesState = AdvancesState{};
+	gameStatus = ADVANCES;
+}
+
+void Engine::updateAdvances()
+{
+	if (!advancesState) {
+		gameStatus = IDLE;
+		return;
+	}
+
+	if (!inputState.key.pressed) return;
+
+	// --- Exit: ESC key or 'x' key ---
+	if (inputState.key.key == SDLK_ESCAPE || inputState.key.c == 'x') {
+		advancesState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// Find the player's career template
+	if (!player || !player->career || !player->characteristics) {
+		advancesState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	auto& career = *player->career;
+	const CareerTemplate* careerTpl = nullptr;
+	for (const auto& tpl : careerTemplates) {
+		if (tpl.name == career.careerName) {
+			careerTpl = &tpl;
+			break;
+		}
+	}
+	if (!careerTpl || careerTpl->ranks.empty()) {
+		advancesState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// Find the current rank's advances
+	const RankDefinition* currentRankDef = nullptr;
+	for (const auto& rank : careerTpl->ranks) {
+		if (rank.rankNumber == career.currentRank) {
+			currentRankDef = &rank;
+			break;
+		}
+	}
+	if (!currentRankDef || currentRankDef->advances.empty()) {
+		advancesState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	const auto& advances = currentRankDef->advances;
+	int maxIdx = static_cast<int>(advances.size()) - 1;
+
+	// Clear status message on any new input
+	advancesState->statusMessage.clear();
+
+	if (inputState.key.key == SDLK_UP) {
+		advancesState->selectedIndex--;
+		if (advancesState->selectedIndex < 0)
+			advancesState->selectedIndex = maxIdx;
+	} else if (inputState.key.key == SDLK_DOWN) {
+		advancesState->selectedIndex++;
+		if (advancesState->selectedIndex > maxIdx)
+			advancesState->selectedIndex = 0;
+	} else if (inputState.key.key == SDLK_RETURN) {
+		// Attempt to purchase the selected advance
+		const auto& adv = advances[advancesState->selectedIndex];
+
+		if (!career.canPurchase(adv)) {
+			// Determine rejection reason
+			if (career.availableXp() < adv.cost) {
+				advancesState->statusMessage = "Insufficient XP!";
+			} else if (adv.type == AdvanceEntry::Type::SKILL) {
+				advancesState->statusMessage = "Skill at maximum rank!";
+			} else if (adv.type == AdvanceEntry::Type::TALENT) {
+				advancesState->statusMessage = "Talent already acquired!";
+			}
+		} else {
+			// Purchase the advance
+			int oldRank = career.currentRank;
+			career.purchase(adv, *player->characteristics);
+
+			// Evaluate rank-up
+			career.evaluateRankUp(*careerTpl);
+
+			if (career.currentRank > oldRank) {
+				gui->message(Colors::surfaceMsg, "Rank Up! You are now Rank %d.", career.currentRank);
+				// Reset cursor since the advance list may change for the new rank
+				advancesState->selectedIndex = 0;
+			}
+
+			advancesState->statusMessage = "Purchased: " + adv.name;
+		}
+	}
+}
+
+void Engine::renderAdvances()
+{
+	if (!advancesState || !player || !player->career) return;
+
+	static constexpr int ADV_WIDTH  = 60;
+	static constexpr int ADV_HEIGHT = 30;
+	static TCODConsole advConsole(ADV_WIDTH, ADV_HEIGHT);
+
+	advConsole.clear();
+	advConsole.setDefaultForeground(Colors::menuFrame);
+	advConsole.printFrame(0, 0, ADV_WIDTH, ADV_HEIGHT, true, TCOD_BKGND_DEFAULT, "xp advances");
+
+	auto& career = *player->career;
+
+	// Find the career template
+	const CareerTemplate* careerTpl = nullptr;
+	for (const auto& tpl : careerTemplates) {
+		if (tpl.name == career.careerName) {
+			careerTpl = &tpl;
+			break;
+		}
+	}
+	if (!careerTpl || careerTpl->ranks.empty()) {
+		advConsole.setDefaultForeground(Colors::damage);
+		advConsole.printf(2, 2, "No career template found.");
+		TCODConsole::blit(&advConsole, 0, 0, ADV_WIDTH, ADV_HEIGHT,
+			TCODConsole::root,
+			screenWidth  / 2 - ADV_WIDTH  / 2,
+			screenHeight / 2 - ADV_HEIGHT / 2);
+		return;
+	}
+
+	// Find the current rank
+	const RankDefinition* currentRankDef = nullptr;
+	for (const auto& rank : careerTpl->ranks) {
+		if (rank.rankNumber == career.currentRank) {
+			currentRankDef = &rank;
+			break;
+		}
+	}
+	if (!currentRankDef) {
+		advConsole.setDefaultForeground(Colors::damage);
+		advConsole.printf(2, 2, "No advances available for current rank.");
+		TCODConsole::blit(&advConsole, 0, 0, ADV_WIDTH, ADV_HEIGHT,
+			TCODConsole::root,
+			screenWidth  / 2 - ADV_WIDTH  / 2,
+			screenHeight / 2 - ADV_HEIGHT / 2);
+		return;
+	}
+
+	// Title and XP info
+	advConsole.setDefaultForeground(Colors::white);
+	advConsole.printf(2, 2, "%s - Rank %d: %s",
+		career.careerName.c_str(), career.currentRank, currentRankDef->rankTitle.c_str());
+
+	advConsole.setDefaultForeground(Colors::white);
+	advConsole.printf(2, 4, "Available XP: %d / %d", career.availableXp(), career.xpPool);
+
+	const auto& advances = currentRankDef->advances;
+
+	// Render advance list
+	int listY = 6;
+	for (int i = 0; i < static_cast<int>(advances.size()); i++) {
+		if (listY >= ADV_HEIGHT - 5) break;
+
+		const auto& adv = advances[i];
+
+		// Determine type label
+		const char* typeLabel = "";
+		if (adv.type == AdvanceEntry::Type::CHARACTERISTIC) typeLabel = "[Char]  ";
+		else if (adv.type == AdvanceEntry::Type::SKILL)     typeLabel = "[Skill] ";
+		else if (adv.type == AdvanceEntry::Type::TALENT)    typeLabel = "[Talent]";
+
+		// Determine if this advance can be purchased
+		bool canBuy = career.canPurchase(adv);
+
+		// Set colour based on selection and purchasability
+		if (i == advancesState->selectedIndex) {
+			advConsole.setDefaultForeground(canBuy ? Colors::uiHighlight : Colors::damageLight);
+			advConsole.printf(2, listY, "> %s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+		} else {
+			advConsole.setDefaultForeground(canBuy ? Colors::uiText : Colors::damageDark);
+			advConsole.printf(2, listY, "  %s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+		}
+		listY++;
+	}
+
+	// Status message (purchase result feedback)
+	if (!advancesState->statusMessage.empty()) {
+		bool isRejection = (advancesState->statusMessage.find("Insufficient") != std::string::npos
+		                 || advancesState->statusMessage.find("maximum") != std::string::npos
+		                 || advancesState->statusMessage.find("already") != std::string::npos);
+		advConsole.setDefaultForeground(isRejection ? Colors::damage : Colors::surfaceMsg);
+		advConsole.printf(2, ADV_HEIGHT - 4, "%s", advancesState->statusMessage.c_str());
+	}
+
+	// Navigation hint
+	advConsole.setDefaultForeground(Colors::uiText);
+	advConsole.printf(2, ADV_HEIGHT - 2, "[Up/Down] Navigate  [Enter] Purchase  [Esc/x] Close");
+
+	TCODConsole::blit(&advConsole, 0, 0, ADV_WIDTH, ADV_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - ADV_WIDTH  / 2,
+		screenHeight / 2 - ADV_HEIGHT / 2);
 }
 
 void Engine::renderWorldMap()

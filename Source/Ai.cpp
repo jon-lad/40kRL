@@ -143,6 +143,10 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		engine.beginWorldMap();
 		return;
 
+	case 'x': // open advance purchase overlay
+		engine.beginAdvances();
+		return;
+
 	case '<': // ascend stairs
 		if (engine.stairsUp
 			&& engine.stairsUp->getX() == owner->getX()
