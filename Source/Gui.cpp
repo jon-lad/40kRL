@@ -23,6 +23,16 @@ void Gui::render()
 		engine.player->destructible->maxHp,
 		Colors::damageLight, Colors::damageDark);
 
+	// XP bar: show Available / Pool and current rank
+	if (engine.player->career) {
+		hudConsole->setDefaultForeground(Colors::uiText);
+		std::stringstream xpLabel;
+		xpLabel << "XP: " << engine.player->career->availableXp()
+		        << " / " << engine.player->career->xpPool
+		        << "  Rank " << engine.player->career->currentRank;
+		hudConsole->printf(1, 5, xpLabel.str().c_str());
+	}
+
 
 
 	// Draw the message log — oldest messages are dim, newest are bright.

@@ -105,6 +105,41 @@ void MonsterDestructible::die(Actor* owner)
 	ss << owner->name << " is dead! You gain " << xp << " xp.";
 	engine.gui->message(Colors::uiText, ss.str());
 	engine.player->destructible->xp += xp;
+
+	// Add XP to career progression pool and evaluate rank-up.
+	if (engine.player->career) {
+		engine.player->career->xpPool += xp;
+
+		// Find the matching career template for rank evaluation.
+		const CareerTemplate* careerTpl = nullptr;
+		for (const auto& ct : engine.careerTemplates) {
+			if (ct.name == engine.player->career->careerName) {
+				careerTpl = &ct;
+				break;
+			}
+		}
+
+		if (careerTpl) {
+			int oldRank = engine.player->career->currentRank;
+			engine.player->career->evaluateRankUp(*careerTpl);
+			int newRank = engine.player->career->currentRank;
+
+			if (newRank > oldRank) {
+				// Find the rank title for the new rank.
+				std::string rankTitle;
+				for (const auto& rd : careerTpl->ranks) {
+					if (rd.rankNumber == newRank) {
+						rankTitle = rd.rankTitle;
+						break;
+					}
+				}
+				engine.gui->message(Colors::yellow,
+					"You have advanced to Rank #: #!",
+					newRank, rankTitle);
+			}
+		}
+	}
+
 	Destructible::die(owner);
 }
 
