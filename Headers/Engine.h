@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "Equippable.h"
+#include "CharacterData.h"
 #include "LevelCache.h"
 #include "TargetingContext.h"
 #include "WorldMap.h"
@@ -116,6 +117,10 @@ public:
 
 	std::vector<EquipmentTemplate> equipmentTemplates; // loaded from Equipment.lua
 	std::vector<DecorationTemplate> decorationTemplates; // loaded from Decorations.lua
+	std::vector<HomeworldTemplate> homeworldTemplates;   // loaded from Homeworlds.lua
+	std::vector<CareerTemplate> careerTemplates;         // loaded from Careers.lua
+	std::vector<SkillDefinition> skillDefinitions;       // loaded from Skills.lua
+	std::vector<TalentDefinition> talentDefinitions;     // loaded from Talents.lua
 
 	std::optional<TargetingContext> targetingCtx;  // active only during TARGETING state
 	std::optional<InventoryState> inventoryState; // active only during INVENTORY state
@@ -211,6 +216,12 @@ public:
 
 	// Creates the player actor, stairs, and initial map for a new game.
 	void init();
+
+	// Lua data loaders — called during init() before player creation.
+	void loadHomeworldTemplates();
+	void loadCareerTemplates();
+	void loadSkillDefinitions();
+	void loadTalentDefinitions();
 
 	// Clears all actors and the map. Called before loading a save file or starting a new game.
 	void term();

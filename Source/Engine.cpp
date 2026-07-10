@@ -1263,6 +1263,255 @@ const EquipmentTemplate* Engine::selectEquipmentByTier(EquipmentSlot slot, const
 	return candidates[pick];
 }
 
+// ─── Lua Data Loaders ────────────────────────────────────────────────────────
+
+void Engine::loadHomeworldTemplates()
+{
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Homeworlds.lua");
+
+		sol::table hwTable = lua["homeworlds"];
+		if (!hwTable.valid()) {
+			gui->message(Colors::damage, "Warning: Homeworlds.lua missing 'homeworlds' table.");
+			return;
+		}
+
+		for (size_t i = 1; i <= hwTable.size(); i++) {
+			sol::table entry = hwTable[i];
+
+			std::string name = entry.get_or("name", std::string(""));
+			if (name.empty()) {
+				gui->message(Colors::damage, "Homeworlds.lua: skipping entry # — missing name.", static_cast<int>(i));
+				continue;
+			}
+
+			HomeworldTemplate tmpl;
+			tmpl.name = name;
+
+			// Parse characteristic modifiers from charMods table
+			// Maps: ws=0, bs=1, s=2, t=3, ag=4, int=5, per=6, wp=7, fel=8
+			tmpl.characteristicMods.fill(0);
+			sol::optional<sol::table> modsTable = entry["charMods"];
+			if (modsTable) {
+				tmpl.characteristicMods[0] = (*modsTable).get_or("ws",  0);
+				tmpl.characteristicMods[1] = (*modsTable).get_or("bs",  0);
+				tmpl.characteristicMods[2] = (*modsTable).get_or("s",   0);
+				tmpl.characteristicMods[3] = (*modsTable).get_or("t",   0);
+				tmpl.characteristicMods[4] = (*modsTable).get_or("ag",  0);
+				tmpl.characteristicMods[5] = (*modsTable).get_or("int", 0);
+				tmpl.characteristicMods[6] = (*modsTable).get_or("per", 0);
+				tmpl.characteristicMods[7] = (*modsTable).get_or("wp",  0);
+				tmpl.characteristicMods[8] = (*modsTable).get_or("fel", 0);
+			}
+
+			// Parse starting skills
+			sol::optional<sol::table> skillsTable = entry["startingSkills"];
+			if (skillsTable) {
+				for (size_t s = 1; s <= (*skillsTable).size(); s++) {
+					sol::optional<std::string> skillName = (*skillsTable)[s];
+					if (skillName) {
+						tmpl.startingSkills.push_back(*skillName);
+					}
+				}
+			}
+
+			// Parse starting traits
+			sol::optional<sol::table> traitsTable = entry["startingTraits"];
+			if (traitsTable) {
+				for (size_t t = 1; t <= (*traitsTable).size(); t++) {
+					sol::optional<std::string> traitName = (*traitsTable)[t];
+					if (traitName) {
+						tmpl.startingTraits.push_back(*traitName);
+					}
+				}
+			}
+
+			homeworldTemplates.push_back(std::move(tmpl));
+		}
+	} catch (const sol::error&) {
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Homeworlds.lua.");
+	}
+}
+
+void Engine::loadCareerTemplates()
+{
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Careers.lua");
+
+		sol::table carTable = lua["careers"];
+		if (!carTable.valid()) {
+			gui->message(Colors::damage, "Warning: Careers.lua missing 'careers' table.");
+			return;
+		}
+
+		for (size_t i = 1; i <= carTable.size(); i++) {
+			sol::table entry = carTable[i];
+
+			std::string name = entry.get_or("name", std::string(""));
+			if (name.empty()) {
+				gui->message(Colors::damage, "Careers.lua: skipping entry # — missing name.", static_cast<int>(i));
+				continue;
+			}
+
+			sol::optional<sol::table> ranksTable = entry["ranks"];
+			if (!ranksTable || (*ranksTable).size() == 0) {
+				gui->message(Colors::damage, "Careers.lua: skipping '#' — no ranks defined.", name);
+				continue;
+			}
+
+			CareerTemplate career;
+			career.name = name;
+
+			bool validCareer = true;
+			for (size_t r = 1; r <= (*ranksTable).size(); r++) {
+				sol::table rankEntry = (*ranksTable)[r];
+
+				sol::optional<int> rankNum = rankEntry["rankNumber"];
+				sol::optional<int> xpThresh = rankEntry["xpThreshold"];
+
+				if (!rankNum || !xpThresh) {
+					gui->message(Colors::damage, "Careers.lua: '#' rank # — missing rankNumber or xpThreshold.", name, static_cast<int>(r));
+					validCareer = false;
+					break;
+				}
+
+				RankDefinition rank;
+				rank.rankNumber = *rankNum;
+				rank.rankTitle = rankEntry.get_or("rankTitle", std::string(""));
+				rank.xpThreshold = *xpThresh;
+
+				// Parse starting skills for this rank
+				sol::optional<sol::table> rSkills = rankEntry["startingSkills"];
+				if (rSkills) {
+					for (size_t s = 1; s <= (*rSkills).size(); s++) {
+						sol::optional<std::string> sName = (*rSkills)[s];
+						if (sName) rank.startingSkills.push_back(*sName);
+					}
+				}
+
+				// Parse starting talents for this rank
+				sol::optional<sol::table> rTalents = rankEntry["startingTalents"];
+				if (rTalents) {
+					for (size_t t = 1; t <= (*rTalents).size(); t++) {
+						sol::optional<std::string> tName = (*rTalents)[t];
+						if (tName) rank.startingTalents.push_back(*tName);
+					}
+				}
+
+				// Parse advances
+				sol::optional<sol::table> advTable = rankEntry["advances"];
+				if (advTable) {
+					for (size_t a = 1; a <= (*advTable).size(); a++) {
+						sol::table advEntry = (*advTable)[a];
+
+						std::string typeStr = advEntry.get_or("type", std::string(""));
+						std::string advName = advEntry.get_or("name", std::string(""));
+						sol::optional<int> advCost = advEntry["cost"];
+
+						if (typeStr.empty() || advName.empty() || !advCost) {
+							gui->message(Colors::damage, "Careers.lua: '#' rank # advance # — missing type, name, or cost.", name, static_cast<int>(r), static_cast<int>(a));
+							continue;
+						}
+
+						AdvanceEntry advance;
+						if (typeStr == "characteristic") {
+							advance.type = AdvanceEntry::Type::CHARACTERISTIC;
+							advance.amount = advEntry.get_or("amount", 5);
+						} else if (typeStr == "skill") {
+							advance.type = AdvanceEntry::Type::SKILL;
+						} else if (typeStr == "talent") {
+							advance.type = AdvanceEntry::Type::TALENT;
+						} else {
+							gui->message(Colors::damage, "Careers.lua: '#' rank # advance # — invalid type '#'.", name, static_cast<int>(r), static_cast<int>(a), typeStr);
+							continue;
+						}
+
+						advance.name = advName;
+						advance.cost = *advCost;
+						rank.advances.push_back(std::move(advance));
+					}
+				}
+
+				career.ranks.push_back(std::move(rank));
+			}
+
+			if (validCareer) {
+				careerTemplates.push_back(std::move(career));
+			}
+		}
+	} catch (const sol::error&) {
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Careers.lua.");
+	}
+}
+
+void Engine::loadSkillDefinitions()
+{
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Skills.lua");
+
+		sol::table skillTable = lua["skills"];
+		if (!skillTable.valid()) {
+			gui->message(Colors::damage, "Warning: Skills.lua missing 'skills' table.");
+			return;
+		}
+
+		for (size_t i = 1; i <= skillTable.size(); i++) {
+			sol::table entry = skillTable[i];
+
+			std::string name = entry.get_or("name", std::string(""));
+			if (name.empty()) {
+				gui->message(Colors::damage, "Skills.lua: skipping entry # — missing name.", static_cast<int>(i));
+				continue;
+			}
+
+			SkillDefinition def;
+			def.name = name;
+			def.isCombat = entry.get_or("isCombat", false);
+			skillDefinitions.push_back(std::move(def));
+		}
+	} catch (const sol::error&) {
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Skills.lua.");
+	}
+}
+
+void Engine::loadTalentDefinitions()
+{
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Talents.lua");
+
+		sol::table talentTable = lua["talents"];
+		if (!talentTable.valid()) {
+			gui->message(Colors::damage, "Warning: Talents.lua missing 'talents' table.");
+			return;
+		}
+
+		for (size_t i = 1; i <= talentTable.size(); i++) {
+			sol::table entry = talentTable[i];
+
+			std::string name = entry.get_or("name", std::string(""));
+			if (name.empty()) {
+				gui->message(Colors::damage, "Talents.lua: skipping entry # — missing name.", static_cast<int>(i));
+				continue;
+			}
+
+			TalentDefinition def;
+			def.name = name;
+			def.description = entry.get_or("description", std::string(""));
+			talentDefinitions.push_back(std::move(def));
+		}
+	} catch (const sol::error&) {
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Talents.lua.");
+	}
+}
+
 void Engine::init()
 {
 	// Load player class stats from Classes.lua (fall back to hardcoded defaults if missing).
@@ -1309,6 +1558,13 @@ void Engine::init()
 	} catch (const sol::error&) {
 		// Classes.lua missing or malformed — use defaults above.
 	}
+
+	// Load character generation data files (homeworlds, careers, skills, talents).
+	// Must run early — before chargen or player creation.
+	loadHomeworldTemplates();
+	loadCareerTemplates();
+	loadSkillDefinitions();
+	loadTalentDefinitions();
 
 	// Load global config from Config.lua.
 	try {
