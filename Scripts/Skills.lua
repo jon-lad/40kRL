@@ -17,7 +17,25 @@ skills = {
     { name = "Commerce",               isCombat = false },
     { name = "Barter",                 isCombat = false },
 
-    -- Combat skills (referenced by Arch-Militant career path)
+    -- Non-combat skills (added for new homeworlds and careers)
+    { name = "Tech-Use",                          isCombat = false },
+    { name = "Logic",                             isCombat = false },
+    { name = "Charm",                             isCombat = false },
+    { name = "Common Lore (Imperium)",            isCombat = false },
+    { name = "Literacy",                          isCombat = false },
+    { name = "Navigation (Surface)",              isCombat = false },
+    { name = "Medicae",                           isCombat = false },
+    { name = "Chem-Use",                          isCombat = false },
+    { name = "Forbidden Lore (Archeotech)",       isCombat = false },
+    { name = "Security",                          isCombat = false },
+    { name = "Scholastic Lore (Imperial Creed)",  isCombat = false },
+    { name = "Evaluate",                          isCombat = false },
+    { name = "Inquiry",                           isCombat = false },
+    { name = "Blather",                           isCombat = false },
+    { name = "Scrutiny",                          isCombat = false },
+
+    -- Combat skills
     { name = "Dodge",                  isCombat = true },
     { name = "Intimidate",             isCombat = true },
+    { name = "Parry",                  isCombat = true },
 }
