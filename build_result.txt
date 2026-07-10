@@ -1,0 +1,39 @@
+﻿
+  Actor.cpp
+  Ai.cpp
+  Attacker.cpp
+  Container.cpp
+  Destructible.cpp
+  Engine.cpp
+  Gui.cpp
+  InputHandler.cpp
+  main.cpp
+  Map.cpp
+  Persistent.cpp
+  Pickable.cpp
+  Equippable.cpp
+  Equipment.cpp
+  LevelCache.cpp
+  Characteristics.cpp
+  DiceRoller.cpp
+  HitLocation.cpp
+  CriticalEffects.cpp
+  RangedCombat.cpp
+  Generating Code...
+  Compiling...
+  WorldMap.cpp
+  WfcGenerator.cpp
+  CareerProgression.cpp
+  Generating Code...
+  40kRL.vcxproj -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\40kRL.exe
+  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\40kRL.exe: message: deploying dependencies
+  C:\vcpkg\installed\x64-windows\debug\bin\libtcod.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\libtcod.dll skipped, up to date
+  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\libtcod.dll: message: deploying dependencies
+  C:\vcpkg\installed\x64-windows\debug\bin\SDL3.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\SDL3.dll skipped, up to date
+  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\SDL3.dll: message: deploying dependencies
+  C:\vcpkg\installed\x64-windows\debug\bin\zd.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\zd.dll skipped, up to date
+  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\zd.dll: message: deploying dependencies
+  C:\vcpkg\installed\x64-windows\debug\bin\utf8proc.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\utf8proc.dll skipped, up to date
+  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\utf8proc.dll: message: deploying dependencies
+  C:\vcpkg\installed\x64-windows\debug\bin\lua.dll -> C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\lua.dll skipped, up to date
+  C:\Users\jonat\Documents\Projects\40kRL\x64\Debug\lua.dll: message: deploying dependencies

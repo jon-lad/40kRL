@@ -1,8 +1,15 @@
 name: Release Build
 
 on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
+      version:
+        description: 'Release version (overrides tag). Leave empty when triggered by tag push.'
+        required: false
+        type: string
       configuration:
         description: 'Build configuration'
         required: true
@@ -11,6 +18,9 @@ on:
         options:
           - Debug
           - Release
+
+permissions:
+  contents: write
 
 env:
   VCPKG_DEFAULT_TRIPLET: x64-windows
@@ -21,6 +31,22 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - name: Resolve version and configuration
+        shell: bash
+        run: |
+          # Use manual input if provided, otherwise use the tag name
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "RELEASE_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+          # Use manual input if provided, otherwise default to Release
+          if [ -n "${{ inputs.configuration }}" ]; then
+            echo "BUILD_CONFIG=${{ inputs.configuration }}" >> $GITHUB_ENV
+          else
+            echo "BUILD_CONFIG=Release" >> $GITHUB_ENV
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -35,54 +61,88 @@ jobs:
           key: vcpkg-x64-windows-${{ hashFiles('vcpkg-overlay/**') }}
           restore-keys: vcpkg-x64-windows-
 
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+
       - name: Install dependencies via vcpkg
         if: steps.vcpkg-cache.outputs.cache-hit != 'true'
-        shell: cmd
-        run: vcpkg install libtcod lua sol2 sdl3
+        run: |
+          C:\vcpkg\vcpkg.exe install libtcod:x64-windows sol2:x64-windows lua:x64-windows --overlay-ports=${{ github.workspace }}/vcpkg-overlay/ports
+
+      - name: Integrate vcpkg
+        run: C:\vcpkg\vcpkg.exe integrate install
 
       - name: Build solution
-        shell: cmd
-        run: msbuild 40kRL.sln /p:Configuration=${{ inputs.configuration }} /p:Platform=x64
+        run: msbuild 40kRL.sln /p:Configuration=${{ env.BUILD_CONFIG }} /p:Platform=x64
 
       - name: Copy runtime DLLs
-        shell: cmd
         run: |
-          for %%f in (C:\vcpkg\installed\x64-windows\bin\*.dll) do (
-            echo %%~nxf | findstr /i "SDL2" >nul || copy "%%f" x64\${{ inputs.configuration }}\
-          )
+          $outDir = "x64\${{ env.BUILD_CONFIG }}"
+          $vcpkgBin = "C:\vcpkg\installed\x64-windows\bin"
+          $vcpkgDbgBin = "C:\vcpkg\installed\x64-windows\debug\bin"
+          if ("${{ env.BUILD_CONFIG }}" -eq "Debug") {
+            Copy-Item "$vcpkgDbgBin\*.dll" "$outDir\" -Force -ErrorAction SilentlyContinue
+          }
+          Copy-Item "$vcpkgBin\*.dll" "$outDir\" -Force -ErrorAction SilentlyContinue
+          if (-not (Test-Path "$outDir\SDL3.dll")) {
+            Write-Error "SDL3.dll not found in $outDir"
+            exit 1
+          }
 
       - name: Run tests
-        shell: cmd
-        run: x64\%INPUT_CONFIG%\40kRL_Tests.exe --reporter console "~[pbt]"
+        timeout-minutes: 5
         env:
-          INPUT_CONFIG: ${{ inputs.configuration }}
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: |
+          $testExe = "x64\${{ env.BUILD_CONFIG }}\40kRL_Tests.exe"
+          if (Test-Path $testExe) {
+            & $testExe --reporter compact "~[pbt]"
+          } else {
+            Write-Error "Test executable not found at $testExe"
+            exit 1
+          }
 
       - name: Set artifact name
         shell: bash
         run: |
-          REF_SAFE=$(echo "${{ github.ref_name }}" | tr '/' '-')
-          echo "ARTIFACT_NAME=40kRL-${REF_SAFE}-${{ inputs.configuration }}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=40kRL-${{ env.RELEASE_VERSION }}-${{ env.BUILD_CONFIG }}" >> $GITHUB_ENV
 
       - name: Stage release files
-        shell: cmd
         run: |
-          mkdir release
-          copy x64\${{ inputs.configuration }}\40kRL.exe release\
-          for %%f in (x64\${{ inputs.configuration }}\*.dll) do (
-            echo %%~nxf | findstr /i "SDL2" >nul || copy "%%f" release\
-          )
-          xcopy Scripts release\Scripts\ /E /I /Y
-          copy menu_background1.png release\
-          copy terminal.png release\
-          REM Copy MSVC runtime redistributable DLLs
-          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\vcruntime140.dll") do copy "%%f" release\ 2>nul
-          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\vcruntime140_1.dll") do copy "%%f" release\ 2>nul
-          for %%f in ("C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\msvcp140.dll") do copy "%%f" release\ 2>nul
-          REM Copy any libtcod data files (fonts, etc.)
-          if exist "C:\vcpkg\installed\x64-windows\share\libtcod\data" xcopy "C:\vcpkg\installed\x64-windows\share\libtcod\data" release\ /E /I /Y 2>nul
+          New-Item -ItemType Directory -Force -Path release
+          Copy-Item "x64\${{ env.BUILD_CONFIG }}\40kRL.exe" release\
+          Copy-Item "x64\${{ env.BUILD_CONFIG }}\*.dll" release\ -Force
+          Copy-Item Scripts release\Scripts\ -Recurse -Force
+          Copy-Item menu_background1.png release\
+          Copy-Item terminal.png release\
+          # Copy MSVC runtime redistributable DLLs
+          $vcRedist = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($vcRedist) {
+            Copy-Item "$($vcRedist.FullName)\vcruntime140.dll" release\ -ErrorAction SilentlyContinue
+            Copy-Item "$($vcRedist.FullName)\vcruntime140_1.dll" release\ -ErrorAction SilentlyContinue
+            Copy-Item "$($vcRedist.FullName)\msvcp140.dll" release\ -ErrorAction SilentlyContinue
+          }
+          # Copy libtcod data files if present
+          if (Test-Path "C:\vcpkg\installed\x64-windows\share\libtcod\data") {
+            Copy-Item "C:\vcpkg\installed\x64-windows\share\libtcod\data\*" release\ -Recurse -Force -ErrorAction SilentlyContinue
+          }
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: release/
+
+      - name: Zip release folder
+        run: Compress-Archive -Path release\* -DestinationPath 40kRL-${{ env.RELEASE_VERSION }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_VERSION }}
+          name: ${{ env.RELEASE_VERSION }}
+          files: 40kRL-${{ env.RELEASE_VERSION }}.zip
+          generate_release_notes: true

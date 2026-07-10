@@ -584,6 +584,16 @@ void Actor::save(TCODZip& zip)
 	// compatibility (old saves that lack this field will read 0 from archive end).
 	zip.putInt(characteristics != nullptr);
 	if (characteristics) characteristics->save(zip);
+
+	// CareerProgression presence flag
+	zip.putInt(career != nullptr);
+	if (career) career->save(zip);
+
+	// CharacterSheet presence flag — the sheet is the canonical owner of characteristics
+	// and career for the player. When present, its data supersedes the individual fields
+	// (which are aliased shared_ptrs into the sheet). Written after career for compatibility.
+	zip.putInt(characterSheet != nullptr);
+	if (characterSheet) characterSheet->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -641,6 +651,26 @@ void Actor::load(TCODZip& zip)
 	if (hasCharacteristics) {
 		characteristics = std::make_shared<Characteristics>();
 		characteristics->load(zip);
+	}
+
+	// CareerProgression presence flag
+	const bool hasCareer = zip.getInt();
+	if (hasCareer) {
+		career = std::make_shared<CareerProgression>();
+		career->load(zip);
+	}
+
+	// CharacterSheet presence flag — if present, rebuild the sheet and alias
+	// the characteristics/career shared_ptrs into it.
+	const bool hasCharSheet = zip.getInt();
+	if (hasCharSheet) {
+		characterSheet = std::make_shared<CharacterSheet>();
+		characterSheet->load(zip);
+
+		// Re-alias: point actor's characteristics and career into the sheet.
+		// Non-owning shared_ptr aliases that share lifetime with characterSheet.
+		characteristics = std::shared_ptr<Characteristics>(characterSheet, &characterSheet->characteristics);
+		career = std::shared_ptr<CareerProgression>(characterSheet, &characterSheet->career);
 	}
 }
 
@@ -721,9 +751,8 @@ auto TemporaryAi::create(TCODZip& zip)
 void PlayerAi::save(TCODZip& zip)
 {
 	zip.putInt(static_cast<int>(AiType::PLAYER));
-	zip.putInt(xpLevel);
 }
-void PlayerAi::load(TCODZip& zip) { xpLevel = zip.getInt(); }
+void PlayerAi::load(TCODZip& zip) {}
 
 void MonsterAi::save(TCODZip& zip) { zip.putInt(static_cast<int>(AiType::MONSTER)); }
 void MonsterAi::load(TCODZip& zip) {}

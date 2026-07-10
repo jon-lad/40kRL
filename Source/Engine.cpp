@@ -30,6 +30,13 @@ Engine::Engine(int screenWidth, int screenHeight)
 
 void Engine::update()
 {
+	// Handle character generation state — skip all normal game logic.
+	if (gameStatus == CHARACTER_GEN) {
+		pollInput(inputState);
+		updateCharGen();
+		return;
+	}
+
 	if (gameStatus == STARTUP) { map->computeFOV(); gameStatus = IDLE; }
 
 	pollInput(inputState);
@@ -61,6 +68,12 @@ void Engine::update()
 	// Handle character sheet state — skip all normal game logic.
 	if (gameStatus == CHARACTER_SHEET) {
 		updateCharacterSheet();
+		return;
+	}
+
+	// Handle advance purchase state — skip all normal game logic.
+	if (gameStatus == ADVANCES) {
+		updateAdvances();
 		return;
 	}
 
@@ -136,9 +149,19 @@ void Engine::render()
 		renderCharacterSheet();
 	}
 
+	// Render advance purchase overlay when in ADVANCES state.
+	if (gameStatus == ADVANCES) {
+		renderAdvances();
+	}
+
 	// Render world map overlay when in WORLD_MAP state.
 	if (gameStatus == WORLD_MAP) {
 		renderWorldMap();
+	}
+
+	// Render character generation overlay when in CHARACTER_GEN state.
+	if (gameStatus == CHARACTER_GEN) {
+		renderCharGen();
 	}
 }
 
@@ -845,6 +868,219 @@ void Engine::renderCharacterSheet()
 		screenHeight / 2 - SHEET_HEIGHT / 2);
 }
 
+void Engine::beginAdvances()
+{
+	if (!player || !player->career) {
+		gui->message(Colors::uiText, "No career progression available.");
+		return;
+	}
+	advancesState = AdvancesState{};
+	gameStatus = ADVANCES;
+}
+
+void Engine::updateAdvances()
+{
+	if (!advancesState) {
+		gameStatus = IDLE;
+		return;
+	}
+
+	if (!inputState.key.pressed) return;
+
+	// --- Exit: ESC key or 'x' key ---
+	if (inputState.key.key == SDLK_ESCAPE || inputState.key.c == 'x') {
+		advancesState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// Find the player's career template
+	if (!player || !player->career || !player->characteristics) {
+		advancesState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	auto& career = *player->career;
+	const CareerTemplate* careerTpl = nullptr;
+	for (const auto& tpl : careerTemplates) {
+		if (tpl.name == career.careerName) {
+			careerTpl = &tpl;
+			break;
+		}
+	}
+	if (!careerTpl || careerTpl->ranks.empty()) {
+		advancesState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// Find the current rank's advances
+	const RankDefinition* currentRankDef = nullptr;
+	for (const auto& rank : careerTpl->ranks) {
+		if (rank.rankNumber == career.currentRank) {
+			currentRankDef = &rank;
+			break;
+		}
+	}
+	if (!currentRankDef || currentRankDef->advances.empty()) {
+		advancesState = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	const auto& advances = currentRankDef->advances;
+	int maxIdx = static_cast<int>(advances.size()) - 1;
+
+	// Clear status message on any new input
+	advancesState->statusMessage.clear();
+
+	if (inputState.key.key == SDLK_UP) {
+		advancesState->selectedIndex--;
+		if (advancesState->selectedIndex < 0)
+			advancesState->selectedIndex = maxIdx;
+	} else if (inputState.key.key == SDLK_DOWN) {
+		advancesState->selectedIndex++;
+		if (advancesState->selectedIndex > maxIdx)
+			advancesState->selectedIndex = 0;
+	} else if (inputState.key.key == SDLK_RETURN) {
+		// Attempt to purchase the selected advance
+		const auto& adv = advances[advancesState->selectedIndex];
+
+		if (!career.canPurchase(adv)) {
+			// Determine rejection reason
+			if (career.availableXp() < adv.cost) {
+				advancesState->statusMessage = "Insufficient XP!";
+			} else if (adv.type == AdvanceEntry::Type::SKILL) {
+				advancesState->statusMessage = "Skill at maximum rank!";
+			} else if (adv.type == AdvanceEntry::Type::TALENT) {
+				advancesState->statusMessage = "Talent already acquired!";
+			}
+		} else {
+			// Purchase the advance
+			int oldRank = career.currentRank;
+			career.purchase(adv, *player->characteristics);
+
+			// Evaluate rank-up
+			career.evaluateRankUp(*careerTpl);
+
+			if (career.currentRank > oldRank) {
+				gui->message(Colors::surfaceMsg, "Rank Up! You are now Rank %d.", career.currentRank);
+				// Reset cursor since the advance list may change for the new rank
+				advancesState->selectedIndex = 0;
+			}
+
+			advancesState->statusMessage = "Purchased: " + adv.name;
+		}
+	}
+}
+
+void Engine::renderAdvances()
+{
+	if (!advancesState || !player || !player->career) return;
+
+	static constexpr int ADV_WIDTH  = 60;
+	static constexpr int ADV_HEIGHT = 30;
+	static TCODConsole advConsole(ADV_WIDTH, ADV_HEIGHT);
+
+	advConsole.clear();
+	advConsole.setDefaultForeground(Colors::menuFrame);
+	advConsole.printFrame(0, 0, ADV_WIDTH, ADV_HEIGHT, true, TCOD_BKGND_DEFAULT, "xp advances");
+
+	auto& career = *player->career;
+
+	// Find the career template
+	const CareerTemplate* careerTpl = nullptr;
+	for (const auto& tpl : careerTemplates) {
+		if (tpl.name == career.careerName) {
+			careerTpl = &tpl;
+			break;
+		}
+	}
+	if (!careerTpl || careerTpl->ranks.empty()) {
+		advConsole.setDefaultForeground(Colors::damage);
+		advConsole.printf(2, 2, "No career template found.");
+		TCODConsole::blit(&advConsole, 0, 0, ADV_WIDTH, ADV_HEIGHT,
+			TCODConsole::root,
+			screenWidth  / 2 - ADV_WIDTH  / 2,
+			screenHeight / 2 - ADV_HEIGHT / 2);
+		return;
+	}
+
+	// Find the current rank
+	const RankDefinition* currentRankDef = nullptr;
+	for (const auto& rank : careerTpl->ranks) {
+		if (rank.rankNumber == career.currentRank) {
+			currentRankDef = &rank;
+			break;
+		}
+	}
+	if (!currentRankDef) {
+		advConsole.setDefaultForeground(Colors::damage);
+		advConsole.printf(2, 2, "No advances available for current rank.");
+		TCODConsole::blit(&advConsole, 0, 0, ADV_WIDTH, ADV_HEIGHT,
+			TCODConsole::root,
+			screenWidth  / 2 - ADV_WIDTH  / 2,
+			screenHeight / 2 - ADV_HEIGHT / 2);
+		return;
+	}
+
+	// Title and XP info
+	advConsole.setDefaultForeground(Colors::white);
+	advConsole.printf(2, 2, "%s - Rank %d: %s",
+		career.careerName.c_str(), career.currentRank, currentRankDef->rankTitle.c_str());
+
+	advConsole.setDefaultForeground(Colors::white);
+	advConsole.printf(2, 4, "Available XP: %d / %d", career.availableXp(), career.xpPool);
+
+	const auto& advances = currentRankDef->advances;
+
+	// Render advance list
+	int listY = 6;
+	for (int i = 0; i < static_cast<int>(advances.size()); i++) {
+		if (listY >= ADV_HEIGHT - 5) break;
+
+		const auto& adv = advances[i];
+
+		// Determine type label
+		const char* typeLabel = "";
+		if (adv.type == AdvanceEntry::Type::CHARACTERISTIC) typeLabel = "[Char]  ";
+		else if (adv.type == AdvanceEntry::Type::SKILL)     typeLabel = "[Skill] ";
+		else if (adv.type == AdvanceEntry::Type::TALENT)    typeLabel = "[Talent]";
+
+		// Determine if this advance can be purchased
+		bool canBuy = career.canPurchase(adv);
+
+		// Set colour based on selection and purchasability
+		if (i == advancesState->selectedIndex) {
+			advConsole.setDefaultForeground(canBuy ? Colors::uiHighlight : Colors::damageLight);
+			advConsole.printf(2, listY, "> %s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+		} else {
+			advConsole.setDefaultForeground(canBuy ? Colors::uiText : Colors::damageDark);
+			advConsole.printf(2, listY, "  %s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+		}
+		listY++;
+	}
+
+	// Status message (purchase result feedback)
+	if (!advancesState->statusMessage.empty()) {
+		bool isRejection = (advancesState->statusMessage.find("Insufficient") != std::string::npos
+		                 || advancesState->statusMessage.find("maximum") != std::string::npos
+		                 || advancesState->statusMessage.find("already") != std::string::npos);
+		advConsole.setDefaultForeground(isRejection ? Colors::damage : Colors::surfaceMsg);
+		advConsole.printf(2, ADV_HEIGHT - 4, "%s", advancesState->statusMessage.c_str());
+	}
+
+	// Navigation hint
+	advConsole.setDefaultForeground(Colors::uiText);
+	advConsole.printf(2, ADV_HEIGHT - 2, "[Up/Down] Navigate  [Enter] Purchase  [Esc/x] Close");
+
+	TCODConsole::blit(&advConsole, 0, 0, ADV_WIDTH, ADV_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - ADV_WIDTH  / 2,
+		screenHeight / 2 - ADV_HEIGHT / 2);
+}
+
 void Engine::renderWorldMap()
 {
 	if (!worldMapState) return;
@@ -969,6 +1205,611 @@ void Engine::renderWorldMap()
 	// Blit overlay onto root console at position (0, 0).
 	TCODConsole::blit(&wmConsole, 0, 0, WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H,
 		TCODConsole::root, 0, 0);
+}
+
+void Engine::beginCharGen()
+{
+	charGenState = CharGenState{};
+	charGenState->currentStep = CharGenState::Step::HOMEWORLD;
+	gameStatus = CHARACTER_GEN;
+}
+
+void Engine::updateCharGen()
+{
+	if (!charGenState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Back-navigation: Escape key ---
+	if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+		charGenGoBack();
+		return;
+	}
+
+	switch (charGenState->currentStep) {
+		case CharGenState::Step::HOMEWORLD:
+		{
+			if (homeworldTemplates.empty()) break;
+
+			// Up/Down navigation
+			if (inputState.key.key == SDLK_UP && inputState.key.pressed) {
+				charGenState->selectedIndex--;
+				if (charGenState->selectedIndex < 0)
+					charGenState->selectedIndex = static_cast<int>(homeworldTemplates.size()) - 1;
+			}
+			if (inputState.key.key == SDLK_DOWN && inputState.key.pressed) {
+				charGenState->selectedIndex++;
+				if (charGenState->selectedIndex >= static_cast<int>(homeworldTemplates.size()))
+					charGenState->selectedIndex = 0;
+			}
+
+			// Enter to select homeworld
+			if (inputState.key.key == SDLK_RETURN && inputState.key.pressed) {
+				charGenState->homeworldIndex = charGenState->selectedIndex;
+				const auto& hw = homeworldTemplates[charGenState->homeworldIndex];
+
+				// Apply characteristic modifiers: base 25 + mod, clamped [1,99]
+				charGenState->workingChars = Characteristics{25};
+				for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
+					CharId id = static_cast<CharId>(i);
+					int value = 25 + hw.characteristicMods[i];
+					charGenState->workingChars.set(id, value); // set() clamps to [1,99]
+				}
+
+				// Grant starting skills at Trained rank (0)
+				charGenState->workingSkills.clear();
+				for (const auto& skill : hw.startingSkills) {
+					charGenState->workingSkills[skill] = 0;
+				}
+
+				// Grant starting traits
+				charGenState->workingTraits.clear();
+				charGenState->workingTraits = hw.startingTraits;
+
+				// Advance to career step
+				charGenState->currentStep = CharGenState::Step::CAREER;
+				charGenState->selectedIndex = 0;
+				charGenState->scrollOffset = 0;
+			}
+			break;
+		}
+		case CharGenState::Step::CAREER:
+		{
+			if (careerTemplates.empty()) break;
+
+			// Clamp cursor to valid range.
+			int maxIdx = static_cast<int>(careerTemplates.size()) - 1;
+			if (charGenState->selectedIndex < 0) charGenState->selectedIndex = 0;
+			if (charGenState->selectedIndex > maxIdx) charGenState->selectedIndex = maxIdx;
+
+			if (inputState.key.pressed) {
+				if (inputState.key.key == SDLK_UP) {
+					if (charGenState->selectedIndex > 0) charGenState->selectedIndex--;
+				} else if (inputState.key.key == SDLK_DOWN) {
+					if (charGenState->selectedIndex < maxIdx) charGenState->selectedIndex++;
+				} else if (inputState.key.key == SDLK_RETURN) {
+					// Select career and grant Rank 1 benefits.
+					charGenState->careerIndex = charGenState->selectedIndex;
+
+					const auto& career = careerTemplates[charGenState->careerIndex];
+					if (!career.ranks.empty()) {
+						const auto& rank1 = career.ranks[0];
+						// Grant Rank 1 starting skills (don't overwrite if homeworld already granted).
+						for (const auto& skill : rank1.startingSkills) {
+							if (charGenState->workingSkills.find(skill) == charGenState->workingSkills.end()) {
+								charGenState->workingSkills[skill] = 0; // Trained rank
+							}
+						}
+						// Grant Rank 1 starting talents.
+						for (const auto& talent : rank1.startingTalents) {
+							charGenState->workingTalents.insert(talent);
+						}
+					}
+
+					// Set starting XP pool for initial advances.
+					charGenState->startingXp = 500;
+
+					// Advance to the next step.
+					charGenState->currentStep = CharGenState::Step::ADVANCES;
+					charGenState->selectedIndex = 0;
+					charGenState->scrollOffset = 0;
+				}
+			}
+			break;
+		}
+		case CharGenState::Step::ADVANCES:
+		{
+			if (careerTemplates.empty() || charGenState->careerIndex < 0) break;
+			const auto& career = careerTemplates[charGenState->careerIndex];
+			if (career.ranks.empty()) break;
+			const auto& advances = career.ranks[0].advances;
+			if (advances.empty()) break;
+
+			int maxIdx = static_cast<int>(advances.size()) - 1;
+
+			if (inputState.key.pressed) {
+				// Clear status message on any new input
+				charGenState->statusMessage.clear();
+
+				if (inputState.key.key == SDLK_UP) {
+					charGenState->selectedIndex--;
+					if (charGenState->selectedIndex < 0)
+						charGenState->selectedIndex = maxIdx;
+				} else if (inputState.key.key == SDLK_DOWN) {
+					charGenState->selectedIndex++;
+					if (charGenState->selectedIndex > maxIdx)
+						charGenState->selectedIndex = 0;
+				} else if (inputState.key.key == SDLK_RETURN) {
+					// Attempt to purchase the selected advance
+					const auto& adv = advances[charGenState->selectedIndex];
+					int availableXp = charGenState->startingXp - charGenState->spentXp;
+
+					if (availableXp < adv.cost) {
+						charGenState->statusMessage = "Insufficient XP!";
+					} else if (adv.type == AdvanceEntry::Type::SKILL) {
+						auto it = charGenState->workingSkills.find(adv.name);
+						if (it != charGenState->workingSkills.end() && it->second >= 2) {
+							charGenState->statusMessage = "Skill at maximum rank!";
+						} else {
+							// Purchase skill advance
+							charGenState->spentXp += adv.cost;
+							if (it == charGenState->workingSkills.end()) {
+								charGenState->workingSkills[adv.name] = 1;
+							} else {
+								it->second += 1;
+							}
+							charGenState->statusMessage = "Purchased: " + adv.name;
+						}
+					} else if (adv.type == AdvanceEntry::Type::TALENT) {
+						if (charGenState->workingTalents.count(adv.name) > 0) {
+							charGenState->statusMessage = "Talent already owned!";
+						} else {
+							// Purchase talent advance
+							charGenState->spentXp += adv.cost;
+							charGenState->workingTalents.insert(adv.name);
+							charGenState->statusMessage = "Purchased: " + adv.name;
+						}
+					} else if (adv.type == AdvanceEntry::Type::CHARACTERISTIC) {
+						// Purchase characteristic advance
+						charGenState->spentXp += adv.cost;
+						CharId charId = CharId::COUNT;
+						if (adv.name == "WS")  charId = CharId::WS;
+						else if (adv.name == "BS")  charId = CharId::BS;
+						else if (adv.name == "S")   charId = CharId::S;
+						else if (adv.name == "T")   charId = CharId::T;
+						else if (adv.name == "Ag")  charId = CharId::Ag;
+						else if (adv.name == "Int") charId = CharId::Int;
+						else if (adv.name == "Per") charId = CharId::Per;
+						else if (adv.name == "WP")  charId = CharId::WP;
+						else if (adv.name == "Fel") charId = CharId::Fel;
+
+						if (charId != CharId::COUNT) {
+							int current = charGenState->workingChars.get(charId);
+							int newValue = std::clamp(current + adv.amount, 1, 99);
+							charGenState->workingChars.set(charId, newValue);
+						}
+						charGenState->statusMessage = "Purchased: " + adv.name + " advance";
+					}
+				} else if (inputState.key.c == 'f' || inputState.key.c == 'F'
+				           || inputState.key.key == SDLK_TAB) {
+					// Finish advance purchases and move to DONE
+					charGenState->currentStep = CharGenState::Step::DONE;
+					charGenState->selectedIndex = 0;
+					charGenState->scrollOffset = 0;
+				}
+			}
+			break;
+		}
+		case CharGenState::Step::DONE:
+		{
+			// ─── Finalize character generation: update player Actor ───────────
+
+			// Apply career-defined combat stats to the player.
+			if (charGenState->careerIndex >= 0
+				&& charGenState->careerIndex < static_cast<int>(careerTemplates.size())) {
+				const auto& selectedCareer = careerTemplates[charGenState->careerIndex];
+				player->destructible->maxHp = selectedCareer.hp;
+				player->destructible->hp = selectedCareer.hp;
+				player->destructible->defense = selectedCareer.defense;
+				player->attacker->power = selectedCareer.power;
+				player->container->size = selectedCareer.invSize;
+			}
+
+			// Create the unified CharacterSheet that owns characteristics + career.
+			auto sheet = std::make_shared<CharacterSheet>();
+
+			// Copy working characteristics from chargen into the sheet.
+			for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
+				CharId id = static_cast<CharId>(i);
+				sheet->characteristics.set(id, charGenState->workingChars.get(id));
+			}
+
+			// Populate CareerProgression with all accumulated state.
+			sheet->career.homeworldName = (charGenState->homeworldIndex >= 0
+				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
+				? homeworldTemplates[charGenState->homeworldIndex].name : "";
+			sheet->career.careerName = (charGenState->careerIndex >= 0
+				&& charGenState->careerIndex < static_cast<int>(careerTemplates.size()))
+				? careerTemplates[charGenState->careerIndex].name : "";
+			sheet->career.currentRank = 1;
+			sheet->career.xpPool      = charGenState->startingXp;
+			sheet->career.spentXp     = charGenState->spentXp;
+			sheet->career.skills      = charGenState->workingSkills;
+			sheet->career.talents     = charGenState->workingTalents;
+			sheet->career.traits      = charGenState->workingTraits;
+
+			// Attach the sheet to the player.
+			player->characterSheet = sheet;
+
+			// Alias actor->characteristics and actor->career into the sheet so all
+			// existing code (combat resolution, character sheet overlay, advances)
+			// continues to work unchanged via player->characteristics / player->career.
+			player->characteristics = std::shared_ptr<Characteristics>(sheet, &sheet->characteristics);
+			player->career = std::shared_ptr<CareerProgression>(sheet, &sheet->career);
+
+			gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
+
+			// Clear chargen state.
+			charGenState.reset();
+
+			// Transition to normal gameplay.
+			gameStatus = STARTUP;
+			break;
+		}
+	}
+}
+
+void Engine::renderCharGen()
+{
+	if (!charGenState) return;
+
+	static constexpr int CHARGEN_WIDTH  = 60;
+	static constexpr int CHARGEN_HEIGHT = 30;
+	static TCODConsole charGenConsole(CHARGEN_WIDTH, CHARGEN_HEIGHT);
+
+	charGenConsole.clear();
+	charGenConsole.setDefaultForeground(Colors::menuFrame);
+	charGenConsole.printFrame(0, 0, CHARGEN_WIDTH, CHARGEN_HEIGHT, true, TCOD_BKGND_DEFAULT, "character generation");
+
+	charGenConsole.setDefaultForeground(Colors::white);
+
+	switch (charGenState->currentStep) {
+		case CharGenState::Step::HOMEWORLD:
+		{
+			charGenConsole.printf(2, 2, "Step 1: Select Homeworld");
+
+			if (homeworldTemplates.empty()) {
+				charGenConsole.setDefaultForeground(Colors::damage);
+				charGenConsole.printf(2, 4, "No homeworlds available.");
+				break;
+			}
+
+			// Render homeworld list on the left side
+			int listY = 4;
+			for (int i = 0; i < static_cast<int>(homeworldTemplates.size()); i++) {
+				if (i == charGenState->selectedIndex) {
+					charGenConsole.setDefaultForeground(Colors::uiHighlight);
+					charGenConsole.printf(2, listY + i, "> %s", homeworldTemplates[i].name.c_str());
+				} else {
+					charGenConsole.setDefaultForeground(Colors::uiText);
+					charGenConsole.printf(2, listY + i, "  %s", homeworldTemplates[i].name.c_str());
+				}
+			}
+
+			// Show details of the currently highlighted homeworld on the right / below
+			const auto& hw = homeworldTemplates[charGenState->selectedIndex];
+			int detailY = listY + static_cast<int>(homeworldTemplates.size()) + 1;
+
+			// Characteristics with modifiers
+			charGenConsole.setDefaultForeground(Colors::white);
+			charGenConsole.printf(2, detailY, "Characteristics:");
+			detailY++;
+
+			static constexpr const char* charAbbrevs[] = {
+				"WS", "BS", "S", "T", "Ag", "Int", "Per", "WP", "Fel"
+			};
+			for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
+				int mod = hw.characteristicMods[i];
+				int result = 25 + mod;
+				if (result < 1) result = 1;
+				if (result > 99) result = 99;
+
+				if (mod > 0) {
+					charGenConsole.setDefaultForeground(Colors::surfaceMsg);
+					charGenConsole.printf(2, detailY, "  %-3s: 25+%d=%d", charAbbrevs[i], mod, result);
+				} else if (mod < 0) {
+					charGenConsole.setDefaultForeground(Colors::damageLight);
+					charGenConsole.printf(2, detailY, "  %-3s: 25%d=%d", charAbbrevs[i], mod, result);
+				} else {
+					charGenConsole.setDefaultForeground(Colors::uiText);
+					charGenConsole.printf(2, detailY, "  %-3s: 25+0=%d", charAbbrevs[i], result);
+				}
+				detailY++;
+			}
+
+			// Starting skills
+			detailY++;
+			charGenConsole.setDefaultForeground(Colors::white);
+			charGenConsole.printf(2, detailY, "Starting Skills:");
+			detailY++;
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			for (const auto& skill : hw.startingSkills) {
+				charGenConsole.printf(4, detailY, "%s", skill.c_str());
+				detailY++;
+			}
+
+			// Starting traits
+			detailY++;
+			charGenConsole.setDefaultForeground(Colors::white);
+			charGenConsole.printf(2, detailY, "Starting Traits:");
+			detailY++;
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			for (const auto& trait : hw.startingTraits) {
+				charGenConsole.printf(4, detailY, "%s", trait.c_str());
+				detailY++;
+			}
+
+			// Navigation hint
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			charGenConsole.printf(2, CHARGEN_HEIGHT - 2, "[Up/Down] Navigate  [Enter] Select");
+			break;
+		}
+		case CharGenState::Step::CAREER:
+		{
+			charGenConsole.printf(2, 2, "Step 2: Select Career Path");
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			charGenConsole.printf(2, 4, "Use UP/DOWN to navigate, ENTER to select, ESC to go back");
+
+			// Render career list with cursor indicator.
+			int listY = 6;
+			for (int i = 0; i < static_cast<int>(careerTemplates.size()); i++) {
+				if (listY >= CHARGEN_HEIGHT - 12) break; // leave room for info panel
+				if (i == charGenState->selectedIndex) {
+					charGenConsole.setDefaultForeground(Colors::uiHighlight);
+					charGenConsole.printf(2, listY, "> %s", careerTemplates[i].name.c_str());
+				} else {
+					charGenConsole.setDefaultForeground(Colors::white);
+					charGenConsole.printf(2, listY, "  %s", careerTemplates[i].name.c_str());
+				}
+				listY++;
+			}
+
+			// Show selected career's Rank 1 info below the list.
+			int infoY = listY + 1;
+			int sel = charGenState->selectedIndex;
+			if (sel >= 0 && sel < static_cast<int>(careerTemplates.size())) {
+				const auto& career = careerTemplates[sel];
+				charGenConsole.setDefaultForeground(Colors::menuHighlightAlt);
+				charGenConsole.printf(2, infoY, "--- %s ---", career.name.c_str());
+				infoY++;
+
+				if (!career.ranks.empty()) {
+					const auto& rank1 = career.ranks[0];
+					charGenConsole.setDefaultForeground(Colors::white);
+					charGenConsole.printf(2, infoY, "Rank 1: %s", rank1.rankTitle.c_str());
+					infoY++;
+
+					// Starting skills.
+					if (!rank1.startingSkills.empty()) {
+						charGenConsole.setDefaultForeground(Colors::uiText);
+						std::string skillStr = "Skills: ";
+						for (size_t s = 0; s < rank1.startingSkills.size(); s++) {
+							if (s > 0) skillStr += ", ";
+							skillStr += rank1.startingSkills[s];
+						}
+						charGenConsole.printf(2, infoY, "%s", skillStr.c_str());
+						infoY++;
+					}
+
+					// Starting talents.
+					if (!rank1.startingTalents.empty()) {
+						std::string talentStr = "Talents: ";
+						for (size_t t = 0; t < rank1.startingTalents.size(); t++) {
+							if (t > 0) talentStr += ", ";
+							talentStr += rank1.startingTalents[t];
+						}
+						charGenConsole.printf(2, infoY, "%s", talentStr.c_str());
+						infoY++;
+					}
+
+					// Preview of available advances.
+					if (!rank1.advances.empty()) {
+						infoY++;
+						charGenConsole.setDefaultForeground(Colors::uiText);
+						charGenConsole.printf(2, infoY, "Available advances:");
+						infoY++;
+						int advCount = 0;
+						for (const auto& adv : rank1.advances) {
+							if (infoY >= CHARGEN_HEIGHT - 1) break;
+							const char* typeLabel = "";
+							if (adv.type == AdvanceEntry::Type::CHARACTERISTIC) typeLabel = "[Char]";
+							else if (adv.type == AdvanceEntry::Type::SKILL)     typeLabel = "[Skill]";
+							else if (adv.type == AdvanceEntry::Type::TALENT)    typeLabel = "[Talent]";
+							charGenConsole.printf(4, infoY, "%s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+							infoY++;
+							advCount++;
+							if (advCount >= 5) {
+								charGenConsole.printf(4, infoY, "... and %d more", static_cast<int>(rank1.advances.size()) - advCount);
+								break;
+							}
+						}
+					}
+				}
+			}
+			break;
+		}
+		case CharGenState::Step::ADVANCES:
+		{
+			charGenConsole.printf(2, 2, "Step 3: Purchase Initial Advances");
+
+			int availableXp = charGenState->startingXp - charGenState->spentXp;
+			charGenConsole.setDefaultForeground(Colors::white);
+			charGenConsole.printf(2, 4, "Available XP: %d / %d", availableXp, charGenState->startingXp);
+
+			if (charGenState->careerIndex < 0
+				|| charGenState->careerIndex >= static_cast<int>(careerTemplates.size())) {
+				charGenConsole.setDefaultForeground(Colors::damage);
+				charGenConsole.printf(2, 6, "No career selected.");
+				break;
+			}
+
+			const auto& career = careerTemplates[charGenState->careerIndex];
+			if (career.ranks.empty()) break;
+			const auto& advances = career.ranks[0].advances;
+
+			// Render advance list
+			int listY = 6;
+			for (int i = 0; i < static_cast<int>(advances.size()); i++) {
+				if (listY >= CHARGEN_HEIGHT - 5) break;
+
+				const auto& adv = advances[i];
+
+				// Determine type label
+				const char* typeLabel = "";
+				if (adv.type == AdvanceEntry::Type::CHARACTERISTIC) typeLabel = "[Char]  ";
+				else if (adv.type == AdvanceEntry::Type::SKILL)     typeLabel = "[Skill] ";
+				else if (adv.type == AdvanceEntry::Type::TALENT)    typeLabel = "[Talent]";
+
+				// Determine if this advance can be purchased
+				bool canBuy = true;
+				if (availableXp < adv.cost) {
+					canBuy = false;
+				} else if (adv.type == AdvanceEntry::Type::SKILL) {
+					auto it = charGenState->workingSkills.find(adv.name);
+					if (it != charGenState->workingSkills.end() && it->second >= 2)
+						canBuy = false;
+				} else if (adv.type == AdvanceEntry::Type::TALENT) {
+					if (charGenState->workingTalents.count(adv.name) > 0)
+						canBuy = false;
+				}
+
+				// Set colour based on selection and purchasability
+				if (i == charGenState->selectedIndex) {
+					charGenConsole.setDefaultForeground(canBuy ? Colors::uiHighlight : Colors::damageLight);
+					charGenConsole.printf(2, listY, "> %s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+				} else {
+					charGenConsole.setDefaultForeground(canBuy ? Colors::uiText : Colors::damageDark);
+					charGenConsole.printf(2, listY, "  %s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+				}
+				listY++;
+			}
+
+			// Status message (purchase result feedback)
+			if (!charGenState->statusMessage.empty()) {
+				// Determine colour based on whether it was a rejection or success
+				bool isRejection = (charGenState->statusMessage.find("Insufficient") != std::string::npos
+				                 || charGenState->statusMessage.find("maximum") != std::string::npos
+				                 || charGenState->statusMessage.find("already") != std::string::npos);
+				charGenConsole.setDefaultForeground(isRejection ? Colors::damage : Colors::surfaceMsg);
+				charGenConsole.printf(2, CHARGEN_HEIGHT - 4, "%s", charGenState->statusMessage.c_str());
+			}
+
+			// Navigation hint
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			charGenConsole.printf(2, CHARGEN_HEIGHT - 2, "[Up/Down] Navigate  [Enter] Purchase  [F] Finish  [Esc] Back");
+			break;
+		}
+		case CharGenState::Step::DONE:
+			charGenConsole.printf(2, 2, "Finalizing character...");
+			break;
+	}
+
+	TCODConsole::blit(&charGenConsole, 0, 0, CHARGEN_WIDTH, CHARGEN_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - CHARGEN_WIDTH  / 2,
+		screenHeight / 2 - CHARGEN_HEIGHT / 2);
+}
+
+void Engine::charGenGoBack()
+{
+	if (!charGenState) return;
+
+	switch (charGenState->currentStep) {
+		case CharGenState::Step::HOMEWORLD:
+			// Cannot go back further — do nothing.
+			break;
+
+		case CharGenState::Step::CAREER:
+			// Back from career: reset career selection and career-granted skills/talents,
+			// keep homeworld selection and homeworld grants intact.
+			charGenState->careerIndex = -1;
+
+			// Rebuild working state from homeworld-only grants.
+			charGenState->workingSkills.clear();
+			charGenState->workingTalents.clear();
+			if (charGenState->homeworldIndex >= 0
+				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
+			{
+				const auto& hw = homeworldTemplates[charGenState->homeworldIndex];
+				for (const auto& skill : hw.startingSkills) {
+					charGenState->workingSkills[skill] = 0; // Trained rank
+				}
+			}
+
+			charGenState->currentStep = CharGenState::Step::HOMEWORLD;
+			charGenState->selectedIndex = 0;
+			charGenState->scrollOffset = 0;
+			break;
+
+		case CharGenState::Step::ADVANCES:
+			// Back from advances: reset XP spending, revert working characteristics
+			// to post-homeworld state, clear career skills/talents and re-apply only
+			// homeworld + career grants (no advance purchases).
+			charGenState->spentXp = 0;
+
+			// Reset characteristics to base 25 + homeworld modifiers only.
+			charGenState->workingChars = Characteristics{25};
+			if (charGenState->homeworldIndex >= 0
+				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
+			{
+				const auto& hw = homeworldTemplates[charGenState->homeworldIndex];
+				for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
+					CharId id = static_cast<CharId>(i);
+					int base = 25 + hw.characteristicMods[i];
+					charGenState->workingChars.set(id, base);
+				}
+			}
+
+			// Reset skills/talents to homeworld + career grants only (no advance purchases).
+			charGenState->workingSkills.clear();
+			charGenState->workingTalents.clear();
+			if (charGenState->homeworldIndex >= 0
+				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
+			{
+				const auto& hw = homeworldTemplates[charGenState->homeworldIndex];
+				for (const auto& skill : hw.startingSkills) {
+					charGenState->workingSkills[skill] = 0;
+				}
+			}
+			if (charGenState->careerIndex >= 0
+				&& charGenState->careerIndex < static_cast<int>(careerTemplates.size()))
+			{
+				const auto& career = careerTemplates[charGenState->careerIndex];
+				if (!career.ranks.empty()) {
+					const auto& rank1 = career.ranks[0];
+					for (const auto& skill : rank1.startingSkills) {
+						charGenState->workingSkills[skill] = 0;
+					}
+					for (const auto& talent : rank1.startingTalents) {
+						charGenState->workingTalents.insert(talent);
+					}
+				}
+			}
+
+			charGenState->currentStep = CharGenState::Step::CAREER;
+			charGenState->selectedIndex = 0;
+			charGenState->scrollOffset = 0;
+			break;
+
+		case CharGenState::Step::DONE:
+			// Should not normally reach here, but go back to advances if it does.
+			charGenState->currentStep = CharGenState::Step::ADVANCES;
+			charGenState->selectedIndex = 0;
+			charGenState->scrollOffset = 0;
+			break;
+	}
 }
 
 void Engine::beginWorldMap()
@@ -1263,52 +2104,267 @@ const EquipmentTemplate* Engine::selectEquipmentByTier(EquipmentSlot slot, const
 	return candidates[pick];
 }
 
-void Engine::init()
+// ─── Lua Data Loaders ────────────────────────────────────────────────────────
+
+void Engine::loadHomeworldTemplates()
 {
-	// Load player class stats from Classes.lua (fall back to hardcoded defaults if missing).
-	float playerHp      = 30.0f;
-	float playerDefense = 2.0f;
-	float playerPower   = 5.0f;
-	int   playerSkill   = 40;
-	int   playerInvSize = 26;
-
-	// Characteristic defaults (all default to 30 if not specified in Lua).
-	int playerCharWS  = 30;
-	int playerCharBS  = 30;
-	int playerCharS   = 30;
-	int playerCharT   = 30;
-	int playerCharAg  = 30;
-	int playerCharInt = 30;
-	int playerCharPer = 30;
-	int playerCharWP  = 30;
-	int playerCharFel = 30;
-
 	try {
 		sol::state lua;
 		lua.open_libraries(sol::lib::base);
-		lua.script_file("Scripts/Classes.lua");
+		lua.script_file("Scripts/Homeworlds.lua");
 
-		sol::table cls = lua["defaultClass"];
-		if (cls.valid()) {
-			playerHp      = cls.get_or("hp",      playerHp);
-			playerDefense = cls.get_or("defense", playerDefense);
-			playerPower   = cls.get_or("power",   playerPower);
-			playerSkill   = cls.get_or("skill",   playerSkill);
-			playerInvSize = cls.get_or("invSize", playerInvSize);
+		sol::table hwTable = lua["homeworlds"];
+		if (!hwTable.valid()) {
+			gui->message(Colors::damage, "Warning: Homeworlds.lua missing 'homeworlds' table.");
+			return;
+		}
 
-			playerCharWS  = cls.get_or("ws",  playerCharWS);
-			playerCharBS  = cls.get_or("bs",  playerCharBS);
-			playerCharS   = cls.get_or("s",   playerCharS);
-			playerCharT   = cls.get_or("t",   playerCharT);
-			playerCharAg  = cls.get_or("ag",  playerCharAg);
-			playerCharInt = cls.get_or("int", playerCharInt);
-			playerCharPer = cls.get_or("per", playerCharPer);
-			playerCharWP  = cls.get_or("wp",  playerCharWP);
-			playerCharFel = cls.get_or("fel", playerCharFel);
+		for (size_t i = 1; i <= hwTable.size(); i++) {
+			sol::table entry = hwTable[i];
+
+			std::string name = entry.get_or("name", std::string(""));
+			if (name.empty()) {
+				gui->message(Colors::damage, "Homeworlds.lua: skipping entry # — missing name.", static_cast<int>(i));
+				continue;
+			}
+
+			HomeworldTemplate tmpl;
+			tmpl.name = name;
+
+			// Parse characteristic modifiers from charMods table
+			// Maps: ws=0, bs=1, s=2, t=3, ag=4, int=5, per=6, wp=7, fel=8
+			tmpl.characteristicMods.fill(0);
+			sol::optional<sol::table> modsTable = entry["charMods"];
+			if (modsTable) {
+				tmpl.characteristicMods[0] = (*modsTable).get_or("ws",  0);
+				tmpl.characteristicMods[1] = (*modsTable).get_or("bs",  0);
+				tmpl.characteristicMods[2] = (*modsTable).get_or("s",   0);
+				tmpl.characteristicMods[3] = (*modsTable).get_or("t",   0);
+				tmpl.characteristicMods[4] = (*modsTable).get_or("ag",  0);
+				tmpl.characteristicMods[5] = (*modsTable).get_or("int", 0);
+				tmpl.characteristicMods[6] = (*modsTable).get_or("per", 0);
+				tmpl.characteristicMods[7] = (*modsTable).get_or("wp",  0);
+				tmpl.characteristicMods[8] = (*modsTable).get_or("fel", 0);
+			}
+
+			// Parse starting skills
+			sol::optional<sol::table> skillsTable = entry["startingSkills"];
+			if (skillsTable) {
+				for (size_t s = 1; s <= (*skillsTable).size(); s++) {
+					sol::optional<std::string> skillName = (*skillsTable)[s];
+					if (skillName) {
+						tmpl.startingSkills.push_back(*skillName);
+					}
+				}
+			}
+
+			// Parse starting traits
+			sol::optional<sol::table> traitsTable = entry["startingTraits"];
+			if (traitsTable) {
+				for (size_t t = 1; t <= (*traitsTable).size(); t++) {
+					sol::optional<std::string> traitName = (*traitsTable)[t];
+					if (traitName) {
+						tmpl.startingTraits.push_back(*traitName);
+					}
+				}
+			}
+
+			homeworldTemplates.push_back(std::move(tmpl));
 		}
 	} catch (const sol::error&) {
-		// Classes.lua missing or malformed — use defaults above.
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Homeworlds.lua.");
 	}
+}
+
+void Engine::loadCareerTemplates()
+{
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Careers.lua");
+
+		sol::table carTable = lua["careers"];
+		if (!carTable.valid()) {
+			gui->message(Colors::damage, "Warning: Careers.lua missing 'careers' table.");
+			return;
+		}
+
+		for (size_t i = 1; i <= carTable.size(); i++) {
+			sol::table entry = carTable[i];
+
+			std::string name = entry.get_or("name", std::string(""));
+			if (name.empty()) {
+				gui->message(Colors::damage, "Careers.lua: skipping entry # — missing name.", static_cast<int>(i));
+				continue;
+			}
+
+			sol::optional<sol::table> ranksTable = entry["ranks"];
+			if (!ranksTable || (*ranksTable).size() == 0) {
+				gui->message(Colors::damage, "Careers.lua: skipping '#' — no ranks defined.", name);
+				continue;
+			}
+
+			CareerTemplate career;
+			career.name = name;
+			career.hp = entry.get_or("hp", 30.0f);
+			career.defense = entry.get_or("defense", 2.0f);
+			career.power = entry.get_or("power", 5.0f);
+			career.invSize = entry.get_or("invSize", 26);
+
+			bool validCareer = true;
+			for (size_t r = 1; r <= (*ranksTable).size(); r++) {
+				sol::table rankEntry = (*ranksTable)[r];
+
+				sol::optional<int> rankNum = rankEntry["rankNumber"];
+				sol::optional<int> xpThresh = rankEntry["xpThreshold"];
+
+				if (!rankNum || !xpThresh) {
+					gui->message(Colors::damage, "Careers.lua: '#' rank # — missing rankNumber or xpThreshold.", name, static_cast<int>(r));
+					validCareer = false;
+					break;
+				}
+
+				RankDefinition rank;
+				rank.rankNumber = *rankNum;
+				rank.rankTitle = rankEntry.get_or("rankTitle", std::string(""));
+				rank.xpThreshold = *xpThresh;
+
+				// Parse starting skills for this rank
+				sol::optional<sol::table> rSkills = rankEntry["startingSkills"];
+				if (rSkills) {
+					for (size_t s = 1; s <= (*rSkills).size(); s++) {
+						sol::optional<std::string> sName = (*rSkills)[s];
+						if (sName) rank.startingSkills.push_back(*sName);
+					}
+				}
+
+				// Parse starting talents for this rank
+				sol::optional<sol::table> rTalents = rankEntry["startingTalents"];
+				if (rTalents) {
+					for (size_t t = 1; t <= (*rTalents).size(); t++) {
+						sol::optional<std::string> tName = (*rTalents)[t];
+						if (tName) rank.startingTalents.push_back(*tName);
+					}
+				}
+
+				// Parse advances
+				sol::optional<sol::table> advTable = rankEntry["advances"];
+				if (advTable) {
+					for (size_t a = 1; a <= (*advTable).size(); a++) {
+						sol::table advEntry = (*advTable)[a];
+
+						std::string typeStr = advEntry.get_or("type", std::string(""));
+						std::string advName = advEntry.get_or("name", std::string(""));
+						sol::optional<int> advCost = advEntry["cost"];
+
+						if (typeStr.empty() || advName.empty() || !advCost) {
+							gui->message(Colors::damage, "Careers.lua: '#' rank # advance # — missing type, name, or cost.", name, static_cast<int>(r), static_cast<int>(a));
+							continue;
+						}
+
+						AdvanceEntry advance;
+						if (typeStr == "characteristic") {
+							advance.type = AdvanceEntry::Type::CHARACTERISTIC;
+							advance.amount = advEntry.get_or("amount", 5);
+						} else if (typeStr == "skill") {
+							advance.type = AdvanceEntry::Type::SKILL;
+						} else if (typeStr == "talent") {
+							advance.type = AdvanceEntry::Type::TALENT;
+						} else {
+							gui->message(Colors::damage, "Careers.lua: '#' rank # advance # — invalid type '#'.", name, static_cast<int>(r), static_cast<int>(a), typeStr);
+							continue;
+						}
+
+						advance.name = advName;
+						advance.cost = *advCost;
+						rank.advances.push_back(std::move(advance));
+					}
+				}
+
+				career.ranks.push_back(std::move(rank));
+			}
+
+			if (validCareer) {
+				careerTemplates.push_back(std::move(career));
+			}
+		}
+	} catch (const sol::error&) {
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Careers.lua.");
+	}
+}
+
+void Engine::loadSkillDefinitions()
+{
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Skills.lua");
+
+		sol::table skillTable = lua["skills"];
+		if (!skillTable.valid()) {
+			gui->message(Colors::damage, "Warning: Skills.lua missing 'skills' table.");
+			return;
+		}
+
+		for (size_t i = 1; i <= skillTable.size(); i++) {
+			sol::table entry = skillTable[i];
+
+			std::string name = entry.get_or("name", std::string(""));
+			if (name.empty()) {
+				gui->message(Colors::damage, "Skills.lua: skipping entry # — missing name.", static_cast<int>(i));
+				continue;
+			}
+
+			SkillDefinition def;
+			def.name = name;
+			def.isCombat = entry.get_or("isCombat", false);
+			skillDefinitions.push_back(std::move(def));
+		}
+	} catch (const sol::error&) {
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Skills.lua.");
+	}
+}
+
+void Engine::loadTalentDefinitions()
+{
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base);
+		lua.script_file("Scripts/Talents.lua");
+
+		sol::table talentTable = lua["talents"];
+		if (!talentTable.valid()) {
+			gui->message(Colors::damage, "Warning: Talents.lua missing 'talents' table.");
+			return;
+		}
+
+		for (size_t i = 1; i <= talentTable.size(); i++) {
+			sol::table entry = talentTable[i];
+
+			std::string name = entry.get_or("name", std::string(""));
+			if (name.empty()) {
+				gui->message(Colors::damage, "Talents.lua: skipping entry # — missing name.", static_cast<int>(i));
+				continue;
+			}
+
+			TalentDefinition def;
+			def.name = name;
+			def.description = entry.get_or("description", std::string(""));
+			talentDefinitions.push_back(std::move(def));
+		}
+	} catch (const sol::error&) {
+		gui->message(Colors::damage, "Warning: failed to load Scripts/Talents.lua.");
+	}
+}
+
+void Engine::init()
+{
+	// Load character generation data files (homeworlds, careers, skills, talents).
+	// Must run early — before chargen or player creation.
+	loadHomeworldTemplates();
+	loadCareerTemplates();
+	loadSkillDefinitions();
+	loadTalentDefinitions();
 
 	// Load global config from Config.lua.
 	try {
@@ -1568,28 +2624,16 @@ void Engine::init()
 		gui->message(Colors::damage, "Warning: failed to load Scripts/Decorations.lua — no decorations will spawn.");
 	}
 
-	// Create the player.
+	// Create the player with default combat stats. Characteristics and career
+	// progression will be set during character generation completion.
 	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", Colors::white);
 	player = newPlayer.get();
-	newPlayer->destructible = std::make_unique<PlayerDestructible>(playerHp, playerDefense, "Your cadaver", 0);
-	newPlayer->attacker     = std::make_unique<Attacker>(playerPower, playerSkill);
+	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
+	newPlayer->attacker     = std::make_unique<Attacker>(5.0f, 40);
 	newPlayer->ai           = std::make_unique<PlayerAi>();
-	newPlayer->container    = std::make_unique<Container>(playerInvSize);
+	newPlayer->container    = std::make_unique<Container>(26);
 	newPlayer->equipment    = std::make_unique<Equipment>();
-
-	// Attach player characteristics loaded from Classes.lua.
-	auto playerChars = std::make_shared<Characteristics>(30);
-	playerChars->set(CharId::WS,  playerCharWS);
-	playerChars->set(CharId::BS,  playerCharBS);
-	playerChars->set(CharId::S,   playerCharS);
-	playerChars->set(CharId::T,   playerCharT);
-	playerChars->set(CharId::Ag,  playerCharAg);
-	playerChars->set(CharId::Int, playerCharInt);
-	playerChars->set(CharId::Per, playerCharPer);
-	playerChars->set(CharId::WP,  playerCharWP);
-	playerChars->set(CharId::Fel, playerCharFel);
-	newPlayer->characteristics = playerChars;
-
+	newPlayer->characteristics = std::make_shared<Characteristics>(25);
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create stairsUp (always visible, never blocks). Starting level is depth 20 (deepest),
@@ -1604,9 +2648,6 @@ void Engine::init()
 	map->init(true, LevelType::BSP);
 	camera = std::make_unique<Camera>(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
 		map->getWidth(), map->getHeight());
-	camera->update(player, false);
-
-	gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 
 	// Generate world seed from system clock for deterministic world map generation.
 	worldSeed = static_cast<uint32_t>(
@@ -1615,7 +2656,8 @@ void Engine::init()
 		).count()
 	);
 
-	gameStatus = STARTUP;
+	// Begin character generation flow — player characteristics and career are set on completion.
+	beginCharGen();
 }
 
 void Engine::term()

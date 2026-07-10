@@ -9,35 +9,75 @@ log messages use strings
 pick and drop functions work as intended
 
 
-FEATURES
+ROADMAP
+=======
 
-to do
+## Immediate / Short-term
 
-FUTURE AI IDEAS:
-- CowardlyAi subclass: attacks only if 3+ units of the same type are within 10 tiles of each other. If fewer than 3 nearby allies, uses scent tracking to seek out NPCs of the same type to regroup.
+- [ ] Rename all .h headers to .hpp
+- [ ] Complete tests for CharacterSheet (unit + property-based)
+- [ ] Implement stat locks based on CharacterSheet for NPCs
+- [ ] Add high score system
 
-Stats for characters
+## UI Overhaul
 
-for V1.0
+- [ ] Refactor UI including larger grid and tiles
+- [ ] Character description panel (updated with injuries, modifications, augmetics)
 
-guns
-equipable items
-character generation
-npc Ai
-stairs up
-chat with NPC's
-Map generation based on region.
-Lua Map generation
-Lua Actor generateion
-Lua Ai
-enemy ai/ enemy types
-story
+## Space Travel System
 
-for v.2.0
-outdoor regions
-world generation
-cover
+- [ ] Implement space travel: solar, subsector, and sector scale
+- [ ] Space combat encounters
+- [ ] Random warp/void encounters
 
+## NPCs and AI
 
-v0.1
-added map scrolling
+- [ ] Add non-hostile NPCs to hive (traders, civilians, contacts)
+- [ ] Add hostile NPCs (gangers, cultists, mutants)
+- [ ] Move AI to Lua so people can modify mob behaviour
+- [ ] Create AIs so NPCs look natural (patrol, idle, converse)
+- [ ] Create more location-appropriate enemies per biome/area
+
+## Content — Lua Data
+
+- [ ] Fill out Luas to reflect all character, equipment, and enemy options
+- [ ] Create a progression of equipment which scales with player rank
+- [ ] Make sure Tech-Priest career is reflected accurately
+- [ ] Add all Rogue Trader careers, homeworlds, and advance tables
+
+## Storyline and Interactables
+
+- [ ] Create a basic storyline / campaign structure
+- [ ] Create interactable objects where skills can be used
+- [ ] Events that happen occasionally (holy celebrations on shrine worlds, etc.)
+
+## World and Map Structure
+
+- [ ] Structure maps to better reflect what they represent:
+  - Outdoor maps (Perlin biomes)
+  - World maps (planetary overview)
+  - Hive city maps (WFC + BSP levels)
+  - Spacecraft interiors
+  - Mines
+  - Agriworlds
+  - Xenos planets
+  - More biomes
+- [ ] Maps reflect location theme with appropriate tiles and decorations
+
+## Galactic Strategy Layer
+
+- [ ] World rulers and faction influence based on galaxy map
+- [ ] Worlds conquered by factions; overall control judged dynamically
+- [ ] Crusades: recruits, losses, outcomes for the Imperium
+- [ ] If player is not interested in galactic conquests, worlds should be worth exploring for their minutiae (quests, lore, loot, NPCs)
+
+## Done (v0.0.x)
+
+- [x] Character generation (homeworld, career, XP advances)
+- [x] Remove legacy leveling system
+- [x] In-game advance purchase overlay
+- [x] CharacterSheet component
+- [x] Classes.lua removed, stats in Careers.lua
+- [x] Map scrolling
+- [x] Log messages use strings
+- [x] Pick and drop functions

@@ -7,7 +7,7 @@ namespace constants {
 	inline static constexpr auto MSG_X            = BAR_WIDTH + 2; // message log starts after the bars
 	inline static constexpr auto MSG_HEIGHT       = PANEL_HEIGHT - 2;
 
-	// Pause / level-up menu overlay
+	// Pause menu overlay
 	inline static constexpr auto PAUSE_MENU_WIDTH  = 30;
 	inline static constexpr auto PAUSE_MENU_HEIGHT = 15;
 }

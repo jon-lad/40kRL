@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Sync Main Before Task",
+  "description": "Before any spec task executes, fetch origin/main so that new branches are always based on the latest main.",
+  "version": "1",
+  "when": {
+    "type": "preTaskExecution"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "git fetch origin main"
+  }
+}

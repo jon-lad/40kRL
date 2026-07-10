@@ -1,54 +1,15 @@
 
 #include <memory>
 #include <list>
-#include <sstream>
 #include "main.h"
 
 // ─── PlayerAi ────────────────────────────────────────────────────────────────
 
-PlayerAi::PlayerAi() : xpLevel{ 1 } {}
-
-static constexpr int LEVEL_UP_BASE   = 200;
-static constexpr int LEVEL_UP_FACTOR = 150;
-
-int PlayerAi::getNextLevelXp()
-{
-	return LEVEL_UP_BASE + xpLevel * LEVEL_UP_FACTOR;
-}
+PlayerAi::PlayerAi() {}
 
 void PlayerAi::update(Actor* owner)
 {
 	if (owner->destructible && owner->destructible->isDead()) { return; }
-
-	// Check for level-up before processing movement so the stat bonus applies immediately.
-	const int levelUpXp = getNextLevelXp();
-	if (owner->destructible->xp >= levelUpXp) {
-		xpLevel++;
-		owner->destructible->xp -= levelUpXp;
-
-		std::stringstream ss;
-		ss << "Your battle skills grow stronger! You reached level " << xpLevel << ".";
-		engine.gui->message(Colors::yellow, ss.str());
-
-		engine.gui->menu.clear();
-		engine.gui->menu.addItem(Menu::MenuItemCode::CONSTITUTION, "Constitution (+20HP)");
-		engine.gui->menu.addItem(Menu::MenuItemCode::STRENGTH,     "Strength (+1 Attack)");
-		engine.gui->menu.addItem(Menu::MenuItemCode::AGILITY,      "Agility (+1 Defense)");
-		const Menu::MenuItemCode choice = engine.gui->menu.pick(Menu::DisplayMode::PAUSE);
-		switch (choice) {
-			case Menu::MenuItemCode::CONSTITUTION:
-				owner->destructible->maxHp += 20;
-				owner->destructible->hp    += 20;
-				break;
-			case Menu::MenuItemCode::STRENGTH:
-				owner->attacker->power += 1;
-				break;
-			case Menu::MenuItemCode::AGILITY:
-				owner->destructible->defense += 1;
-				break;
-			default: break;
-		}
-	}
 
 	int dx = 0, dy = 0;
 	switch (engine.inputState.key.key) {
@@ -180,6 +141,10 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 
 	case 'm': // open world map
 		engine.beginWorldMap();
+		return;
+
+	case 'x': // open advance purchase overlay
+		engine.beginAdvances();
 		return;
 
 	case '<': // ascend stairs

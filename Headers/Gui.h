@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sstream>
 
 class Menu {
 public:
