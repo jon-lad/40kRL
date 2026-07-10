@@ -441,6 +441,7 @@ WfcTileset loadWfcTileset(const std::string& filepath, LogCallback logger) {
 		tile.id = id;
 		tile.glyph = glyphOpt.value();
 		tile.colorName = colorName;
+		tile.description = entry.get_or("description", std::string(""));
 		tile.walkable = walkableOpt.value();
 		tile.transparent = transparentOpt.value();
 		tile.weight = entry.get_or("weight", 1.0f);

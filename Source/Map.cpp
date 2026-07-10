@@ -676,6 +676,14 @@ bool Map::isWall(int x, int y) const
 	return !map->isWalkable(x, y);
 }
 
+std::string Map::getWfcTileDescription(int x, int y) const
+{
+	if (levelType != LevelType::WFC || !wfcTileset || wfcTileIds.empty()) return "";
+	int idx = x + y * width;
+	if (idx < 0 || idx >= static_cast<int>(wfcTileIds.size())) return "";
+	return wfcTileset->tiles[wfcTileIds[idx]].description;
+}
+
 bool Map::isExplored(int x, int y) const
 {
 	const int index = x + y * width;
