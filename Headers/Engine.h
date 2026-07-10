@@ -5,6 +5,7 @@
 #include <vector>
 #include "Equippable.h"
 #include "CharacterData.h"
+#include "CharacterGenerator.h"
 #include "LevelCache.h"
 #include "TargetingContext.h"
 #include "WorldMap.h"
@@ -90,7 +91,8 @@ public:
 		PICKUP_MENU, // pickup selection menu is open
 		LOOK,        // look-mode cursor active
 		CHARACTER_SHEET, // character sheet overlay is open
-		WORLD_MAP       // world map overlay is open
+		WORLD_MAP,      // world map overlay is open
+		CHARACTER_GEN   // character generation overlay is active
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -128,6 +130,7 @@ public:
 	std::optional<LookState> lookState; // active only during LOOK state
 	std::optional<CharacterSheetState> characterSheetState; // active only during CHARACTER_SHEET state
 	std::optional<WorldMapState> worldMapState; // active only during WORLD_MAP state
+	std::optional<CharGenState> charGenState; // active only during CHARACTER_GEN state
 
 	uint32_t worldSeed = 0; // deterministic seed for world map generation, set during init()
 
@@ -195,6 +198,19 @@ public:
 
 	// Renders character sheet overlay. Called from render() when CHARACTER_SHEET.
 	void renderCharacterSheet();
+
+	// Enters character generation mode. Called when starting a new game.
+	void beginCharGen();
+
+	// Processes one frame of character generation input. Called from update() when CHARACTER_GEN.
+	void updateCharGen();
+
+	// Renders character generation overlay. Called from render() when CHARACTER_GEN.
+	void renderCharGen();
+
+	// Navigates back to the previous chargen step, resetting state for the step being left.
+	// On HOMEWORLD step, does nothing (cannot go back further).
+	void charGenGoBack();
 
 	// Enters world map display mode. Called when player presses 'm' in IDLE state.
 	void beginWorldMap();

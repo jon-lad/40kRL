@@ -1,5 +1,4 @@
-﻿MSBuild version 18.7.8+1ac568fee for .NET Framework
-
+﻿
   Actor.cpp
   Ai.cpp
   Attacker.cpp

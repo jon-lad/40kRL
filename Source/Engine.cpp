@@ -30,6 +30,13 @@ Engine::Engine(int screenWidth, int screenHeight)
 
 void Engine::update()
 {
+	// Handle character generation state — skip all normal game logic.
+	if (gameStatus == CHARACTER_GEN) {
+		pollInput(inputState);
+		updateCharGen();
+		return;
+	}
+
 	if (gameStatus == STARTUP) { map->computeFOV(); gameStatus = IDLE; }
 
 	pollInput(inputState);
@@ -139,6 +146,11 @@ void Engine::render()
 	// Render world map overlay when in WORLD_MAP state.
 	if (gameStatus == WORLD_MAP) {
 		renderWorldMap();
+	}
+
+	// Render character generation overlay when in CHARACTER_GEN state.
+	if (gameStatus == CHARACTER_GEN) {
+		renderCharGen();
 	}
 }
 
@@ -969,6 +981,171 @@ void Engine::renderWorldMap()
 	// Blit overlay onto root console at position (0, 0).
 	TCODConsole::blit(&wmConsole, 0, 0, WORLD_MAP_OVERLAY_W, WORLD_MAP_OVERLAY_H,
 		TCODConsole::root, 0, 0);
+}
+
+void Engine::beginCharGen()
+{
+	charGenState = CharGenState{};
+	charGenState->currentStep = CharGenState::Step::HOMEWORLD;
+	gameStatus = CHARACTER_GEN;
+}
+
+void Engine::updateCharGen()
+{
+	if (!charGenState) {
+		// Safety: should not be called without a valid state.
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Back-navigation: Escape key ---
+	if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+		charGenGoBack();
+		return;
+	}
+
+	switch (charGenState->currentStep) {
+		case CharGenState::Step::HOMEWORLD:
+			// TODO (task 8.3): selectHomeworld() input handling
+			break;
+		case CharGenState::Step::CAREER:
+			// TODO (task 8.4): selectCareer() input handling
+			break;
+		case CharGenState::Step::ADVANCES:
+			// TODO (task 8.5): purchaseAdvances() input handling
+			break;
+		case CharGenState::Step::DONE:
+			// TODO (task 8.7): finalize and transition to gameplay
+			break;
+	}
+}
+
+void Engine::renderCharGen()
+{
+	if (!charGenState) return;
+
+	static constexpr int CHARGEN_WIDTH  = 60;
+	static constexpr int CHARGEN_HEIGHT = 30;
+	static TCODConsole charGenConsole(CHARGEN_WIDTH, CHARGEN_HEIGHT);
+
+	charGenConsole.clear();
+	charGenConsole.setDefaultForeground(Colors::menuFrame);
+	charGenConsole.printFrame(0, 0, CHARGEN_WIDTH, CHARGEN_HEIGHT, true, TCOD_BKGND_DEFAULT, "character generation");
+
+	charGenConsole.setDefaultForeground(Colors::white);
+
+	switch (charGenState->currentStep) {
+		case CharGenState::Step::HOMEWORLD:
+			charGenConsole.printf(2, 2, "Step 1: Select Homeworld");
+			// TODO (task 8.3): render homeworld list
+			break;
+		case CharGenState::Step::CAREER:
+			charGenConsole.printf(2, 2, "Step 2: Select Career Path");
+			// TODO (task 8.4): render career list
+			break;
+		case CharGenState::Step::ADVANCES:
+			charGenConsole.printf(2, 2, "Step 3: Purchase Initial Advances");
+			// TODO (task 8.5): render advance purchase UI
+			break;
+		case CharGenState::Step::DONE:
+			charGenConsole.printf(2, 2, "Finalizing character...");
+			break;
+	}
+
+	TCODConsole::blit(&charGenConsole, 0, 0, CHARGEN_WIDTH, CHARGEN_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - CHARGEN_WIDTH  / 2,
+		screenHeight / 2 - CHARGEN_HEIGHT / 2);
+}
+
+void Engine::charGenGoBack()
+{
+	if (!charGenState) return;
+
+	switch (charGenState->currentStep) {
+		case CharGenState::Step::HOMEWORLD:
+			// Cannot go back further — do nothing.
+			break;
+
+		case CharGenState::Step::CAREER:
+			// Back from career: reset career selection and career-granted skills/talents,
+			// keep homeworld selection and homeworld grants intact.
+			charGenState->careerIndex = -1;
+
+			// Rebuild working state from homeworld-only grants.
+			charGenState->workingSkills.clear();
+			charGenState->workingTalents.clear();
+			if (charGenState->homeworldIndex >= 0
+				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
+			{
+				const auto& hw = homeworldTemplates[charGenState->homeworldIndex];
+				for (const auto& skill : hw.startingSkills) {
+					charGenState->workingSkills[skill] = 0; // Trained rank
+				}
+			}
+
+			charGenState->currentStep = CharGenState::Step::HOMEWORLD;
+			charGenState->selectedIndex = 0;
+			charGenState->scrollOffset = 0;
+			break;
+
+		case CharGenState::Step::ADVANCES:
+			// Back from advances: reset XP spending, revert working characteristics
+			// to post-homeworld state, clear career skills/talents and re-apply only
+			// homeworld + career grants (no advance purchases).
+			charGenState->spentXp = 0;
+
+			// Reset characteristics to base 25 + homeworld modifiers only.
+			charGenState->workingChars = Characteristics{25};
+			if (charGenState->homeworldIndex >= 0
+				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
+			{
+				const auto& hw = homeworldTemplates[charGenState->homeworldIndex];
+				for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
+					CharId id = static_cast<CharId>(i);
+					int base = 25 + hw.characteristicMods[i];
+					charGenState->workingChars.set(id, base);
+				}
+			}
+
+			// Reset skills/talents to homeworld + career grants only (no advance purchases).
+			charGenState->workingSkills.clear();
+			charGenState->workingTalents.clear();
+			if (charGenState->homeworldIndex >= 0
+				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
+			{
+				const auto& hw = homeworldTemplates[charGenState->homeworldIndex];
+				for (const auto& skill : hw.startingSkills) {
+					charGenState->workingSkills[skill] = 0;
+				}
+			}
+			if (charGenState->careerIndex >= 0
+				&& charGenState->careerIndex < static_cast<int>(careerTemplates.size()))
+			{
+				const auto& career = careerTemplates[charGenState->careerIndex];
+				if (!career.ranks.empty()) {
+					const auto& rank1 = career.ranks[0];
+					for (const auto& skill : rank1.startingSkills) {
+						charGenState->workingSkills[skill] = 0;
+					}
+					for (const auto& talent : rank1.startingTalents) {
+						charGenState->workingTalents.insert(talent);
+					}
+				}
+			}
+
+			charGenState->currentStep = CharGenState::Step::CAREER;
+			charGenState->selectedIndex = 0;
+			charGenState->scrollOffset = 0;
+			break;
+
+		case CharGenState::Step::DONE:
+			// Should not normally reach here, but go back to advances if it does.
+			charGenState->currentStep = CharGenState::Step::ADVANCES;
+			charGenState->selectedIndex = 0;
+			charGenState->scrollOffset = 0;
+			break;
+	}
 }
 
 void Engine::beginWorldMap()
