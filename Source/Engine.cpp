@@ -493,6 +493,9 @@ void Engine::renderLook()
 					case TerrainType::TREE:   terrain = "Tree";  break;
 					case TerrainType::WATER:  terrain = "Water"; break;
 				}
+			} else if (map->getLevelType() == LevelType::WFC) {
+				terrain = map->getWfcTileDescription(cursorX, cursorY);
+				if (terrain.empty()) terrain = "Hive interior";
 			} else {
 				// BSP level: walkable = Floor, non-walkable = Wall
 				if (map->isWall(cursorX, cursorY)) {
