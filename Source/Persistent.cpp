@@ -588,6 +588,12 @@ void Actor::save(TCODZip& zip)
 	// CareerProgression presence flag
 	zip.putInt(career != nullptr);
 	if (career) career->save(zip);
+
+	// CharacterSheet presence flag — the sheet is the canonical owner of characteristics
+	// and career for the player. When present, its data supersedes the individual fields
+	// (which are aliased shared_ptrs into the sheet). Written after career for compatibility.
+	zip.putInt(characterSheet != nullptr);
+	if (characterSheet) characterSheet->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -652,6 +658,19 @@ void Actor::load(TCODZip& zip)
 	if (hasCareer) {
 		career = std::make_shared<CareerProgression>();
 		career->load(zip);
+	}
+
+	// CharacterSheet presence flag — if present, rebuild the sheet and alias
+	// the characteristics/career shared_ptrs into it.
+	const bool hasCharSheet = zip.getInt();
+	if (hasCharSheet) {
+		characterSheet = std::make_shared<CharacterSheet>();
+		characterSheet->load(zip);
+
+		// Re-alias: point actor's characteristics and career into the sheet.
+		// Non-owning shared_ptr aliases that share lifetime with characterSheet.
+		characteristics = std::shared_ptr<Characteristics>(characterSheet, &characterSheet->characteristics);
+		career = std::shared_ptr<CareerProgression>(characterSheet, &characterSheet->career);
 	}
 }
 

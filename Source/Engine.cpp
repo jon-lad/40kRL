@@ -1417,28 +1417,37 @@ void Engine::updateCharGen()
 				player->container->size = selectedCareer.invSize;
 			}
 
-			// Copy working characteristics from chargen into the existing player.
+			// Create the unified CharacterSheet that owns characteristics + career.
+			auto sheet = std::make_shared<CharacterSheet>();
+
+			// Copy working characteristics from chargen into the sheet.
 			for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
 				CharId id = static_cast<CharId>(i);
-				player->characteristics->set(id, charGenState->workingChars.get(id));
+				sheet->characteristics.set(id, charGenState->workingChars.get(id));
 			}
 
-			// Create and attach CareerProgression with all accumulated state.
-			auto career = std::make_shared<CareerProgression>();
-			career->homeworldName = (charGenState->homeworldIndex >= 0
+			// Populate CareerProgression with all accumulated state.
+			sheet->career.homeworldName = (charGenState->homeworldIndex >= 0
 				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
 				? homeworldTemplates[charGenState->homeworldIndex].name : "";
-			career->careerName = (charGenState->careerIndex >= 0
+			sheet->career.careerName = (charGenState->careerIndex >= 0
 				&& charGenState->careerIndex < static_cast<int>(careerTemplates.size()))
 				? careerTemplates[charGenState->careerIndex].name : "";
-			career->currentRank = 1;
-			career->xpPool      = charGenState->startingXp;
-			career->spentXp     = charGenState->spentXp;
-			career->skills      = charGenState->workingSkills;
-			career->talents     = charGenState->workingTalents;
-			career->traits      = charGenState->workingTraits;
+			sheet->career.currentRank = 1;
+			sheet->career.xpPool      = charGenState->startingXp;
+			sheet->career.spentXp     = charGenState->spentXp;
+			sheet->career.skills      = charGenState->workingSkills;
+			sheet->career.talents     = charGenState->workingTalents;
+			sheet->career.traits      = charGenState->workingTraits;
 
-			player->career = career;
+			// Attach the sheet to the player.
+			player->characterSheet = sheet;
+
+			// Alias actor->characteristics and actor->career into the sheet so all
+			// existing code (combat resolution, character sheet overlay, advances)
+			// continues to work unchanged via player->characteristics / player->career.
+			player->characteristics = std::shared_ptr<Characteristics>(sheet, &sheet->characteristics);
+			player->career = std::shared_ptr<CareerProgression>(sheet, &sheet->career);
 
 			gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 

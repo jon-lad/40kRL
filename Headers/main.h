@@ -18,6 +18,7 @@ class Actor;
 #include "Equipment.h"
 #include "CharacterData.h"
 #include "CareerProgression.h"
+#include "CharacterSheet.h"
 #include "Actor.h"
 #include "Map.h"
 #include "Gui.h"
