@@ -34,6 +34,10 @@ struct RankDefinition {
 // Loaded from Scripts/Careers.lua
 struct CareerTemplate {
 	std::string name;
+	float hp = 30.0f;
+	float defense = 2.0f;
+	float power = 5.0f;
+	int invSize = 26;
 	std::vector<RankDefinition> ranks;  // ordered by rankNumber
 };
 

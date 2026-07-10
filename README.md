@@ -69,7 +69,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 ├── Source/           C++ implementation files
 ├── Scripts/          Lua data scripts
 │   ├── Config.lua    Game configuration (map size, FOV, thresholds)
-│   ├── Classes.lua   Player class stats (hp, defense, power, skill)
+│   ├── Careers.lua   Career paths with ranks, advances, and combat stats
 │   ├── Enemies.lua   Enemy definitions and spawn logic
 │   ├── Items.lua     Item definitions and spawn logic
 │   ├── Effects.lua   Item effect scripts
@@ -101,7 +101,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 
 ## Scripting
 
-Enemy and item definitions live in `Scripts/` as Lua tables. You can add new enemies by editing `Scripts/Enemies.lua`, new items in `Scripts/Items.lua`, or new room decorations in `Scripts/Decorations.lua` without recompiling. Game configuration (map dimensions, FOV radius, thresholds, decoration counts) is in `Scripts/Config.lua`. Player class stats (hp, defense, power, skill, characteristics) are in `Scripts/Classes.lua`. Each enemy template in `Enemies.lua` can also specify the nine Rogue Trader characteristics (ws, bs, s, t, ag, int, per, wp, fel) — omitted fields default to 20.
+Enemy and item definitions live in `Scripts/` as Lua tables. You can add new enemies by editing `Scripts/Enemies.lua`, new items in `Scripts/Items.lua`, or new room decorations in `Scripts/Decorations.lua` without recompiling. Game configuration (map dimensions, FOV radius, thresholds, decoration counts) is in `Scripts/Config.lua`. Player combat stats (hp, defense, power, inventory size) are defined per career in `Scripts/Careers.lua`. Each enemy template in `Enemies.lua` can also specify the nine Rogue Trader characteristics (ws, bs, s, t, ag, int, per, wp, fel) — omitted fields default to 20.
 
 ## Roadmap
 

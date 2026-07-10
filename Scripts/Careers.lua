@@ -6,6 +6,10 @@
 careers = {
     {
         name = "Rogue Trader",
+        hp = 28.0,
+        defense = 2.0,
+        power = 4.0,
+        invSize = 26,
         ranks = {
             {
                 rankNumber = 1,
@@ -61,6 +65,10 @@ careers = {
     },
     {
         name = "Arch-Militant",
+        hp = 32.0,
+        defense = 3.0,
+        power = 6.0,
+        invSize = 22,
         ranks = {
             {
                 rankNumber = 1,

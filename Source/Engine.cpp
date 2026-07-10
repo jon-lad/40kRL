@@ -1406,6 +1406,17 @@ void Engine::updateCharGen()
 		{
 			// ─── Finalize character generation: update player Actor ───────────
 
+			// Apply career-defined combat stats to the player.
+			if (charGenState->careerIndex >= 0
+				&& charGenState->careerIndex < static_cast<int>(careerTemplates.size())) {
+				const auto& selectedCareer = careerTemplates[charGenState->careerIndex];
+				player->destructible->maxHp = selectedCareer.hp;
+				player->destructible->hp = selectedCareer.hp;
+				player->destructible->defense = selectedCareer.defense;
+				player->attacker->power = selectedCareer.power;
+				player->container->size = selectedCareer.invSize;
+			}
+
 			// Copy working characteristics from chargen into the existing player.
 			for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
 				CharId id = static_cast<CharId>(i);
@@ -2186,6 +2197,10 @@ void Engine::loadCareerTemplates()
 
 			CareerTemplate career;
 			career.name = name;
+			career.hp = entry.get_or("hp", 30.0f);
+			career.defense = entry.get_or("defense", 2.0f);
+			career.power = entry.get_or("power", 5.0f);
+			career.invSize = entry.get_or("invSize", 26);
 
 			bool validCareer = true;
 			for (size_t r = 1; r <= (*ranksTable).size(); r++) {
