@@ -31,9 +31,9 @@ namespace Colors {
     constexpr TCODColor damageDark{127, 0, 0};       // dark damage backdrop
     constexpr TCODColor darkRed{95, 0, 0};           // corpse tint (dark red)
     constexpr TCODColor confusion{63, 0, 127};       // confusion effect (darker violet)
-    constexpr TCODColor levelUp{255, 191, 127};      // level-up message (lighter orange)
+    constexpr TCODColor menuHighlightAlt{255, 191, 127}; // menu selected-item highlight (lighter orange)
     constexpr TCODColor surfaceMsg{63, 255, 63};     // surface/outdoor message (light green)
-    constexpr TCODColor yellow{255, 255, 0};         // level-up announcement
+    constexpr TCODColor yellow{255, 255, 0};         // debug / system announcement
     constexpr TCODColor menuFrame{200, 180, 50};     // menu frame/title colour
 
     // ─── Map rendering ──────────────────────────────────────────────────
@@ -54,7 +54,7 @@ namespace Colors {
     constexpr TCODColor lightViolet      = healing;
     constexpr TCODColor lightRed         = damageLight;
     constexpr TCODColor darkerRed        = damageDark;
-    constexpr TCODColor lighterOrange    = levelUp;
+    constexpr TCODColor lighterOrange    = menuHighlightAlt;
     constexpr TCODColor darkerViolet     = confusion;
     constexpr TCODColor lightGreen       = surfaceMsg;
 

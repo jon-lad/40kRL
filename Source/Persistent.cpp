@@ -732,9 +732,8 @@ auto TemporaryAi::create(TCODZip& zip)
 void PlayerAi::save(TCODZip& zip)
 {
 	zip.putInt(static_cast<int>(AiType::PLAYER));
-	zip.putInt(xpLevel);
 }
-void PlayerAi::load(TCODZip& zip) { xpLevel = zip.getInt(); }
+void PlayerAi::load(TCODZip& zip) {}
 
 void MonsterAi::save(TCODZip& zip) { zip.putInt(static_cast<int>(AiType::MONSTER)); }
 void MonsterAi::load(TCODZip& zip) {}
