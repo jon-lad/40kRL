@@ -1096,11 +1096,124 @@ void Engine::updateCharGen()
 			break;
 		}
 		case CharGenState::Step::ADVANCES:
-			// TODO (task 8.5): purchaseAdvances() input handling
+		{
+			if (careerTemplates.empty() || charGenState->careerIndex < 0) break;
+			const auto& career = careerTemplates[charGenState->careerIndex];
+			if (career.ranks.empty()) break;
+			const auto& advances = career.ranks[0].advances;
+			if (advances.empty()) break;
+
+			int maxIdx = static_cast<int>(advances.size()) - 1;
+
+			if (inputState.key.pressed) {
+				// Clear status message on any new input
+				charGenState->statusMessage.clear();
+
+				if (inputState.key.key == SDLK_UP) {
+					charGenState->selectedIndex--;
+					if (charGenState->selectedIndex < 0)
+						charGenState->selectedIndex = maxIdx;
+				} else if (inputState.key.key == SDLK_DOWN) {
+					charGenState->selectedIndex++;
+					if (charGenState->selectedIndex > maxIdx)
+						charGenState->selectedIndex = 0;
+				} else if (inputState.key.key == SDLK_RETURN) {
+					// Attempt to purchase the selected advance
+					const auto& adv = advances[charGenState->selectedIndex];
+					int availableXp = charGenState->startingXp - charGenState->spentXp;
+
+					if (availableXp < adv.cost) {
+						charGenState->statusMessage = "Insufficient XP!";
+					} else if (adv.type == AdvanceEntry::Type::SKILL) {
+						auto it = charGenState->workingSkills.find(adv.name);
+						if (it != charGenState->workingSkills.end() && it->second >= 2) {
+							charGenState->statusMessage = "Skill at maximum rank!";
+						} else {
+							// Purchase skill advance
+							charGenState->spentXp += adv.cost;
+							if (it == charGenState->workingSkills.end()) {
+								charGenState->workingSkills[adv.name] = 1;
+							} else {
+								it->second += 1;
+							}
+							charGenState->statusMessage = "Purchased: " + adv.name;
+						}
+					} else if (adv.type == AdvanceEntry::Type::TALENT) {
+						if (charGenState->workingTalents.count(adv.name) > 0) {
+							charGenState->statusMessage = "Talent already owned!";
+						} else {
+							// Purchase talent advance
+							charGenState->spentXp += adv.cost;
+							charGenState->workingTalents.insert(adv.name);
+							charGenState->statusMessage = "Purchased: " + adv.name;
+						}
+					} else if (adv.type == AdvanceEntry::Type::CHARACTERISTIC) {
+						// Purchase characteristic advance
+						charGenState->spentXp += adv.cost;
+						CharId charId = CharId::COUNT;
+						if (adv.name == "WS")  charId = CharId::WS;
+						else if (adv.name == "BS")  charId = CharId::BS;
+						else if (adv.name == "S")   charId = CharId::S;
+						else if (adv.name == "T")   charId = CharId::T;
+						else if (adv.name == "Ag")  charId = CharId::Ag;
+						else if (adv.name == "Int") charId = CharId::Int;
+						else if (adv.name == "Per") charId = CharId::Per;
+						else if (adv.name == "WP")  charId = CharId::WP;
+						else if (adv.name == "Fel") charId = CharId::Fel;
+
+						if (charId != CharId::COUNT) {
+							int current = charGenState->workingChars.get(charId);
+							int newValue = std::clamp(current + adv.amount, 1, 99);
+							charGenState->workingChars.set(charId, newValue);
+						}
+						charGenState->statusMessage = "Purchased: " + adv.name + " advance";
+					}
+				} else if (inputState.key.c == 'f' || inputState.key.c == 'F'
+				           || inputState.key.key == SDLK_TAB) {
+					// Finish advance purchases and move to DONE
+					charGenState->currentStep = CharGenState::Step::DONE;
+					charGenState->selectedIndex = 0;
+					charGenState->scrollOffset = 0;
+				}
+			}
 			break;
+		}
 		case CharGenState::Step::DONE:
-			// TODO (task 8.7): finalize and transition to gameplay
+		{
+			// ─── Finalize character generation: update player Actor ───────────
+
+			// Copy working characteristics from chargen into the existing player.
+			for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
+				CharId id = static_cast<CharId>(i);
+				player->characteristics->set(id, charGenState->workingChars.get(id));
+			}
+
+			// Create and attach CareerProgression with all accumulated state.
+			auto career = std::make_shared<CareerProgression>();
+			career->homeworldName = (charGenState->homeworldIndex >= 0
+				&& charGenState->homeworldIndex < static_cast<int>(homeworldTemplates.size()))
+				? homeworldTemplates[charGenState->homeworldIndex].name : "";
+			career->careerName = (charGenState->careerIndex >= 0
+				&& charGenState->careerIndex < static_cast<int>(careerTemplates.size()))
+				? careerTemplates[charGenState->careerIndex].name : "";
+			career->currentRank = 1;
+			career->xpPool      = charGenState->startingXp;
+			career->spentXp     = charGenState->spentXp;
+			career->skills      = charGenState->workingSkills;
+			career->talents     = charGenState->workingTalents;
+			career->traits      = charGenState->workingTraits;
+
+			player->career = career;
+
+			gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
+
+			// Clear chargen state.
+			charGenState.reset();
+
+			// Transition to normal gameplay.
+			gameStatus = STARTUP;
 			break;
+		}
 	}
 }
 
@@ -1284,9 +1397,76 @@ void Engine::renderCharGen()
 			break;
 		}
 		case CharGenState::Step::ADVANCES:
+		{
 			charGenConsole.printf(2, 2, "Step 3: Purchase Initial Advances");
-			// TODO (task 8.5): render advance purchase UI
+
+			int availableXp = charGenState->startingXp - charGenState->spentXp;
+			charGenConsole.setDefaultForeground(Colors::white);
+			charGenConsole.printf(2, 4, "Available XP: %d / %d", availableXp, charGenState->startingXp);
+
+			if (charGenState->careerIndex < 0
+				|| charGenState->careerIndex >= static_cast<int>(careerTemplates.size())) {
+				charGenConsole.setDefaultForeground(Colors::damage);
+				charGenConsole.printf(2, 6, "No career selected.");
+				break;
+			}
+
+			const auto& career = careerTemplates[charGenState->careerIndex];
+			if (career.ranks.empty()) break;
+			const auto& advances = career.ranks[0].advances;
+
+			// Render advance list
+			int listY = 6;
+			for (int i = 0; i < static_cast<int>(advances.size()); i++) {
+				if (listY >= CHARGEN_HEIGHT - 5) break;
+
+				const auto& adv = advances[i];
+
+				// Determine type label
+				const char* typeLabel = "";
+				if (adv.type == AdvanceEntry::Type::CHARACTERISTIC) typeLabel = "[Char]  ";
+				else if (adv.type == AdvanceEntry::Type::SKILL)     typeLabel = "[Skill] ";
+				else if (adv.type == AdvanceEntry::Type::TALENT)    typeLabel = "[Talent]";
+
+				// Determine if this advance can be purchased
+				bool canBuy = true;
+				if (availableXp < adv.cost) {
+					canBuy = false;
+				} else if (adv.type == AdvanceEntry::Type::SKILL) {
+					auto it = charGenState->workingSkills.find(adv.name);
+					if (it != charGenState->workingSkills.end() && it->second >= 2)
+						canBuy = false;
+				} else if (adv.type == AdvanceEntry::Type::TALENT) {
+					if (charGenState->workingTalents.count(adv.name) > 0)
+						canBuy = false;
+				}
+
+				// Set colour based on selection and purchasability
+				if (i == charGenState->selectedIndex) {
+					charGenConsole.setDefaultForeground(canBuy ? Colors::uiHighlight : Colors::damageLight);
+					charGenConsole.printf(2, listY, "> %s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+				} else {
+					charGenConsole.setDefaultForeground(canBuy ? Colors::uiText : Colors::damageDark);
+					charGenConsole.printf(2, listY, "  %s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+				}
+				listY++;
+			}
+
+			// Status message (purchase result feedback)
+			if (!charGenState->statusMessage.empty()) {
+				// Determine colour based on whether it was a rejection or success
+				bool isRejection = (charGenState->statusMessage.find("Insufficient") != std::string::npos
+				                 || charGenState->statusMessage.find("maximum") != std::string::npos
+				                 || charGenState->statusMessage.find("already") != std::string::npos);
+				charGenConsole.setDefaultForeground(isRejection ? Colors::damage : Colors::surfaceMsg);
+				charGenConsole.printf(2, CHARGEN_HEIGHT - 4, "%s", charGenState->statusMessage.c_str());
+			}
+
+			// Navigation hint
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			charGenConsole.printf(2, CHARGEN_HEIGHT - 2, "[Up/Down] Navigate  [Enter] Purchase  [F] Finish  [Esc] Back");
 			break;
+		}
 		case CharGenState::Step::DONE:
 			charGenConsole.printf(2, 2, "Finalizing character...");
 			break;
@@ -1931,51 +2111,6 @@ void Engine::loadTalentDefinitions()
 
 void Engine::init()
 {
-	// Load player class stats from Classes.lua (fall back to hardcoded defaults if missing).
-	float playerHp      = 30.0f;
-	float playerDefense = 2.0f;
-	float playerPower   = 5.0f;
-	int   playerSkill   = 40;
-	int   playerInvSize = 26;
-
-	// Characteristic defaults (all default to 30 if not specified in Lua).
-	int playerCharWS  = 30;
-	int playerCharBS  = 30;
-	int playerCharS   = 30;
-	int playerCharT   = 30;
-	int playerCharAg  = 30;
-	int playerCharInt = 30;
-	int playerCharPer = 30;
-	int playerCharWP  = 30;
-	int playerCharFel = 30;
-
-	try {
-		sol::state lua;
-		lua.open_libraries(sol::lib::base);
-		lua.script_file("Scripts/Classes.lua");
-
-		sol::table cls = lua["defaultClass"];
-		if (cls.valid()) {
-			playerHp      = cls.get_or("hp",      playerHp);
-			playerDefense = cls.get_or("defense", playerDefense);
-			playerPower   = cls.get_or("power",   playerPower);
-			playerSkill   = cls.get_or("skill",   playerSkill);
-			playerInvSize = cls.get_or("invSize", playerInvSize);
-
-			playerCharWS  = cls.get_or("ws",  playerCharWS);
-			playerCharBS  = cls.get_or("bs",  playerCharBS);
-			playerCharS   = cls.get_or("s",   playerCharS);
-			playerCharT   = cls.get_or("t",   playerCharT);
-			playerCharAg  = cls.get_or("ag",  playerCharAg);
-			playerCharInt = cls.get_or("int", playerCharInt);
-			playerCharPer = cls.get_or("per", playerCharPer);
-			playerCharWP  = cls.get_or("wp",  playerCharWP);
-			playerCharFel = cls.get_or("fel", playerCharFel);
-		}
-	} catch (const sol::error&) {
-		// Classes.lua missing or malformed — use defaults above.
-	}
-
 	// Load character generation data files (homeworlds, careers, skills, talents).
 	// Must run early — before chargen or player creation.
 	loadHomeworldTemplates();
@@ -2241,28 +2376,16 @@ void Engine::init()
 		gui->message(Colors::damage, "Warning: failed to load Scripts/Decorations.lua — no decorations will spawn.");
 	}
 
-	// Create the player.
+	// Create the player with default combat stats. Characteristics and career
+	// progression will be set during character generation completion.
 	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", Colors::white);
 	player = newPlayer.get();
-	newPlayer->destructible = std::make_unique<PlayerDestructible>(playerHp, playerDefense, "Your cadaver", 0);
-	newPlayer->attacker     = std::make_unique<Attacker>(playerPower, playerSkill);
+	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
+	newPlayer->attacker     = std::make_unique<Attacker>(5.0f, 40);
 	newPlayer->ai           = std::make_unique<PlayerAi>();
-	newPlayer->container    = std::make_unique<Container>(playerInvSize);
+	newPlayer->container    = std::make_unique<Container>(26);
 	newPlayer->equipment    = std::make_unique<Equipment>();
-
-	// Attach player characteristics loaded from Classes.lua.
-	auto playerChars = std::make_shared<Characteristics>(30);
-	playerChars->set(CharId::WS,  playerCharWS);
-	playerChars->set(CharId::BS,  playerCharBS);
-	playerChars->set(CharId::S,   playerCharS);
-	playerChars->set(CharId::T,   playerCharT);
-	playerChars->set(CharId::Ag,  playerCharAg);
-	playerChars->set(CharId::Int, playerCharInt);
-	playerChars->set(CharId::Per, playerCharPer);
-	playerChars->set(CharId::WP,  playerCharWP);
-	playerChars->set(CharId::Fel, playerCharFel);
-	newPlayer->characteristics = playerChars;
-
+	newPlayer->characteristics = std::make_shared<Characteristics>(25);
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create stairsUp (always visible, never blocks). Starting level is depth 20 (deepest),
@@ -2277,9 +2400,6 @@ void Engine::init()
 	map->init(true, LevelType::BSP);
 	camera = std::make_unique<Camera>(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
 		map->getWidth(), map->getHeight());
-	camera->update(player, false);
-
-	gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 
 	// Generate world seed from system clock for deterministic world map generation.
 	worldSeed = static_cast<uint32_t>(
@@ -2288,7 +2408,8 @@ void Engine::init()
 		).count()
 	);
 
-	gameStatus = STARTUP;
+	// Begin character generation flow — player characteristics and career are set on completion.
+	beginCharGen();
 }
 
 void Engine::term()

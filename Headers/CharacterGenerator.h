@@ -30,4 +30,7 @@ struct CharGenState {
 	// XP for initial advance purchases (granted by career at creation)
 	int startingXp = 0;
 	int spentXp = 0;
+
+	// Temporary status message for purchase feedback (shown briefly)
+	std::string statusMessage;
 };
