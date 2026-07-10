@@ -1,11 +1,14 @@
 name: Release Build
 
 on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version e.g. 0.1.0'
-        required: true
+        description: 'Release version (overrides tag). Leave empty when triggered by tag push.'
+        required: false
         type: string
       configuration:
         description: 'Build configuration'
@@ -28,6 +31,22 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - name: Resolve version and configuration
+        shell: bash
+        run: |
+          # Use manual input if provided, otherwise use the tag name
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "RELEASE_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+          # Use manual input if provided, otherwise default to Release
+          if [ -n "${{ inputs.configuration }}" ]; then
+            echo "BUILD_CONFIG=${{ inputs.configuration }}" >> $GITHUB_ENV
+          else
+            echo "BUILD_CONFIG=Release" >> $GITHUB_ENV
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -56,14 +75,14 @@ jobs:
         run: C:\vcpkg\vcpkg.exe integrate install
 
       - name: Build solution
-        run: msbuild 40kRL.sln /p:Configuration=${{ inputs.configuration }} /p:Platform=x64
+        run: msbuild 40kRL.sln /p:Configuration=${{ env.BUILD_CONFIG }} /p:Platform=x64
 
       - name: Copy runtime DLLs
         run: |
-          $outDir = "x64\${{ inputs.configuration }}"
+          $outDir = "x64\${{ env.BUILD_CONFIG }}"
           $vcpkgBin = "C:\vcpkg\installed\x64-windows\bin"
           $vcpkgDbgBin = "C:\vcpkg\installed\x64-windows\debug\bin"
-          if ("${{ inputs.configuration }}" -eq "Debug") {
+          if ("${{ env.BUILD_CONFIG }}" -eq "Debug") {
             Copy-Item "$vcpkgDbgBin\*.dll" "$outDir\" -Force -ErrorAction SilentlyContinue
           }
           Copy-Item "$vcpkgBin\*.dll" "$outDir\" -Force -ErrorAction SilentlyContinue
@@ -78,7 +97,7 @@ jobs:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
         run: |
-          $testExe = "x64\${{ inputs.configuration }}\40kRL_Tests.exe"
+          $testExe = "x64\${{ env.BUILD_CONFIG }}\40kRL_Tests.exe"
           if (Test-Path $testExe) {
             & $testExe --reporter compact "~[pbt]"
           } else {
@@ -89,14 +108,13 @@ jobs:
       - name: Set artifact name
         shell: bash
         run: |
-          REF_SAFE=$(echo "${{ github.ref_name }}" | tr '/' '-')
-          echo "ARTIFACT_NAME=40kRL-${REF_SAFE}-${{ inputs.configuration }}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=40kRL-${{ env.RELEASE_VERSION }}-${{ env.BUILD_CONFIG }}" >> $GITHUB_ENV
 
       - name: Stage release files
         run: |
           New-Item -ItemType Directory -Force -Path release
-          Copy-Item "x64\${{ inputs.configuration }}\40kRL.exe" release\
-          Copy-Item "x64\${{ inputs.configuration }}\*.dll" release\ -Force
+          Copy-Item "x64\${{ env.BUILD_CONFIG }}\40kRL.exe" release\
+          Copy-Item "x64\${{ env.BUILD_CONFIG }}\*.dll" release\ -Force
           Copy-Item Scripts release\Scripts\ -Recurse -Force
           Copy-Item menu_background1.png release\
           Copy-Item terminal.png release\
@@ -119,12 +137,12 @@ jobs:
           path: release/
 
       - name: Zip release folder
-        run: Compress-Archive -Path release\* -DestinationPath 40kRL-${{ inputs.version }}.zip
+        run: Compress-Archive -Path release\* -DestinationPath 40kRL-${{ env.RELEASE_VERSION }}.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version }}
-          name: ${{ inputs.version }}
-          files: 40kRL-${{ inputs.version }}.zip
+          tag_name: ${{ env.RELEASE_VERSION }}
+          name: ${{ env.RELEASE_VERSION }}
+          files: 40kRL-${{ env.RELEASE_VERSION }}.zip
           generate_release_notes: true
