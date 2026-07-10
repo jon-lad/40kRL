@@ -466,11 +466,11 @@ TEST_CASE("generate with invalid tileset (< 5 tiles) fails gracefully",
 {
     WfcTileset tileset;
     // Only 3 tiles — below the 5-tile minimum
-    tileset.tiles.push_back({"a", '.', "white", true, true, 1.0f,
+    tileset.tiles.push_back({"a", '.', "white", "", true, true, 1.0f,
                              {"a","b","c"}, {"a","b","c"}, {"a","b","c"}, {"a","b","c"}});
-    tileset.tiles.push_back({"b", '#', "white", true, true, 1.0f,
+    tileset.tiles.push_back({"b", '#', "white", "", true, true, 1.0f,
                              {"a","b","c"}, {"a","b","c"}, {"a","b","c"}, {"a","b","c"}});
-    tileset.tiles.push_back({"c", 'X', "white", false, false, 1.0f,
+    tileset.tiles.push_back({"c", 'X', "white", "", false, false, 1.0f,
                              {"a","b"}, {"a","b"}, {"a","b"}, {"a","b"}});
     tileset.idToIndex["a"] = 0;
     tileset.idToIndex["b"] = 1;
