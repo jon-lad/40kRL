@@ -584,6 +584,10 @@ void Actor::save(TCODZip& zip)
 	// compatibility (old saves that lack this field will read 0 from archive end).
 	zip.putInt(characteristics != nullptr);
 	if (characteristics) characteristics->save(zip);
+
+	// CareerProgression presence flag
+	zip.putInt(career != nullptr);
+	if (career) career->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -641,6 +645,13 @@ void Actor::load(TCODZip& zip)
 	if (hasCharacteristics) {
 		characteristics = std::make_shared<Characteristics>();
 		characteristics->load(zip);
+	}
+
+	// CareerProgression presence flag
+	const bool hasCareer = zip.getInt();
+	if (hasCareer) {
+		career = std::make_shared<CareerProgression>();
+		career->load(zip);
 	}
 }
 

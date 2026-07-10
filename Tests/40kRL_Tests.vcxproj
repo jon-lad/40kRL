@@ -160,6 +160,7 @@
     <ClCompile Include="..\Source\RangedCombat.cpp" />
     <ClCompile Include="..\Source\WorldMap.cpp" />
     <ClCompile Include="..\Source\WfcGenerator.cpp" />
+    <ClCompile Include="..\Source\CareerProgression.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
