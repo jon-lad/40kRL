@@ -1006,11 +1006,95 @@ void Engine::updateCharGen()
 
 	switch (charGenState->currentStep) {
 		case CharGenState::Step::HOMEWORLD:
-			// TODO (task 8.3): selectHomeworld() input handling
+		{
+			if (homeworldTemplates.empty()) break;
+
+			// Up/Down navigation
+			if (inputState.key.key == SDLK_UP && inputState.key.pressed) {
+				charGenState->selectedIndex--;
+				if (charGenState->selectedIndex < 0)
+					charGenState->selectedIndex = static_cast<int>(homeworldTemplates.size()) - 1;
+			}
+			if (inputState.key.key == SDLK_DOWN && inputState.key.pressed) {
+				charGenState->selectedIndex++;
+				if (charGenState->selectedIndex >= static_cast<int>(homeworldTemplates.size()))
+					charGenState->selectedIndex = 0;
+			}
+
+			// Enter to select homeworld
+			if (inputState.key.key == SDLK_RETURN && inputState.key.pressed) {
+				charGenState->homeworldIndex = charGenState->selectedIndex;
+				const auto& hw = homeworldTemplates[charGenState->homeworldIndex];
+
+				// Apply characteristic modifiers: base 25 + mod, clamped [1,99]
+				charGenState->workingChars = Characteristics{25};
+				for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
+					CharId id = static_cast<CharId>(i);
+					int value = 25 + hw.characteristicMods[i];
+					charGenState->workingChars.set(id, value); // set() clamps to [1,99]
+				}
+
+				// Grant starting skills at Trained rank (0)
+				charGenState->workingSkills.clear();
+				for (const auto& skill : hw.startingSkills) {
+					charGenState->workingSkills[skill] = 0;
+				}
+
+				// Grant starting traits
+				charGenState->workingTraits.clear();
+				charGenState->workingTraits = hw.startingTraits;
+
+				// Advance to career step
+				charGenState->currentStep = CharGenState::Step::CAREER;
+				charGenState->selectedIndex = 0;
+				charGenState->scrollOffset = 0;
+			}
 			break;
+		}
 		case CharGenState::Step::CAREER:
-			// TODO (task 8.4): selectCareer() input handling
+		{
+			if (careerTemplates.empty()) break;
+
+			// Clamp cursor to valid range.
+			int maxIdx = static_cast<int>(careerTemplates.size()) - 1;
+			if (charGenState->selectedIndex < 0) charGenState->selectedIndex = 0;
+			if (charGenState->selectedIndex > maxIdx) charGenState->selectedIndex = maxIdx;
+
+			if (inputState.key.pressed) {
+				if (inputState.key.key == SDLK_UP) {
+					if (charGenState->selectedIndex > 0) charGenState->selectedIndex--;
+				} else if (inputState.key.key == SDLK_DOWN) {
+					if (charGenState->selectedIndex < maxIdx) charGenState->selectedIndex++;
+				} else if (inputState.key.key == SDLK_RETURN) {
+					// Select career and grant Rank 1 benefits.
+					charGenState->careerIndex = charGenState->selectedIndex;
+
+					const auto& career = careerTemplates[charGenState->careerIndex];
+					if (!career.ranks.empty()) {
+						const auto& rank1 = career.ranks[0];
+						// Grant Rank 1 starting skills (don't overwrite if homeworld already granted).
+						for (const auto& skill : rank1.startingSkills) {
+							if (charGenState->workingSkills.find(skill) == charGenState->workingSkills.end()) {
+								charGenState->workingSkills[skill] = 0; // Trained rank
+							}
+						}
+						// Grant Rank 1 starting talents.
+						for (const auto& talent : rank1.startingTalents) {
+							charGenState->workingTalents.insert(talent);
+						}
+					}
+
+					// Set starting XP pool for initial advances.
+					charGenState->startingXp = 500;
+
+					// Advance to the next step.
+					charGenState->currentStep = CharGenState::Step::ADVANCES;
+					charGenState->selectedIndex = 0;
+					charGenState->scrollOffset = 0;
+				}
+			}
 			break;
+		}
 		case CharGenState::Step::ADVANCES:
 			// TODO (task 8.5): purchaseAdvances() input handling
 			break;
@@ -1036,13 +1120,169 @@ void Engine::renderCharGen()
 
 	switch (charGenState->currentStep) {
 		case CharGenState::Step::HOMEWORLD:
+		{
 			charGenConsole.printf(2, 2, "Step 1: Select Homeworld");
-			// TODO (task 8.3): render homeworld list
+
+			if (homeworldTemplates.empty()) {
+				charGenConsole.setDefaultForeground(Colors::damage);
+				charGenConsole.printf(2, 4, "No homeworlds available.");
+				break;
+			}
+
+			// Render homeworld list on the left side
+			int listY = 4;
+			for (int i = 0; i < static_cast<int>(homeworldTemplates.size()); i++) {
+				if (i == charGenState->selectedIndex) {
+					charGenConsole.setDefaultForeground(Colors::uiHighlight);
+					charGenConsole.printf(2, listY + i, "> %s", homeworldTemplates[i].name.c_str());
+				} else {
+					charGenConsole.setDefaultForeground(Colors::uiText);
+					charGenConsole.printf(2, listY + i, "  %s", homeworldTemplates[i].name.c_str());
+				}
+			}
+
+			// Show details of the currently highlighted homeworld on the right / below
+			const auto& hw = homeworldTemplates[charGenState->selectedIndex];
+			int detailY = listY + static_cast<int>(homeworldTemplates.size()) + 1;
+
+			// Characteristics with modifiers
+			charGenConsole.setDefaultForeground(Colors::white);
+			charGenConsole.printf(2, detailY, "Characteristics:");
+			detailY++;
+
+			static constexpr const char* charAbbrevs[] = {
+				"WS", "BS", "S", "T", "Ag", "Int", "Per", "WP", "Fel"
+			};
+			for (int i = 0; i < Characteristics::CHAR_COUNT; i++) {
+				int mod = hw.characteristicMods[i];
+				int result = 25 + mod;
+				if (result < 1) result = 1;
+				if (result > 99) result = 99;
+
+				if (mod > 0) {
+					charGenConsole.setDefaultForeground(Colors::surfaceMsg);
+					charGenConsole.printf(2, detailY, "  %-3s: 25+%d=%d", charAbbrevs[i], mod, result);
+				} else if (mod < 0) {
+					charGenConsole.setDefaultForeground(Colors::damageLight);
+					charGenConsole.printf(2, detailY, "  %-3s: 25%d=%d", charAbbrevs[i], mod, result);
+				} else {
+					charGenConsole.setDefaultForeground(Colors::uiText);
+					charGenConsole.printf(2, detailY, "  %-3s: 25+0=%d", charAbbrevs[i], result);
+				}
+				detailY++;
+			}
+
+			// Starting skills
+			detailY++;
+			charGenConsole.setDefaultForeground(Colors::white);
+			charGenConsole.printf(2, detailY, "Starting Skills:");
+			detailY++;
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			for (const auto& skill : hw.startingSkills) {
+				charGenConsole.printf(4, detailY, "%s", skill.c_str());
+				detailY++;
+			}
+
+			// Starting traits
+			detailY++;
+			charGenConsole.setDefaultForeground(Colors::white);
+			charGenConsole.printf(2, detailY, "Starting Traits:");
+			detailY++;
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			for (const auto& trait : hw.startingTraits) {
+				charGenConsole.printf(4, detailY, "%s", trait.c_str());
+				detailY++;
+			}
+
+			// Navigation hint
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			charGenConsole.printf(2, CHARGEN_HEIGHT - 2, "[Up/Down] Navigate  [Enter] Select");
 			break;
+		}
 		case CharGenState::Step::CAREER:
+		{
 			charGenConsole.printf(2, 2, "Step 2: Select Career Path");
-			// TODO (task 8.4): render career list
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			charGenConsole.printf(2, 4, "Use UP/DOWN to navigate, ENTER to select, ESC to go back");
+
+			// Render career list with cursor indicator.
+			int listY = 6;
+			for (int i = 0; i < static_cast<int>(careerTemplates.size()); i++) {
+				if (listY >= CHARGEN_HEIGHT - 12) break; // leave room for info panel
+				if (i == charGenState->selectedIndex) {
+					charGenConsole.setDefaultForeground(Colors::uiHighlight);
+					charGenConsole.printf(2, listY, "> %s", careerTemplates[i].name.c_str());
+				} else {
+					charGenConsole.setDefaultForeground(Colors::white);
+					charGenConsole.printf(2, listY, "  %s", careerTemplates[i].name.c_str());
+				}
+				listY++;
+			}
+
+			// Show selected career's Rank 1 info below the list.
+			int infoY = listY + 1;
+			int sel = charGenState->selectedIndex;
+			if (sel >= 0 && sel < static_cast<int>(careerTemplates.size())) {
+				const auto& career = careerTemplates[sel];
+				charGenConsole.setDefaultForeground(Colors::menuHighlightAlt);
+				charGenConsole.printf(2, infoY, "--- %s ---", career.name.c_str());
+				infoY++;
+
+				if (!career.ranks.empty()) {
+					const auto& rank1 = career.ranks[0];
+					charGenConsole.setDefaultForeground(Colors::white);
+					charGenConsole.printf(2, infoY, "Rank 1: %s", rank1.rankTitle.c_str());
+					infoY++;
+
+					// Starting skills.
+					if (!rank1.startingSkills.empty()) {
+						charGenConsole.setDefaultForeground(Colors::uiText);
+						std::string skillStr = "Skills: ";
+						for (size_t s = 0; s < rank1.startingSkills.size(); s++) {
+							if (s > 0) skillStr += ", ";
+							skillStr += rank1.startingSkills[s];
+						}
+						charGenConsole.printf(2, infoY, "%s", skillStr.c_str());
+						infoY++;
+					}
+
+					// Starting talents.
+					if (!rank1.startingTalents.empty()) {
+						std::string talentStr = "Talents: ";
+						for (size_t t = 0; t < rank1.startingTalents.size(); t++) {
+							if (t > 0) talentStr += ", ";
+							talentStr += rank1.startingTalents[t];
+						}
+						charGenConsole.printf(2, infoY, "%s", talentStr.c_str());
+						infoY++;
+					}
+
+					// Preview of available advances.
+					if (!rank1.advances.empty()) {
+						infoY++;
+						charGenConsole.setDefaultForeground(Colors::uiText);
+						charGenConsole.printf(2, infoY, "Available advances:");
+						infoY++;
+						int advCount = 0;
+						for (const auto& adv : rank1.advances) {
+							if (infoY >= CHARGEN_HEIGHT - 1) break;
+							const char* typeLabel = "";
+							if (adv.type == AdvanceEntry::Type::CHARACTERISTIC) typeLabel = "[Char]";
+							else if (adv.type == AdvanceEntry::Type::SKILL)     typeLabel = "[Skill]";
+							else if (adv.type == AdvanceEntry::Type::TALENT)    typeLabel = "[Talent]";
+							charGenConsole.printf(4, infoY, "%s %s (%d xp)", typeLabel, adv.name.c_str(), adv.cost);
+							infoY++;
+							advCount++;
+							if (advCount >= 5) {
+								charGenConsole.printf(4, infoY, "... and %d more", static_cast<int>(rank1.advances.size()) - advCount);
+								break;
+							}
+						}
+					}
+				}
+			}
 			break;
+		}
 		case CharGenState::Step::ADVANCES:
 			charGenConsole.printf(2, 2, "Step 3: Purchase Initial Advances");
 			// TODO (task 8.5): render advance purchase UI
