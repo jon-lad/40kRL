@@ -1587,9 +1587,11 @@ void Engine::renderCharGen()
 
 				if (!career.ranks.empty()) {
 					const auto& rank1 = career.ranks[0];
-					charGenConsole.setDefaultForeground(Colors::white);
-					charGenConsole.printf(2, infoY, "Rank 1: %s", rank1.rankTitle.c_str());
-					infoY++;
+					if (rank1.rankTitle != career.name) {
+						charGenConsole.setDefaultForeground(Colors::white);
+						charGenConsole.printf(2, infoY, "Rank 1: %s", rank1.rankTitle.c_str());
+						infoY++;
+					}
 
 					// Starting skills.
 					if (!rank1.startingSkills.empty()) {

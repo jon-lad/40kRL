@@ -71,6 +71,10 @@ ROADMAP
 - [ ] Crusades: recruits, losses, outcomes for the Imperium
 - [ ] If player is not interested in galactic conquests, worlds should be worth exploring for their minutiae (quests, lore, loot, NPCs)
 
+## Infrastructure
+
+- [ ] Migrate to GitLab (add CMakeLists.txt for Linux builds, convert CI to .gitlab-ci.yml, set up self-hosted Windows runner or cross-compile)
+
 ## Done (v0.0.x)
 
 - [x] Character generation (homeworld, career, XP advances)
