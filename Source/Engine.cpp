@@ -1235,8 +1235,23 @@ const EquipmentTemplate* Engine::selectEquipmentByTier(EquipmentSlot slot, const
 		}
 	}
 
+	// If no candidates for selected tier, try other tiers as fallback
 	if (candidates.empty()) {
-		gui->message(Colors::damage, "Warning: no equipment templates for slot+tier combination.");
+		ItemTier fallbackOrder[] = { ItemTier::COMMON, ItemTier::UNCOMMON, ItemTier::RARE };
+		for (ItemTier fallback : fallbackOrder) {
+			if (fallback == selectedTier) continue; // already tried
+			for (const auto& tmpl : equipmentTemplates) {
+				if (tmpl.slot == slot && tmpl.tier == fallback) {
+					candidates.push_back(&tmpl);
+				}
+			}
+			if (!candidates.empty()) break; // found some at this tier
+		}
+	}
+
+	if (candidates.empty()) {
+		// No templates for this slot at ANY tier
+		gui->message(Colors::damage, "Warning: no equipment templates for slot.");
 		return nullptr;
 	}
 
