@@ -3,6 +3,7 @@
 #include "main.h"
 
 #include <memory>
+#include <filesystem>
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Feature: map-doors — Property-Based Tests
@@ -135,5 +136,83 @@ TEST_CASE("PBT: Property 3 — State transition round trip", "[property][map-doo
         RC_ASSERT(door->getColor() == preColor);
         RC_ASSERT(door->blocks == preBlocks);
         RC_ASSERT(door->openable->isOpen() == preIsOpen);
+    });
+}
+
+// ─── Property 4: Serialization round trip ────────────────────────────────────
+// **Validates: Requirements 1.5, 7.1, 7.2, 7.3, 7.4, 7.5**
+//
+// For any door Actor in either the open or closed state, serializing (save) and
+// then deserializing (load) the Actor SHALL produce a door with identical
+// position, glyph, colour, name, blocks flag, fovOnly flag, and Openable state.
+
+TEST_CASE("PBT: Property 4 — Serialization round trip", "[property][map-doors]")
+{
+    rc::prop("save then load preserves all door state including Openable", []() {
+        // Generate random position
+        const int x = *rc::gen::inRange(0, 79);
+        const int y = *rc::gen::inRange(0, 49);
+
+        // Create a door via factory
+        auto door = createDoor(x, y);
+
+        // Randomly decide whether to open the door
+        const bool shouldOpen = *rc::gen::arbitrary_bool();
+        if (shouldOpen) {
+            door->openable->open(door.get());
+        }
+
+        // Capture expected state before save
+        const int expectedX      = door->getX();
+        const int expectedY      = door->getY();
+        const int expectedGlyph  = door->getGlyph();
+        const TCODColor expectedColor = door->getColor();
+        const std::string expectedName = door->name;
+        const bool expectedBlocks  = door->blocks;
+        const bool expectedFovOnly = door->fovOnly;
+        const bool expectedIsOpen  = door->openable->isOpen();
+
+        // Serialize to a temp file
+        const char* tempFile = "__test_door_serialization_roundtrip.sav";
+        {
+            TCODZip zip;
+            door->save(zip);
+            zip.saveToFile(tempFile);
+        }
+
+        // Deserialize into a fresh Actor
+        Actor loaded(0, 0, 0, "", TCODColor{0, 0, 0});
+        {
+            TCODZip zip;
+            zip.loadFromFile(tempFile);
+            loaded.load(zip);
+        }
+
+        // Clean up temp file
+        std::filesystem::remove(tempFile);
+
+        // Verify position
+        RC_ASSERT(loaded.getX() == expectedX);
+        RC_ASSERT(loaded.getY() == expectedY);
+
+        // Verify glyph
+        RC_ASSERT(loaded.getGlyph() == expectedGlyph);
+
+        // Verify colour
+        RC_ASSERT(loaded.getColor().r == expectedColor.r);
+        RC_ASSERT(loaded.getColor().g == expectedColor.g);
+        RC_ASSERT(loaded.getColor().b == expectedColor.b);
+
+        // Verify name
+        RC_ASSERT(loaded.name == expectedName);
+
+        // Verify flags
+        RC_ASSERT(loaded.blocks == expectedBlocks);
+        RC_ASSERT(loaded.fovOnly == expectedFovOnly);
+
+        // Verify Openable component was restored (requires Actor::save/load to
+        // handle Openable — expected to fail until task 3.2 is implemented)
+        RC_ASSERT(loaded.openable != nullptr);
+        RC_ASSERT(loaded.openable->isOpen() == expectedIsOpen);
     });
 }
