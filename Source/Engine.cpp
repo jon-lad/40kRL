@@ -1449,6 +1449,38 @@ void Engine::updateCharGen()
 			player->characteristics = std::shared_ptr<Characteristics>(sheet, &sheet->characteristics);
 			player->career = std::shared_ptr<CareerProgression>(sheet, &sheet->career);
 
+			// Grant starting equipment from career.
+			if (charGenState->careerIndex >= 0
+				&& charGenState->careerIndex < static_cast<int>(careerTemplates.size())) {
+				const auto& selectedCareer = careerTemplates[charGenState->careerIndex];
+				for (const auto& equipName : selectedCareer.startingEquipment) {
+					// Find matching equipment template
+					const EquipmentTemplate* tmpl = nullptr;
+					for (const auto& et : equipmentTemplates) {
+						if (et.name == equipName) {
+							tmpl = &et;
+							break;
+						}
+					}
+					if (!tmpl) continue;
+
+					// Create equipment actor and add to player's container
+					auto item = std::make_unique<Actor>(0, 0, tmpl->glyph, tmpl->name, tmpl->color);
+					item->blocks = false;
+					item->fovOnly = false;
+					item->equippable = std::make_shared<Equippable>(
+						tmpl->slot, tmpl->modifiers, tmpl->weight, tmpl->value);
+					item->equippable->meleeStats = tmpl->meleeStats;
+					item->equippable->armourProfile = tmpl->armourProfile;
+					item->equippable->rangedStats = tmpl->rangedStats;
+
+					// Add to player inventory and auto-equip
+					Actor* rawItem = item.get();
+					player->container->add(std::move(item));
+					player->equipment->equip(rawItem, player->container.get(), player->attacker.get());
+				}
+			}
+
 			gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 
 			// Clear chargen state.
@@ -1587,9 +1619,11 @@ void Engine::renderCharGen()
 
 				if (!career.ranks.empty()) {
 					const auto& rank1 = career.ranks[0];
-					charGenConsole.setDefaultForeground(Colors::white);
-					charGenConsole.printf(2, infoY, "Rank 1: %s", rank1.rankTitle.c_str());
-					infoY++;
+					if (rank1.rankTitle != career.name) {
+						charGenConsole.setDefaultForeground(Colors::white);
+						charGenConsole.printf(2, infoY, "Rank 1: %s", rank1.rankTitle.c_str());
+						infoY++;
+					}
 
 					// Starting skills.
 					if (!rank1.startingSkills.empty()) {
@@ -2211,6 +2245,14 @@ void Engine::loadCareerTemplates()
 			career.power = entry.get_or("power", 5.0f);
 			career.invSize = entry.get_or("invSize", 26);
 
+			sol::optional<sol::table> equipTable = entry["startingEquipment"];
+			if (equipTable) {
+				for (size_t e = 1; e <= (*equipTable).size(); e++) {
+					sol::optional<std::string> eName = (*equipTable)[e];
+					if (eName) career.startingEquipment.push_back(*eName);
+				}
+			}
+
 			bool validCareer = true;
 			for (size_t r = 1; r <= (*ranksTable).size(); r++) {
 				sol::table rankEntry = (*ranksTable)[r];
@@ -2361,6 +2403,11 @@ void Engine::init()
 {
 	// Load character generation data files (homeworlds, careers, skills, talents).
 	// Must run early — before chargen or player creation.
+	// Clear first to avoid duplicates on restart (init() can be called multiple times).
+	homeworldTemplates.clear();
+	careerTemplates.clear();
+	skillDefinitions.clear();
+	talentDefinitions.clear();
 	loadHomeworldTemplates();
 	loadCareerTemplates();
 	loadSkillDefinitions();
