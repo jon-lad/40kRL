@@ -168,8 +168,9 @@
     <ClCompile Include="Source\RangedCombat.cpp" />
     <ClCompile Include="Source\WorldMap.cpp" />
     <ClCompile Include="Source\WfcGenerator.cpp" />
+    <ClCompile Include="Source\Openable.cpp" />
+    <ClCompile Include="Source\DoorFactory.cpp" />
   </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
     <ClInclude Include="Headers\Ai.h" />
     <ClInclude Include="Headers\Attacker.h" />
@@ -196,6 +197,8 @@
     <ClInclude Include="Headers\RangedCombat.h" />
     <ClInclude Include="Headers\WorldMap.h" />
     <ClInclude Include="Headers\WfcGenerator.h" />
+    <ClInclude Include="Headers\Openable.h" />
+    <ClInclude Include="Headers\DoorFactory.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
