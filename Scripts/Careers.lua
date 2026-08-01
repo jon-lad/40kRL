@@ -10,6 +10,7 @@ careers = {
         defense = 2.0,
         power = 4.0,
         invSize = 26,
+        startingEquipment = { "Laspistol", "Combat Knife", "Flak Armor" },
         ranks = {
             {
                 rankNumber = 1,
@@ -69,6 +70,7 @@ careers = {
         defense = 3.0,
         power = 6.0,
         invSize = 22,
+        startingEquipment = { "Chainsword", "Autogun", "Flak Armor", "Carapace Helm" },
         ranks = {
             {
                 rankNumber = 1,
@@ -130,6 +132,7 @@ careers = {
         defense = 2.0,
         power = 3.0,
         invSize = 24,
+        startingEquipment = { "Laspistol", "Combat Knife", "Flak Armor" },
         ranks = {
             {
                 rankNumber = 1,
@@ -187,6 +190,7 @@ careers = {
         defense = 4.0,
         power = 4.0,
         invSize = 20,
+        startingEquipment = { "Power Sword", "Flak Armor" },
         ranks = {
             {
                 rankNumber = 1,
@@ -246,6 +250,7 @@ careers = {
         defense = 2.0,
         power = 4.0,
         invSize = 24,
+        startingEquipment = { "Chainsword", "Flak Armor" },
         ranks = {
             {
                 rankNumber = 1,
@@ -303,6 +308,7 @@ careers = {
         defense = 1.0,
         power = 3.0,
         invSize = 30,
+        startingEquipment = { "Laspistol", "Combat Knife", "Flak Armor" },
         ranks = {
             {
                 rankNumber = 1,

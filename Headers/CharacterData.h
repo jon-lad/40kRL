@@ -39,6 +39,7 @@ struct CareerTemplate {
 	float power = 5.0f;
 	int invSize = 26;
 	std::vector<RankDefinition> ranks;  // ordered by rankNumber
+	std::vector<std::string> startingEquipment; // equipment template names to grant at chargen
 };
 
 // Loaded from Scripts/Skills.lua
