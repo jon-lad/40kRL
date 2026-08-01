@@ -584,6 +584,11 @@ void Actor::save(TCODZip& zip)
 	// compatibility (old saves that lack this field will read 0 from archive end).
 	zip.putInt(characteristics != nullptr);
 	if (characteristics) characteristics->save(zip);
+
+	// Openable presence flag — appended AFTER characteristics for backward compatibility
+	// (old saves without this field will read 0 from archive end → no Openable created).
+	zip.putInt(openable != nullptr);
+	if (openable) openable->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -641,6 +646,23 @@ void Actor::load(TCODZip& zip)
 	if (hasCharacteristics) {
 		characteristics = std::make_shared<Characteristics>();
 		characteristics->load(zip);
+	}
+
+	// Openable presence flag — appended AFTER characteristics for backward compatibility
+	// (old saves without this field will read 0 from archive end → no Openable created).
+	const bool hasOpenable = zip.getInt();
+	if (hasOpenable) {
+		openable = std::make_shared<Openable>();
+		openable->load(zip);
+
+		// Restore TCODMap properties based on loaded state
+		if (engine.map) {
+			if (openable->isOpen()) {
+				engine.map->setTileProperties(x, y, true, true);
+			} else {
+				engine.map->setTileProperties(x, y, false, false);
+			}
+		}
 	}
 }
 
