@@ -2363,6 +2363,11 @@ void Engine::init()
 {
 	// Load character generation data files (homeworlds, careers, skills, talents).
 	// Must run early — before chargen or player creation.
+	// Clear first to avoid duplicates on restart (init() can be called multiple times).
+	homeworldTemplates.clear();
+	careerTemplates.clear();
+	skillDefinitions.clear();
+	talentDefinitions.clear();
 	loadHomeworldTemplates();
 	loadCareerTemplates();
 	loadSkillDefinitions();
