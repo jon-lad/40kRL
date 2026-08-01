@@ -1,29 +1,44 @@
 #include "main.h"
 #include "Openable.h"
 
-// STUB implementation for TDD — tests are expected to FAIL until task 1.2 implements
-// the real logic.
-
 Openable::Openable() : opened(false) {}
 
 bool Openable::isOpen() const { return opened; }
 
 void Openable::open(Actor* owner) {
-    // TODO: task 1.2 — implement state transition logic
-    (void)owner;
+	if (opened) { return; } // guard: no-op if already open
+
+	opened = true;
+	owner->setGlyph('\'');
+	owner->setColor(TCODColor{100, 65, 30});
+	owner->blocks = false;
+
+	// Update TCODMap and recompute FOV if engine map is available
+	if (engine.map) {
+		engine.map->setTileProperties(owner->getX(), owner->getY(), true, true);
+		engine.map->computeFOV();
+	}
 }
 
 void Openable::close(Actor* owner) {
-    // TODO: task 1.2 — implement state transition logic
-    (void)owner;
+	if (!opened) { return; } // guard: no-op if already closed
+
+	opened = false;
+	owner->setGlyph('+');
+	owner->setColor(TCODColor{150, 100, 50});
+	owner->blocks = true;
+
+	// Update TCODMap and recompute FOV if engine map is available
+	if (engine.map) {
+		engine.map->setTileProperties(owner->getX(), owner->getY(), false, false);
+		engine.map->computeFOV();
+	}
 }
 
 void Openable::save(TCODZip& zip) {
-    // TODO: task 3.2 — implement serialization
-    (void)zip;
+	zip.putInt(opened ? 1 : 0);
 }
 
 void Openable::load(TCODZip& zip) {
-    // TODO: task 3.2 — implement serialization
-    (void)zip;
+	opened = (zip.getInt() != 0);
 }

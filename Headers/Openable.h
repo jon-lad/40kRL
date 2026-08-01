@@ -6,9 +6,6 @@ class Actor;
 // Component that makes an Actor into an interactive door.
 // Tracks open/closed state and manages the side effects of state transitions
 // (glyph, colour, blocks flag, TCODMap properties, FOV recompute).
-//
-// STUB: This header provides the interface contract for TDD. The implementation
-// will be completed in task 1.2.
 class Openable : public Persistent {
 public:
     Openable();  // initialises in CLOSED state

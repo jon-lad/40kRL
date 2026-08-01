@@ -43,6 +43,10 @@ namespace Colors {
     constexpr TCODColor brown{150, 100, 50};         // hab-unit / rusty metal tones
     constexpr TCODColor gold{255, 215, 0};           // chapel / ornamental trim
 
+    // ─── Doors ──────────────────────────────────────────────────────────
+    constexpr TCODColor doorClosed{150, 100, 50};    // closed door (brown/wood tone)
+    constexpr TCODColor doorOpen{100, 65, 30};       // open door (darker brown)
+
     // ─── Legacy aliases (for incremental migration; remove once all
     //     call sites use game-themed names above) ────────────────────────
     constexpr TCODColor desaturatedGreen = orkSkin;

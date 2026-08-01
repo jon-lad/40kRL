@@ -676,6 +676,12 @@ bool Map::isWall(int x, int y) const
 	return !map->isWalkable(x, y);
 }
 
+void Map::setTileProperties(int x, int y, bool transparent, bool walkable)
+{
+	if (x < 0 || x >= width || y < 0 || y >= height) { return; }
+	map->setProperties(x, y, transparent, walkable);
+}
+
 bool Map::isExplored(int x, int y) const
 {
 	const int index = x + y * width;

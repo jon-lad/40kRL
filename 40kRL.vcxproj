@@ -171,6 +171,7 @@
     <ClCompile Include="Source\Openable.cpp" />
     <ClCompile Include="Source\DoorFactory.cpp" />
   </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
     <ClInclude Include="Headers\Ai.h" />
     <ClInclude Include="Headers\Attacker.h" />
