@@ -8,7 +8,7 @@ A Warhammer 40,000 themed roguelike built in C++17 with [libtcod](https://github
 
 ## Features
 
-- Procedural dungeon generation via BSP (Binary Space Partitioning)
+- Procedural dungeon generation via BSP (Binary Space Partitioning) with interactive doors at room entrances
 - Perlin noise outdoor terrain (ground, trees, water) with connectivity guarantee
 - Equipment system with body slots (weapon, offhand, head, body) and stat modifiers
 - Turn-based movement and combat with melee attacks and ranged shooting
