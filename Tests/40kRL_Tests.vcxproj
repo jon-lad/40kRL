@@ -145,6 +145,7 @@
     <ClCompile Include="test_render_layers.cpp" />
     <ClCompile Include="test_skill_bar.cpp" />
     <ClCompile Include="test_message_log.cpp" />
+    <ClCompile Include="test_sidebar.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
