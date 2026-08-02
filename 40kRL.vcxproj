@@ -168,6 +168,8 @@
     <ClCompile Include="Source\RangedCombat.cpp" />
     <ClCompile Include="Source\WorldMap.cpp" />
     <ClCompile Include="Source\WfcGenerator.cpp" />
+    <ClCompile Include="Source\Openable.cpp" />
+    <ClCompile Include="Source\DoorFactory.cpp" />
     <ClCompile Include="Source\CareerProgression.cpp" />
     <ClCompile Include="Source\CharacterSheet.cpp" />
   </ItemGroup>
@@ -198,6 +200,8 @@
     <ClInclude Include="Headers\RangedCombat.h" />
     <ClInclude Include="Headers\WorldMap.h" />
     <ClInclude Include="Headers\WfcGenerator.h" />
+    <ClInclude Include="Headers\Openable.h" />
+    <ClInclude Include="Headers\DoorFactory.h" />
     <ClInclude Include="Headers\CharacterSheet.h" />
   </ItemGroup>
   <ItemGroup>

@@ -66,5 +66,8 @@ Desktop.ini
 .idea/
 *.code-workspace
 
+# ───── Build/test output files ─────
+/*.txt
+
 # ───── Kiro internal ─────
 .kiro/specs/**/tasks.md

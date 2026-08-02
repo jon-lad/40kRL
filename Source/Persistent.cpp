@@ -594,6 +594,11 @@ void Actor::save(TCODZip& zip)
 	// (which are aliased shared_ptrs into the sheet). Written after career for compatibility.
 	zip.putInt(characterSheet != nullptr);
 	if (characterSheet) characterSheet->save(zip);
+
+	// Openable presence flag — appended AFTER characterSheet for backward compatibility
+	// (old saves without this field will read 0 from archive end → no Openable created).
+	zip.putInt(openable != nullptr);
+	if (openable) openable->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -671,6 +676,23 @@ void Actor::load(TCODZip& zip)
 		// Non-owning shared_ptr aliases that share lifetime with characterSheet.
 		characteristics = std::shared_ptr<Characteristics>(characterSheet, &characterSheet->characteristics);
 		career = std::shared_ptr<CareerProgression>(characterSheet, &characterSheet->career);
+	}
+
+	// Openable presence flag — appended AFTER characterSheet for backward compatibility
+	// (old saves without this field will read 0 from archive end → no Openable created).
+	const bool hasOpenable = zip.getInt();
+	if (hasOpenable) {
+		openable = std::make_shared<Openable>();
+		openable->load(zip);
+
+		// Restore TCODMap properties based on loaded state
+		if (engine.map) {
+			if (openable->isOpen()) {
+				engine.map->setTileProperties(x, y, true, true);
+			} else {
+				engine.map->setTileProperties(x, y, false, false);
+			}
+		}
 	}
 }
 

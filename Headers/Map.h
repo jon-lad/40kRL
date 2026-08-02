@@ -109,6 +109,14 @@ public:
 	// Returns the terrain type at (x, y). Only valid for OUTDOOR levels.
 	TerrainType getTerrainType(int x, int y) const { return terrainTypes[x + y * width]; }
 
+	// Sets the transparency and walkability of the tile at (x, y) in the TCODMap.
+	// Used by Openable to update door tiles on state transitions.
+	void setTileProperties(int x, int y, bool transparent, bool walkable);
+
+	// Sets the internal seed used for deterministic BSP generation.
+	// Must be called BEFORE init() to take effect.
+	void setSeed(long newSeed) { seed = newSeed; }
+
 	// Returns the WFC tile description at (x, y). Only valid for WFC levels.
 	std::string getWfcTileDescription(int x, int y) const;
 

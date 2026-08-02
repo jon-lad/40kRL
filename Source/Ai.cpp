@@ -51,7 +51,19 @@ void PlayerAi::update(Actor* owner)
 
 bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 {
-	if (engine.map->isWall(targetX, targetY)) { return false; }
+	if (engine.map->isWall(targetX, targetY)) {
+		// Check if there's a closed door blocking the way
+		for (auto& actorPtr : engine.actors) {
+			Actor* actor = actorPtr.get();
+			if (actor->openable && !actor->openable->isOpen()
+				&& actor->getX() == targetX && actor->getY() == targetY)
+			{
+				engine.gui->message(Colors::lightGrey, "The door is closed.");
+				return false;
+			}
+		}
+		return false;
+	}
 
 	// Attack the first living actor on the target tile.
 	for (auto& actorPtr : engine.actors) {
@@ -218,6 +230,39 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		return;
 	}
 
+	case 'o': // open an adjacent door
+	{
+		// Scan cardinal neighbours for closed doors
+		static constexpr int cardinalDX[4] = { 0, 0, 1, -1 };
+		static constexpr int cardinalDY[4] = { -1, 1, 0, 0 };
+
+		std::vector<Actor*> closedDoors;
+		for (int i = 0; i < 4; ++i) {
+			const int nx = owner->getX() + cardinalDX[i];
+			const int ny = owner->getY() + cardinalDY[i];
+			for (auto& actorPtr : engine.actors) {
+				Actor* actor = actorPtr.get();
+				if (actor->openable && !actor->openable->isOpen()
+					&& actor->getX() == nx && actor->getY() == ny)
+				{
+					closedDoors.push_back(actor);
+				}
+			}
+		}
+
+		if (closedDoors.empty()) {
+			engine.gui->message(Colors::lightGrey, "There is no door to open.");
+		} else if (closedDoors.size() == 1) {
+			closedDoors[0]->openable->open(closedDoors[0]);
+			engine.gameStatus = Engine::NEW_TURN;
+		} else {
+			// Multiple adjacent closed doors — prompt direction.
+			// For now, display a message. A full direction-selection UI can be added later.
+			engine.gui->message(Colors::lightGrey, "Which direction? (use arrow keys)");
+		}
+		break;
+	}
+
 	case 'e': // open equipment menu
 	{
 		static constexpr int EQUIP_WIDTH = 50;
@@ -289,13 +334,27 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 		return;
 	}
 
+	// Before any movement: check if the step toward the target has a closed door.
+	// If so, open it and consume the turn (do not move).
+	const int stepX = static_cast<int>(std::round(dx / distance));
+	const int stepY = static_cast<int>(std::round(dy / distance));
+	const int nextX = owner->getX() + stepX;
+	const int nextY = owner->getY() + stepY;
+
+	for (auto& actorPtr : engine.actors) {
+		if (actorPtr->openable && !actorPtr->openable->isOpen()
+			&& actorPtr->getX() == nextX && actorPtr->getY() == nextY) {
+			actorPtr->openable->open(actorPtr.get());
+			engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+			return; // turn consumed
+		}
+	}
+
 	if (engine.map->isInFOV(owner->getX(), owner->getY())) {
 		// Player is visible — step directly toward them.
-		const int stepX = static_cast<int>(std::round(dx / distance));
-		const int stepY = static_cast<int>(std::round(dy / distance));
-		if (engine.map->canWalk(owner->getX() + stepX, owner->getY() + stepY)) {
-			owner->setX(owner->getX() + stepX);
-			owner->setY(owner->getY() + stepY);
+		if (engine.map->canWalk(nextX, nextY)) {
+			owner->setX(nextX);
+			owner->setY(nextY);
 			return;
 		}
 	}
@@ -321,8 +380,21 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 	}
 
 	if (bestNeighbour != -1) {
-		owner->setX(owner->getX() + neighbourDX[bestNeighbour]);
-		owner->setY(owner->getY() + neighbourDY[bestNeighbour]);
+		const int scentNextX = owner->getX() + neighbourDX[bestNeighbour];
+		const int scentNextY = owner->getY() + neighbourDY[bestNeighbour];
+
+		// Check if there's a closed door at the scent target — open it and consume the turn.
+		for (auto& actorPtr : engine.actors) {
+			if (actorPtr->openable && !actorPtr->openable->isOpen()
+				&& actorPtr->getX() == scentNextX && actorPtr->getY() == scentNextY) {
+				actorPtr->openable->open(actorPtr.get());
+				engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+				return; // turn consumed
+			}
+		}
+
+		owner->setX(scentNextX);
+		owner->setY(scentNextY);
 	}
 }
 

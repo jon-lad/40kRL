@@ -16,6 +16,8 @@ class Actor;
 #include "Container.h"
 #include "Equippable.h"
 #include "Equipment.h"
+#include "Openable.h"
+#include "DoorFactory.h"
 #include "CharacterData.h"
 #include "CareerProgression.h"
 #include "CharacterSheet.h"

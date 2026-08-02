@@ -12,7 +12,7 @@ A Warhammer 40,000 Rogue Trader roguelike built in C++17 with [libtcod](https://
 - **Rogue Trader progression** — XP spending on rank-gated advances replaces traditional leveling; rank up by spending XP thresholds
 - **CharacterSheet component** — unified player identity (characteristics, career, skills, talents, traits) persisted through save/load
 - **In-game advance purchases** — press `x` to open the advance overlay and spend earned XP mid-game
-- Procedural dungeon generation via BSP (Binary Space Partitioning)
+- Procedural dungeon generation via BSP (Binary Space Partitioning) with interactive doors at room entrances
 - Perlin noise outdoor terrain (ground, trees, water) with connectivity guarantee
 - Equipment system with body slots (weapon, offhand, head, body) and stat modifiers
 - Turn-based movement and combat with melee attacks and ranged shooting
@@ -99,6 +99,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | `x` | Open advance purchase overlay (spend XP on rank-gated advances) |
 | `s` | Shoot ranged weapon (targeting mode — Enter to confirm, ESC to cancel) |
 | `r` | Reload ranged weapon |
+| `o` | Open adjacent door |
 | `l` | Look mode (inspect tiles — arrows to move cursor, ESC to exit) |
 | `c` | Character sheet (view characteristics and bonuses) |
 | `m` | World map (view biomes, fast-travel to hive cities) |

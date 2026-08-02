@@ -136,6 +136,7 @@
     <ClCompile Include="test_ranged_pipeline.cpp" />
     <ClCompile Include="test_decoration_render_priority.cpp" />
     <ClCompile Include="test_wfc_generator.cpp" />
+    <ClCompile Include="test_map_doors.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -160,6 +161,8 @@
     <ClCompile Include="..\Source\RangedCombat.cpp" />
     <ClCompile Include="..\Source\WorldMap.cpp" />
     <ClCompile Include="..\Source\WfcGenerator.cpp" />
+    <ClCompile Include="..\Source\Openable.cpp" />
+    <ClCompile Include="..\Source\DoorFactory.cpp" />
     <ClCompile Include="..\Source\CareerProgression.cpp" />
     <ClCompile Include="..\Source\CharacterSheet.cpp" />
   </ItemGroup>
@@ -184,6 +187,8 @@
     <ClInclude Include="..\Headers\CriticalEffects.h" />
     <ClInclude Include="..\Headers\RangedCombat.h" />
     <ClInclude Include="..\Headers\WfcGenerator.h" />
+    <ClInclude Include="..\Headers\Openable.h" />
+    <ClInclude Include="..\Headers\DoorFactory.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
