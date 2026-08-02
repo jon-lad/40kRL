@@ -4,7 +4,7 @@
 #include <sstream>
 #include "main.h"
 
-Engine engine(80, 50);
+Engine engine(layout::SCREEN_WIDTH, layout::SCREEN_HEIGHT);
 
 int main()
 {

@@ -5,9 +5,10 @@
 #include <list>
 #include <cmath>
 #include "main.h"
+#include "CP437.h"
 
 Actor::Actor(int x, int y, int glyph, std::string_view name, const TCODColor& color)
-	: x{ x }, y{ y }, glyph{ glyph }, name{ name }, description{}, color{ color }, blocks{ true }, fovOnly{ true }
+	: x{ x }, y{ y }, glyph{ cp437::sanitizeGlyph(glyph) }, name{ name }, description{}, color{ color }, blocks{ true }, fovOnly{ true }
 {
 	// All component slots start empty; callers assign components after construction.
 }
@@ -21,6 +22,19 @@ void Actor::render() const
 void Actor::update()
 {
 	if (ai) { ai->update(this); }
+}
+
+void Actor::assignRenderLayer()
+{
+	if (ai || name == "player") {
+		renderLayer = RenderLayers::LIVING;
+	} else if (openable) {
+		renderLayer = RenderLayers::DOOR;
+	} else if (pickable) {
+		renderLayer = RenderLayers::ITEM;
+	} else {
+		renderLayer = RenderLayers::DECORATION;
+	}
 }
 
 float Actor::getDistance(int cx, int cy) const
@@ -51,7 +65,7 @@ int Actor::getY() const { return y; }
 void Actor::setY(int newY) { y = newY; }
 
 int Actor::getGlyph() const { return glyph; }
-void Actor::setGlyph(int newGlyph) { glyph = newGlyph; }
+void Actor::setGlyph(int newGlyph) { glyph = cp437::sanitizeGlyph(newGlyph); }
 
 TCODColor Actor::getColor() const { return color; }
 void Actor::setColor(const TCODColor& newColor) { color = newColor; }

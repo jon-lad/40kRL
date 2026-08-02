@@ -11,3 +11,34 @@ namespace constants {
 	inline static constexpr auto PAUSE_MENU_WIDTH  = 30;
 	inline static constexpr auto PAUSE_MENU_HEIGHT = 15;
 }
+
+// ─── Render layer constants (ui-rework) ──────────────────────────────────────
+namespace RenderLayers {
+	inline constexpr int DECORATION = 0;
+	inline constexpr int ITEM       = 1;
+	inline constexpr int DOOR       = 2;
+	inline constexpr int CORPSE     = 3;
+	inline constexpr int LIVING     = 4;
+}
+
+// ─── New screen layout constants (ui-rework) ─────────────────────────────────
+namespace layout {
+	inline constexpr int SCREEN_WIDTH         = 120;
+	inline constexpr int SCREEN_HEIGHT        = 50;
+	inline constexpr int RIGHT_SIDEBAR_WIDTH  = 24;
+	inline constexpr int LEFT_SIDEBAR_WIDTH   = 20;
+	inline constexpr bool LEFT_SIDEBAR_ENABLED = false;
+	inline constexpr int HUD_HEIGHT           = 8;
+	inline constexpr int MSG_LOG_HEIGHT       = 6;
+	inline constexpr int SKILL_BAR_HEIGHT     = 1;
+
+	// Derived
+	inline constexpr int VIEWPORT_X      = LEFT_SIDEBAR_ENABLED ? LEFT_SIDEBAR_WIDTH : 0;
+	inline constexpr int VIEWPORT_WIDTH  = SCREEN_WIDTH - RIGHT_SIDEBAR_WIDTH
+	                                       - (LEFT_SIDEBAR_ENABLED ? LEFT_SIDEBAR_WIDTH : 0);
+	inline constexpr int VIEWPORT_HEIGHT = SCREEN_HEIGHT - HUD_HEIGHT;
+
+	// Tileset dimensions (CP437 16x16 grid)
+	inline constexpr int TILESET_CHAR_WIDTH  = 16;
+	inline constexpr int TILESET_CHAR_HEIGHT = 16;
+}

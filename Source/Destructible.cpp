@@ -36,6 +36,7 @@ void Destructible::die(Actor* owner)
 	owner->setColor(Colors::darkRed);
 	owner->name   = corpseName;
 	owner->blocks = false;
+	owner->renderLayer = RenderLayers::CORPSE;
 	engine.sendToBack(owner); // draw corpses beneath living actors
 }
 
@@ -84,6 +85,7 @@ void dropEnemyEquipment(Actor* enemy)
 		droppedItem->equippable->armourProfile = item->equippable->armourProfile;
 
 		// Add to engine actors list and send to back (draw beneath living actors)
+		droppedItem->assignRenderLayer();
 		Actor* droppedPtr = droppedItem.get();
 		engine.actors.push_back(std::move(droppedItem));
 		engine.sendToBack(droppedPtr);

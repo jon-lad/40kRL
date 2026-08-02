@@ -7,7 +7,7 @@
 // Global engine instance for tests. The real game defines this in main.cpp which
 // we exclude from the test binary to avoid duplicate main(). The Engine constructor
 // calls TCODConsole::initRoot, so the test binary requires libtcod at runtime.
-Engine engine(80, 50);
+Engine engine(layout::SCREEN_WIDTH, layout::SCREEN_HEIGHT);
 
 int main(int argc, char* argv[])
 {

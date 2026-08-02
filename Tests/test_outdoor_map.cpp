@@ -364,7 +364,7 @@ TEST_CASE("Camera: clamps to map bounds after scroll", "[outdoor][camera]")
 // 10.8 — Unit test: level progression and stairs
 // ═══════════════════════════════════════════════════════════════════════════════
 
-TEST_CASE("Level progression: starting dungeon level is 20", "[outdoor][engine]")
+TEST_CASE("Level progression: starting dungeon level is 20", "[outdoor][engine][.integration]")
 {
     // Reset engine to known state before checking the starting level.
     // Previous tests may have called nextLevel() which modifies dungeonLevel.

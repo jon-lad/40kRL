@@ -23,6 +23,7 @@ class Actor;
 #include "CharacterSheet.h"
 #include "Actor.h"
 #include "Map.h"
+#include "SkillBarEntry.h"
 #include "Gui.h"
 #include "Engine.h"
 #include "RangedCombat.h"

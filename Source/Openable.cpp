@@ -9,7 +9,7 @@ void Openable::open(Actor* owner) {
 	if (opened) { return; } // guard: no-op if already open
 
 	opened = true;
-	owner->setGlyph('\'');
+	owner->setGlyph('/');  // CP437 codepoint 47: open door
 	owner->setColor(TCODColor{100, 65, 30});
 	owner->blocks = false;
 

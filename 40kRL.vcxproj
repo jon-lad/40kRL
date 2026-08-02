@@ -172,6 +172,8 @@
     <ClCompile Include="Source\DoorFactory.cpp" />
     <ClCompile Include="Source\CareerProgression.cpp" />
     <ClCompile Include="Source\CharacterSheet.cpp" />
+    <ClCompile Include="Source\Paginator.cpp" />
+    <ClCompile Include="Source\TabbedMenuState.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -203,6 +205,12 @@
     <ClInclude Include="Headers\Openable.h" />
     <ClInclude Include="Headers\DoorFactory.h" />
     <ClInclude Include="Headers\CharacterSheet.h" />
+    <ClInclude Include="Headers\Paginator.h" />
+    <ClInclude Include="Headers\CP437.h" />
+    <ClInclude Include="Headers\LayoutRect.h" />
+    <ClInclude Include="Headers\ScreenLayout.h" />
+    <ClInclude Include="Headers\SkillBarEntry.h" />
+    <ClInclude Include="Headers\TabbedMenuState.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

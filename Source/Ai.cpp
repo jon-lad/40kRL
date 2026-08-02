@@ -135,8 +135,8 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		break;
 	}
 
-	case 'i': // open inventory to use/equip an item
-		engine.beginInventory(owner, InventoryState::Action::USE);
+	case 'i': // open inventory (tabbed menu on Inventory tab)
+		engine.beginTabbedMenu(TabbedMenuState::Tab::INVENTORY);
 		return;
 
 	case 'd': // drop an item from inventory
@@ -147,8 +147,8 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		engine.beginLook();
 		return;
 
-	case 'c': // open character sheet
-		engine.beginCharacterSheet();
+	case 'c': // open character sheet (tabbed menu on Equipment tab)
+		engine.beginTabbedMenu(TabbedMenuState::Tab::EQUIPMENT);
 		return;
 
 	case 'm': // open world map

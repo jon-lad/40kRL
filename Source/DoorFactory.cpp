@@ -10,5 +10,6 @@ std::unique_ptr<Actor> createDoor(int x, int y) {
     door->blocks  = true;
     door->fovOnly = false;
     door->openable = std::make_shared<Openable>();
+    door->assignRenderLayer();
     return door;
 }

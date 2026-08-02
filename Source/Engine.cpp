@@ -9,8 +9,6 @@
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
 static constexpr int MAP_WIDTH            = 160;
 static constexpr int MAP_HEIGHT           = 86;
-static constexpr int VIEWPORT_WIDTH       = 80;
-static constexpr int VIEWPORT_HEIGHT      = 43;
 
 Engine::Engine(int screenWidth, int screenHeight)
 	: gameStatus{ STARTUP }
@@ -23,6 +21,7 @@ Engine::Engine(int screenWidth, int screenHeight)
 	, dungeonLevel{ 20 }
 	, debugMode{ false }
 {
+	TCODConsole::setCustomFont("terminal.png", TCOD_FONT_LAYOUT_CP437, 16, 16);
 	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
 	SDL_StartTextInput(SDL_GetKeyboardFocus());
 	gui = std::make_unique<Gui>();
@@ -77,6 +76,12 @@ void Engine::update()
 		return;
 	}
 
+	// Handle tabbed menu state — skip all normal game logic.
+	if (gameStatus == TABBED_MENU) {
+		updateTabbedMenu();
+		return;
+	}
+
 	// Handle world map state — skip all normal game logic.
 	if (gameStatus == WORLD_MAP) {
 		updateWorldMap();
@@ -111,6 +116,12 @@ void Engine::render()
 {
 	TCODConsole::root->clear();
 	map->render();
+
+	// Sort actors by render layer for correct draw order (lower layers drawn first).
+	// std::list::sort is stable, preserving insertion order within the same layer.
+	actors.sort([](const std::unique_ptr<Actor>& a, const std::unique_ptr<Actor>& b) {
+		return a->renderLayer < b->renderLayer;
+	});
 
 	for (const auto& actorPtr : actors) {
 		Actor* actor = actorPtr.get();
@@ -162,6 +173,11 @@ void Engine::render()
 	// Render advance purchase overlay when in ADVANCES state.
 	if (gameStatus == ADVANCES) {
 		renderAdvances();
+	}
+
+	// Render tabbed menu overlay when in TABBED_MENU state.
+	if (gameStatus == TABBED_MENU) {
+		renderTabbedMenu();
 	}
 
 	// Render world map overlay when in WORLD_MAP state.
@@ -494,11 +510,8 @@ void Engine::renderLook()
 	auto [screenX, screenY] = camera->apply(cursorX, cursorY);
 	renderSetBg(TCODConsole::root->get_data(), screenX, screenY, {255, 255, 63});
 
-	// --- Display actor/terrain description in the HUD panel area ---
-	// Panel starts at y = screenHeight - PANEL_HEIGHT. We write at the message area.
-	const int panelY = screenHeight - constants::PANEL_HEIGHT;
-	const int textX  = constants::MSG_X;
-	const int textStartY = panelY + 1;
+	// --- Build description string for the tile under the look cursor ---
+	std::string lookDescription;
 
 	if (map->isInFOV(cursorX, cursorY)) {
 		// Tile is in FOV — list actors (excluding player), ordered front-to-back
@@ -540,20 +553,23 @@ void Engine::renderLook()
 			lines.push_back(terrain);
 		}
 
-		// Render lines to the HUD panel area (overwrite message area)
-		int row = 0;
-		for (const auto& line : lines) {
-			if (row >= constants::MSG_HEIGHT) break;
-			TCODConsole::root->setDefaultForeground(Colors::white);
-			TCODConsole::root->printf(textX, textStartY + row, line.c_str());
-			row++;
+		// Join all description lines into one string
+		for (size_t i = 0; i < lines.size(); ++i) {
+			if (i > 0) lookDescription += ", ";
+			lookDescription += lines[i];
 		}
 	} else if (map->isExplored(cursorX, cursorY)) {
-		// Tile explored but not in FOV
-		TCODConsole::root->setDefaultForeground(Colors::uiText);
-		TCODConsole::root->printf(textX, textStartY, "You can't see that clearly from here.");
+		lookDescription = "You can't see that clearly from here.";
 	}
-	// If unexplored: display nothing (don't render any text)
+	// If unexplored: display nothing
+
+	// --- Display description via the message log API ---
+	// Only post to the message log when the cursor moves to a new tile
+	// (detected by comparing against the last description we posted).
+	if (!lookDescription.empty() && lookDescription != lookState->lastDescription) {
+		gui->message(Colors::uiText, lookDescription.c_str());
+		lookState->lastDescription = lookDescription;
+	}
 }
 
 void Engine::beginInventory(Actor* owner, InventoryState::Action action)
@@ -1091,6 +1107,306 @@ void Engine::renderAdvances()
 		screenHeight / 2 - ADV_HEIGHT / 2);
 }
 
+void Engine::beginTabbedMenu(TabbedMenuState::Tab startTab)
+{
+	tabbedMenu = TabbedMenuState{};
+	tabbedMenu->activeTab = startTab;
+	// Set pending action to USE by default (for inventory tab interactions)
+	tabbedMenu->pendingAction = TabbedMenuState::Action::USE;
+	gameStatus = TABBED_MENU;
+}
+
+void Engine::updateTabbedMenu()
+{
+	if (!tabbedMenu) {
+		gameStatus = IDLE;
+		return;
+	}
+
+	if (!inputState.key.pressed) return;
+
+	// --- Close: Escape key ---
+	if (inputState.key.key == SDLK_ESCAPE) {
+		tabbedMenu = std::nullopt;
+		gameStatus = IDLE;
+		return;
+	}
+
+	// --- Tab cycling: Tab key ---
+	if (inputState.key.key == SDLK_TAB) {
+		tabbedMenu->cycleTab();
+		return;
+	}
+
+	// --- Pagination: PgUp / PgDn ---
+	if (inputState.key.key == SDLK_PAGEDOWN) {
+		tabbedMenu->activePaginator().nextPage();
+		return;
+	}
+	if (inputState.key.key == SDLK_PAGEUP) {
+		tabbedMenu->activePaginator().prevPage();
+		return;
+	}
+
+	// --- Item selection on inventory tab: a-z key ---
+	if (tabbedMenu->activeTab == TabbedMenuState::Tab::INVENTORY) {
+		// Toggle Use/Drop with 'd' key
+		if (inputState.key.c == 'd') {
+			tabbedMenu->pendingAction = (tabbedMenu->pendingAction == TabbedMenuState::Action::USE)
+				? TabbedMenuState::Action::DROP
+				: TabbedMenuState::Action::USE;
+			return;
+		}
+
+		if (inputState.key.c >= 'a' && inputState.key.c <= 'z') {
+			// Compute the selection index relative to current page
+			const int pageOffset = tabbedMenu->activePaginator().startIndex();
+			const int selectionIndex = pageOffset + (inputState.key.c - 'a');
+
+			// Map selection to the j-th unequipped item
+			int unequippedCount = 0;
+			Actor* item = nullptr;
+			for (const auto& itemPtr : player->container->inventory) {
+				if (!itemPtr) continue;
+				if (player->equipment && player->equipment->isEquipped(itemPtr.get())) continue;
+				if (unequippedCount == selectionIndex) {
+					item = itemPtr.get();
+					break;
+				}
+				unequippedCount++;
+			}
+
+			if (item) {
+				if (tabbedMenu->pendingAction == TabbedMenuState::Action::USE) {
+					if (item->equippable && player->equipment) {
+						Actor* previous = player->equipment->equip(item, player->container.get(), player->attacker.get());
+						if (previous) {
+							gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
+						} else {
+							gui->message(Colors::uiText, "You equip the #.", item->name);
+						}
+						gameStatus = NEW_TURN;
+					} else {
+						if (item->pickable->use(item, player)) {
+							gameStatus = NEW_TURN;
+						}
+					}
+				} else {
+					item->pickable->drop(item, player);
+					gameStatus = NEW_TURN;
+				}
+				tabbedMenu = std::nullopt;
+				return;
+			}
+		}
+	}
+}
+
+void Engine::renderTabbedMenu()
+{
+	if (!tabbedMenu) return;
+
+	static constexpr int MENU_WIDTH  = 60;
+	static constexpr int MENU_HEIGHT = 35;
+	static TCODConsole menuConsole(MENU_WIDTH, MENU_HEIGHT);
+
+	menuConsole.clear();
+	menuConsole.setDefaultForeground(Colors::menuFrame);
+	menuConsole.printFrame(0, 0, MENU_WIDTH, MENU_HEIGHT, true, TCOD_BKGND_DEFAULT);
+
+	// --- Render tab labels at top ---
+	const char* tabLabels[] = { "Inventory", "Equipment", "Skills" };
+	int tabX = 2;
+	for (int i = 0; i < static_cast<int>(TabbedMenuState::Tab::COUNT); i++) {
+		TabbedMenuState::Tab tab = static_cast<TabbedMenuState::Tab>(i);
+		if (tab == tabbedMenu->activeTab) {
+			// Active tab: highlighted colour
+			menuConsole.setDefaultForeground(Colors::uiHighlight);
+		} else {
+			// Inactive tab: dimmed colour
+			menuConsole.setDefaultForeground(Colors::uiText);
+		}
+		menuConsole.printf(tabX, 1, "[%s]", tabLabels[i]);
+		tabX += static_cast<int>(strlen(tabLabels[i])) + 3; // "[" + label + "] "
+	}
+
+	// --- Render content based on active tab ---
+	int contentY = 3;
+
+	if (tabbedMenu->activeTab == TabbedMenuState::Tab::INVENTORY) {
+		// Inventory tab: list unequipped items with pagination
+		if (player && player->container) {
+			// Show current action mode (Use or Drop)
+			const char* actionLabel = (tabbedMenu->pendingAction == TabbedMenuState::Action::USE)
+				? "USE" : "DROP";
+			menuConsole.setDefaultForeground(Colors::menuHighlightAlt);
+			menuConsole.printf(MENU_WIDTH - 10, 1, "(%s)", actionLabel);
+
+			// Count unequipped items
+			std::vector<Actor*> unequipped;
+			for (const auto& itemPtr : player->container->inventory) {
+				if (!itemPtr) continue;
+				if (player->equipment && player->equipment->isEquipped(itemPtr.get())) continue;
+				unequipped.push_back(itemPtr.get());
+			}
+
+			auto& pag = tabbedMenu->activePaginator();
+			pag.totalItems = static_cast<int>(unequipped.size());
+			pag.pageSize = MENU_HEIGHT - 7; // leave room for header, tabs, footer
+
+			menuConsole.setDefaultForeground(Colors::white);
+			int shortcutKey = 'a';
+			int start = pag.startIndex();
+			int end = pag.endIndex();
+			for (int idx = start; idx < end && idx < static_cast<int>(unequipped.size()); idx++) {
+				menuConsole.printf(2, contentY, "(%c) %s", shortcutKey, unequipped[idx]->name.c_str());
+				contentY++;
+				shortcutKey++;
+			}
+
+			// Page indicator
+			if (pag.totalPages() > 1) {
+				menuConsole.setDefaultForeground(Colors::uiText);
+				std::string indicator = pag.indicator();
+				menuConsole.printf(2, MENU_HEIGHT - 3, "%s", indicator.c_str());
+			}
+		}
+	} else if (tabbedMenu->activeTab == TabbedMenuState::Tab::EQUIPMENT) {
+		// Equipment tab: show character sheet (equipped items + stats) with pagination
+		if (player) {
+			// Build all lines for the equipment tab content
+			std::vector<std::string> lines;
+			lines.push_back(player->name);
+			lines.push_back("");
+
+			// Display equipped items
+			if (player->equipment) {
+				lines.push_back("-- Equipment --");
+				const char* slotNames[] = { "Weapon", "Offhand", "Head", "Body" };
+				for (int s = 0; s < static_cast<int>(EquipmentSlot::COUNT); s++) {
+					EquipmentSlot slot = static_cast<EquipmentSlot>(s);
+					Actor* equipped = player->equipment->getSlot(slot);
+					if (equipped) {
+						std::string entry = std::string(slotNames[s]) + ": " + equipped->name;
+						// Show ammo for ranged weapons
+						if (equipped->equippable && equipped->equippable->rangedStats.has_value()) {
+							entry += " (" + std::to_string(equipped->equippable->currentAmmo)
+							       + "/" + std::to_string(equipped->equippable->rangedStats->clipSize) + ")";
+						}
+						lines.push_back(entry);
+					} else {
+						lines.push_back(std::string(slotNames[s]) + ": --empty--");
+					}
+				}
+			}
+
+			lines.push_back("");
+
+			// Display characteristics
+			if (player->characteristics) {
+				lines.push_back("-- Characteristics --");
+				for (int i = 0; i < static_cast<int>(CharId::COUNT); i++) {
+					CharId id = static_cast<CharId>(i);
+					int value = player->characteristics->get(id);
+					int bonus = player->characteristics->bonus(id);
+					char buf[64];
+					snprintf(buf, sizeof(buf), "%-4s  %3d  (bonus: %d)",
+						std::string(Characteristics::abbreviation(id)).c_str(), value, bonus);
+					lines.push_back(buf);
+				}
+			}
+
+			auto& pag = tabbedMenu->activePaginator();
+			pag.totalItems = static_cast<int>(lines.size());
+			pag.pageSize = MENU_HEIGHT - 7;
+
+			int start = pag.startIndex();
+			int end = pag.endIndex();
+			for (int idx = start; idx < end && idx < static_cast<int>(lines.size()); idx++) {
+				menuConsole.setDefaultForeground(Colors::white);
+				menuConsole.printf(2, contentY, "%s", lines[idx].c_str());
+				contentY++;
+			}
+
+			if (pag.totalPages() > 1) {
+				menuConsole.setDefaultForeground(Colors::uiText);
+				std::string indicator = pag.indicator();
+				menuConsole.printf(2, MENU_HEIGHT - 3, "%s", indicator.c_str());
+			}
+		}
+	} else if (tabbedMenu->activeTab == TabbedMenuState::Tab::SKILLS) {
+		// Skills tab: show learned skills and talents with pagination
+		if (player && player->career) {
+			// Build content lines for pagination
+			std::vector<std::string> lines;
+
+			if (!player->career->skills.empty()) {
+				lines.push_back("-- Skills --");
+				// Collect skill names into a sorted vector for stable display
+				std::vector<std::string> skillNames;
+				for (const auto& [name, rank] : player->career->skills) {
+					skillNames.push_back(name);
+				}
+				std::sort(skillNames.begin(), skillNames.end());
+
+				for (const auto& skillName : skillNames) {
+					int rank = player->career->skills.at(skillName);
+					const char* rankSuffix = "";
+					if (rank == 1) rankSuffix = " (+10)";
+					else if (rank == 2) rankSuffix = " (+20)";
+					lines.push_back("  " + skillName + rankSuffix);
+				}
+			}
+
+			if (!player->career->talents.empty()) {
+				if (!lines.empty()) lines.push_back("");
+				lines.push_back("-- Talents --");
+				// Sort talents for stable display
+				std::vector<std::string> talentNames(player->career->talents.begin(),
+				                                     player->career->talents.end());
+				std::sort(talentNames.begin(), talentNames.end());
+				for (const auto& talent : talentNames) {
+					lines.push_back("  " + talent);
+				}
+			}
+
+			if (lines.empty()) {
+				lines.push_back("No skills or talents learned.");
+			}
+
+			auto& pag = tabbedMenu->activePaginator();
+			pag.totalItems = static_cast<int>(lines.size());
+			pag.pageSize = MENU_HEIGHT - 7;
+
+			int start = pag.startIndex();
+			int end = pag.endIndex();
+			for (int idx = start; idx < end && idx < static_cast<int>(lines.size()); idx++) {
+				menuConsole.setDefaultForeground(Colors::white);
+				menuConsole.printf(2, contentY, "%s", lines[idx].c_str());
+				contentY++;
+			}
+
+			if (pag.totalPages() > 1) {
+				menuConsole.setDefaultForeground(Colors::uiText);
+				std::string indicator = pag.indicator();
+				menuConsole.printf(2, MENU_HEIGHT - 3, "%s", indicator.c_str());
+			}
+		} else {
+			menuConsole.setDefaultForeground(Colors::uiText);
+			menuConsole.printf(2, contentY, "No skills learned.");
+		}
+	}
+
+	// Footer hint
+	menuConsole.setDefaultForeground(Colors::uiText);
+	menuConsole.printf(2, MENU_HEIGHT - 2, "[Tab] Switch  [PgUp/PgDn] Scroll  [Esc] Close");
+
+	TCODConsole::blit(&menuConsole, 0, 0, MENU_WIDTH, MENU_HEIGHT,
+		TCODConsole::root,
+		screenWidth  / 2 - MENU_WIDTH  / 2,
+		screenHeight / 2 - MENU_HEIGHT / 2);
+}
+
 void Engine::renderWorldMap()
 {
 	if (!worldMapState) return;
@@ -1544,6 +1860,18 @@ void Engine::renderCharGen()
 			const auto& hw = homeworldTemplates[charGenState->selectedIndex];
 			int detailY = listY + static_cast<int>(homeworldTemplates.size()) + 1;
 
+			// Description (word-wrapped to fit console width)
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			{
+				static constexpr int DESC_X = 2;
+				static constexpr int DESC_WIDTH = CHARGEN_WIDTH - 4; // 2px padding each side
+				const char* descText = hw.description.empty()
+					? "No description available."
+					: hw.description.c_str();
+				int linesUsed = charGenConsole.printRect(DESC_X, detailY, DESC_WIDTH, CHARGEN_HEIGHT - detailY, "%s", descText);
+				detailY += linesUsed + 1;
+			}
+
 			// Characteristics with modifiers
 			charGenConsole.setDefaultForeground(Colors::white);
 			charGenConsole.printf(2, detailY, "Characteristics:");
@@ -1626,6 +1954,18 @@ void Engine::renderCharGen()
 				charGenConsole.setDefaultForeground(Colors::menuHighlightAlt);
 				charGenConsole.printf(2, infoY, "--- %s ---", career.name.c_str());
 				infoY++;
+
+				// Description (word-wrapped to fit console width)
+				charGenConsole.setDefaultForeground(Colors::uiText);
+				{
+					static constexpr int DESC_X = 2;
+					static constexpr int DESC_WIDTH = CHARGEN_WIDTH - 4; // 2px padding each side
+					const char* descText = career.description.empty()
+						? "No description available."
+						: career.description.c_str();
+					int linesUsed = charGenConsole.printRect(DESC_X, infoY, DESC_WIDTH, CHARGEN_HEIGHT - infoY, "%s", descText);
+					infoY += linesUsed + 1;
+				}
 
 				if (!career.ranks.empty()) {
 					const auto& rank1 = career.ranks[0];
@@ -2174,6 +2514,7 @@ void Engine::loadHomeworldTemplates()
 
 			HomeworldTemplate tmpl;
 			tmpl.name = name;
+			tmpl.description = entry.get_or("description", std::string(""));
 
 			// Parse characteristic modifiers from charMods table
 			// Maps: ws=0, bs=1, s=2, t=3, ag=4, int=5, per=6, wp=7, fel=8
@@ -2250,6 +2591,7 @@ void Engine::loadCareerTemplates()
 
 			CareerTemplate career;
 			career.name = name;
+			career.description = entry.get_or("description", std::string(""));
 			career.hp = entry.get_or("hp", 30.0f);
 			career.defense = entry.get_or("defense", 2.0f);
 			career.power = entry.get_or("power", 5.0f);
@@ -2691,6 +3033,7 @@ void Engine::init()
 	newPlayer->container    = std::make_unique<Container>(26);
 	newPlayer->equipment    = std::make_unique<Equipment>();
 	newPlayer->characteristics = std::make_shared<Characteristics>(25);
+	newPlayer->assignRenderLayer();
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create stairsUp (always visible, never blocks). Starting level is depth 20 (deepest),
@@ -2703,7 +3046,7 @@ void Engine::init()
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true, LevelType::BSP);
-	camera = std::make_unique<Camera>(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+	camera = std::make_unique<Camera>(layout::VIEWPORT_X, 0, layout::VIEWPORT_WIDTH, layout::VIEWPORT_HEIGHT,
 		map->getWidth(), map->getHeight());
 
 	// Generate world seed from system clock for deterministic world map generation.

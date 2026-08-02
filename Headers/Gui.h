@@ -1,6 +1,9 @@
 #pragma once
 
 #include <sstream>
+#include <vector>
+
+struct SkillBarEntry;
 
 class Menu {
 public:
@@ -34,9 +37,14 @@ class Gui: public Persistent {
 public:
 	Menu menu;
 
+	// Message log capacity — matches layout::MSG_LOG_HEIGHT (6)
+	static constexpr int MSG_LOG_CAPACITY = layout::MSG_LOG_HEIGHT;
+
 	Gui();
 
 	void render();
+	void renderSkillBar(const std::vector<SkillBarEntry>& skills);
+	void renderRightSidebar();
 	
 	template<typename Color, typename T, typename...Args>
 	void message(const Color& col, const T& text, Args&&...args) {
@@ -61,7 +69,8 @@ public:
 	
 		//add message to log
 		for (const auto& string : splitString) {
-			if (log.size() == constants::MSG_HEIGHT) {
+			if (string.empty()) continue; // silently discard empty messages
+			if (static_cast<int>(log.size()) >= MSG_LOG_CAPACITY) {
 				log.pop_front();
 			}
 			log.emplace_back(std::make_unique<Message>(string, col));
@@ -81,11 +90,16 @@ public:
 	}
 protected:
 	std::unique_ptr<TCODConsole> hudConsole;
+	std::unique_ptr<TCODConsole> msgLogConsole; // dedicated message log sub-console
+	std::unique_ptr<TCODConsole> rightSidebarConsole; // right sidebar sub-console (24 x SCREEN_HEIGHT)
+	std::unique_ptr<TCODConsole> leftSidebarConsole; // nullptr when LEFT_SIDEBAR_ENABLED is false
 
 	void renderBar(int x, int y, int width, const std::string_view name, 
 			float value, float maxValue, const TCODColor& barColor, 
 			const TCODColor& backColor);
 	void renderMouseLook();
+	void renderMessageLog(); // renders the message log into its dedicated HUD region
+	void renderLeftSidebar(); // renders left sidebar (no-op when disabled)
 
 	template<typename T>
 	std::string makeString(const T& val) {

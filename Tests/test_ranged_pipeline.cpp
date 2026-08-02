@@ -3,6 +3,20 @@
 
 #include <memory>
 
+// Creates a small open-arena map where every tile is walkable and transparent.
+// This avoids BSP randomness causing test flakiness (walls blocking LoS/movement).
+static std::unique_ptr<Map> makeOpenMap(int width, int height) {
+    auto map = std::make_unique<Map>(width, height);
+    map->init(false, LevelType::BSP); // initializes internal TCODMap
+    // Force all tiles open so tests have deterministic LoS/pathfinding
+    for (int x = 0; x < width; ++x) {
+        for (int y = 0; y < height; ++y) {
+            map->setTileProperties(x, y, true, true);
+        }
+    }
+    return map;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Integration Tests for RangedAi Behaviour
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -148,8 +162,7 @@ TEST_CASE("RangedAi: shoots at target within range with LoS and ammo", "[ranged-
 
     // Create a minimal open map where everything is in FOV
     auto oldMap = std::move(engine.map);
-    engine.map = std::make_unique<Map>(20, 20);
-    engine.map->init(false, LevelType::BSP);
+    engine.map = makeOpenMap(20, 20);
     // Force compute FOV from player position
     player->setX(10);
     player->setY(10);
@@ -203,8 +216,7 @@ TEST_CASE("RangedAi: melee attack when adjacent to target", "[ranged-ai][integra
 
     // Use a trivial map so we don't need FOV for adjacency check
     auto oldMap = std::move(engine.map);
-    engine.map = std::make_unique<Map>(20, 20);
-    engine.map->init(false, LevelType::BSP);
+    engine.map = makeOpenMap(20, 20);
     engine.map->computeFOV();
 
     enemy->ai->update(enemy.get());
@@ -234,8 +246,7 @@ TEST_CASE("RangedAi: moves toward player when out of weapon range", "[ranged-ai]
     engine.player = player.get();
 
     auto oldMap = std::move(engine.map);
-    engine.map = std::make_unique<Map>(20, 20);
-    engine.map->init(false, LevelType::BSP);
+    engine.map = makeOpenMap(20, 20);
     player->setX(5);
     player->setY(18);
     engine.map->computeFOV();
@@ -284,8 +295,7 @@ TEST_CASE("RangedAi: reloads when out of ammo", "[ranged-ai][integration]") {
     engine.player = player.get();
 
     auto oldMap = std::move(engine.map);
-    engine.map = std::make_unique<Map>(20, 20);
-    engine.map->init(false, LevelType::BSP);
+    engine.map = makeOpenMap(20, 20);
     player->setX(10);
     player->setY(10);
     engine.map->computeFOV();
@@ -331,8 +341,7 @@ TEST_CASE("RangedAi: follows scent trail when no LoS", "[ranged-ai][integration]
     engine.player = player.get();
 
     auto oldMap = std::move(engine.map);
-    engine.map = std::make_unique<Map>(20, 20);
-    engine.map->init(false, LevelType::BSP);
+    engine.map = makeOpenMap(20, 20);
     player->setX(1);
     player->setY(1);
     engine.map->computeFOV();
@@ -380,8 +389,7 @@ TEST_CASE("MonsterAi: melee enemy behaviour is unchanged", "[ranged-ai][integrat
     enemy->attacker->rollDie = [](int sides) { return 3; };
 
     auto oldMap = std::move(engine.map);
-    engine.map = std::make_unique<Map>(20, 20);
-    engine.map->init(false, LevelType::BSP);
+    engine.map = makeOpenMap(20, 20);
     player->setX(10);
     player->setY(10);
     engine.map->computeFOV();
@@ -418,8 +426,7 @@ TEST_CASE("RangedAi decision: adjacent distance triggers melee, not ranged", "[r
     engine.player = player.get();
 
     auto oldMap = std::move(engine.map);
-    engine.map = std::make_unique<Map>(20, 20);
-    engine.map->init(false, LevelType::BSP);
+    engine.map = makeOpenMap(20, 20);
     engine.map->computeFOV();
 
     // Track melee usage via roll count on attacker
