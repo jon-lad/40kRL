@@ -57,7 +57,7 @@ TEST_CASE("PBT: Property 1 — Door construction invariant", "[property][map-doo
 // SHALL hold:
 // - If openable->isOpen() == false: glyph '+', colour {150,100,50}, blocks == true,
 //   TCODMap at door position is not walkable and not transparent.
-// - If openable->isOpen() == true: glyph '\'', colour {100,65,30}, blocks == false,
+// - If openable->isOpen() == true: glyph '/', colour {100,65,30}, blocks == false,
 //   TCODMap at door position is walkable and transparent.
 
 TEST_CASE("PBT: Property 2 — Door state consistency", "[property][map-doors]")
@@ -90,7 +90,7 @@ TEST_CASE("PBT: Property 2 — Door state consistency", "[property][map-doors]")
 
             // Expected state after open:
             RC_ASSERT(door->openable->isOpen() == true);
-            RC_ASSERT(door->getGlyph() == '\'');
+            RC_ASSERT(door->getGlyph() == '/');
             TCODColor openColor{100, 65, 30};
             RC_ASSERT(door->getColor() == openColor);
             RC_ASSERT(door->blocks == false);

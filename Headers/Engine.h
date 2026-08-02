@@ -70,6 +70,7 @@ struct PickupMenuState {
 struct LookState {
 	int cursorX;
 	int cursorY;
+	std::string lastDescription; // tracks last description posted to message log (avoids spam)
 };
 
 // Stores state for the character sheet overlay.

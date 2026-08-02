@@ -208,6 +208,7 @@
     <ClInclude Include="Headers\CP437.h" />
     <ClInclude Include="Headers\LayoutRect.h" />
     <ClInclude Include="Headers\ScreenLayout.h" />
+    <ClInclude Include="Headers\SkillBarEntry.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

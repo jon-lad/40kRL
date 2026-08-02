@@ -12,6 +12,15 @@ namespace constants {
 	inline static constexpr auto PAUSE_MENU_HEIGHT = 15;
 }
 
+// ─── Render layer constants (ui-rework) ──────────────────────────────────────
+namespace RenderLayers {
+	inline constexpr int DECORATION = 0;
+	inline constexpr int ITEM       = 1;
+	inline constexpr int DOOR       = 2;
+	inline constexpr int CORPSE     = 3;
+	inline constexpr int LIVING     = 4;
+}
+
 // ─── New screen layout constants (ui-rework) ─────────────────────────────────
 namespace layout {
 	inline constexpr int SCREEN_WIDTH         = 120;

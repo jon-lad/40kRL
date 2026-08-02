@@ -10,13 +10,14 @@
 #include "main.h"
 #include "WfcGenerator.h"
 #include "DoorFactory.h"
+#include "CP437.h"
 
 static constexpr int ROOM_MAX_SIZE     = 12;
 static constexpr int ROOM_MIN_SIZE     = 6;
 static constexpr int MAX_ROOM_MONSTERS = 3;
 static constexpr int MAX_ROOM_ITEMS    = 2;
 static constexpr int BSP_DEPTH         = 8;
-static constexpr char GROUND_GLYPH     = '.';
+static constexpr int GROUND_GLYPH      = 250; // CP437 middle dot (·)
 static constexpr int MIN_PLAYABLE_AREA = 200;
 static constexpr int MAX_RETRIES       = 10;
 
@@ -539,7 +540,7 @@ void Map::renderOutdoor() const
 			if (isInFOV(x, y)) {
 				switch (terrain) {
 				case TerrainType::GROUND:
-					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '.', {LIGHT_OUTDOOR_GROUND.r, LIGHT_OUTDOOR_GROUND.g, LIGHT_OUTDOOR_GROUND.b});
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, cp437::GLYPH_FLOOR, {LIGHT_OUTDOOR_GROUND.r, LIGHT_OUTDOOR_GROUND.g, LIGHT_OUTDOOR_GROUND.b});
 					break;
 				case TerrainType::TREE:
 					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, CharConst::SPADE, {LIGHT_TREE.r, LIGHT_TREE.g, LIGHT_TREE.b});
@@ -551,7 +552,7 @@ void Map::renderOutdoor() const
 			} else if (isExplored(x, y)) {
 				switch (terrain) {
 				case TerrainType::GROUND:
-					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, '.', {DARK_OUTDOOR_GROUND.r, DARK_OUTDOOR_GROUND.g, DARK_OUTDOOR_GROUND.b});
+					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, cp437::GLYPH_FLOOR, {DARK_OUTDOOR_GROUND.r, DARK_OUTDOOR_GROUND.g, DARK_OUTDOOR_GROUND.b});
 					break;
 				case TerrainType::TREE:
 					renderPutChar(TCODConsole::root->get_data(), screenX, screenY, CharConst::SPADE, {DARK_TREE.r, DARK_TREE.g, DARK_TREE.b});
@@ -1095,6 +1096,7 @@ void Map::addMonster(int x, int y)
 				monster->equipConfig = std::make_unique<EnemyEquipmentConfig>(std::move(equipConfig));
 			}
 
+			monster->assignRenderLayer();
 			engine.actors.push_back(std::move(monster));
 
 			// ── Equipment resolution (task 2.2) ──
@@ -1191,12 +1193,14 @@ void Map::addMonster(int x, int y)
 			ork->destructible = std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35);
 			ork->attacker     = std::make_unique<Attacker>(3.0f, 40);
 			ork->ai           = std::make_unique<MonsterAi>();
+			ork->assignRenderLayer();
 			engine.actors.push_back(std::move(ork));
 		} else {
 			auto nob = std::make_unique<Actor>(x, y, 'N', "Nob", Colors::nobArmour);
 			nob->destructible = std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100);
 			nob->attacker     = std::make_unique<Attacker>(4.0f, 40);
 			nob->ai           = std::make_unique<MonsterAi>();
+			nob->assignRenderLayer();
 			engine.actors.push_back(std::move(nob));
 		}
 	}
@@ -1220,6 +1224,7 @@ void Map::addItem(int x, int y)
 		item->equippable->meleeStats = tmpl.meleeStats;
 		item->equippable->armourProfile = tmpl.armourProfile;
 		item->equippable->rangedStats = tmpl.rangedStats;
+		item->assignRenderLayer();
 		engine.actors.emplace_front(std::move(item));
 		return;
 	}
@@ -1232,11 +1237,12 @@ void Map::addItem(int x, int y)
 
 		// Inject C++ factory callbacks that Lua's spawnItem function will call.
 		lua["spawnHealthPotion"] = [](int ix, int iy, float healAmount) {
-			auto potion = std::make_unique<Actor>(ix, iy, '!', "health potion", Colors::healthPotion);
+			auto potion = std::make_unique<Actor>(ix, iy, cp437::GLYPH_POTION, "health potion", Colors::healthPotion);
 			potion->blocks   = false;
 			potion->pickable = std::make_unique<Pickable>(
 				std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
 				std::make_unique<HealthEffect>(healAmount, "", Colors::uiText));
+			potion->assignRenderLayer();
 			engine.actors.emplace_front(std::move(potion));
 		};
 
@@ -1245,11 +1251,12 @@ void Map::addItem(int x, int y)
 			const std::string& selectorName, float range)
 		{
 			TCODColor col = colorFromName(colorName);
-			auto scroll = std::make_unique<Actor>(ix, iy, '#', name, Colors::scroll);
+			auto scroll = std::make_unique<Actor>(ix, iy, cp437::GLYPH_SCROLL, name, Colors::scroll);
 			scroll->blocks   = false;
 			scroll->pickable = std::make_unique<Pickable>(
 				std::make_unique<TargetSelector>(selectorFromName(selectorName), range),
 				std::make_unique<HealthEffect>(damage, message, col));
+			scroll->assignRenderLayer();
 			engine.actors.emplace_front(std::move(scroll));
 		};
 
@@ -1257,12 +1264,13 @@ void Map::addItem(int x, int y)
 			const std::string& message, const std::string& colorName, float range)
 		{
 			TCODColor col = colorFromName(colorName);
-			auto scroll = std::make_unique<Actor>(ix, iy, '#', name, Colors::scroll);
+			auto scroll = std::make_unique<Actor>(ix, iy, cp437::GLYPH_SCROLL, name, Colors::scroll);
 			scroll->blocks   = false;
 			scroll->pickable = std::make_unique<Pickable>(
 				std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELECTED_MONSTER, range),
 				std::make_unique<AiChangeEffect>(
 					std::make_unique<ConfusedMonsterAi>(turns), message, col));
+			scroll->assignRenderLayer();
 			engine.actors.emplace_front(std::move(scroll));
 		};
 
@@ -1271,11 +1279,12 @@ void Map::addItem(int x, int y)
 
 	} catch (const sol::error& /*e*/) {
 		// Lua script failed — fall back to a simple health potion.
-		auto potion = std::make_unique<Actor>(x, y, '!', "health potion", Colors::healthPotion);
+		auto potion = std::make_unique<Actor>(x, y, cp437::GLYPH_POTION, "health potion", Colors::healthPotion);
 		potion->blocks   = false;
 		potion->pickable = std::make_unique<Pickable>(
 			std::make_unique<TargetSelector>(TargetSelector::SelectorType::SELF, 0.0f),
 			std::make_unique<HealthEffect>(4.0f, "", Colors::uiText));
+		potion->assignRenderLayer();
 		engine.actors.emplace_front(std::move(potion));
 	}
 }
@@ -1328,6 +1337,7 @@ void Map::addDecorations(int x1, int y1, int x2, int y2)
 				decoration->description = tmpl.description;
 				decoration->coverValue  = tmpl.coverValue;
 				// No Ai, Attacker, Destructible, or Pickable — they default to nullptr
+				decoration->assignRenderLayer();
 				engine.actors.push_front(std::move(decoration));
 				placed = true;
 				break;

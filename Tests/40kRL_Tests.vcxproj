@@ -202,6 +202,7 @@
     <ClInclude Include="..\Headers\CP437.h" />
     <ClInclude Include="..\Headers\LayoutRect.h" />
     <ClInclude Include="..\Headers\ScreenLayout.h" />
+    <ClInclude Include="..\Headers\SkillBarEntry.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />

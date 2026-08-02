@@ -22,6 +22,7 @@ public:
 	bool blocks;    // true if this actor prevents other actors from entering its tile
 	bool fovOnly;   // if true, only render when the tile is currently in the player's FOV
 	int coverValue = 0; // cover bonus (0-100) for future cover system; populated from DecorationTemplate
+	int renderLayer = 0; // z-order for rendering (see RenderLayers namespace in Constants.h)
 
 	// Optional components — null means "this actor does not have this capability"
 	std::shared_ptr<Attacker>    attacker;
@@ -44,6 +45,9 @@ public:
 
 	// Delegates to ai->update if the ai component is present; otherwise a no-op.
 	void update();
+
+	// Assigns renderLayer based on component presence (ai/player→LIVING, openable→DOOR, pickable→ITEM, else DECORATION).
+	void assignRenderLayer();
 
 	// Draws this actor at its world position, translated through the camera.
 	void render() const;

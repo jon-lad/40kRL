@@ -11,6 +11,7 @@
 Gui::Gui()
 {
 	hudConsole = std::make_unique<TCODConsole>(engine.screenWidth, constants::PANEL_HEIGHT);
+	msgLogConsole = std::make_unique<TCODConsole>(layout::VIEWPORT_WIDTH, layout::MSG_LOG_HEIGHT);
 }
 
 void Gui::render()
@@ -31,18 +32,6 @@ void Gui::render()
 		        << " / " << engine.player->career->xpPool
 		        << "  Rank " << engine.player->career->currentRank;
 		hudConsole->printf(1, 5, xpLabel.str().c_str());
-	}
-
-
-
-	// Draw the message log — oldest messages are dim, newest are bright.
-	int  row       = 1;
-	float dimFactor = 0.4f;
-	for (const auto& msg : log) {
-		hudConsole->setDefaultForeground(msg->col * dimFactor);
-		hudConsole->printf(constants::MSG_X, row, msg->text.c_str());
-		row++;
-		dimFactor += 0.3f;
 	}
 
 	renderMouseLook();
@@ -66,6 +55,51 @@ void Gui::render()
 
 	TCODConsole::blit(hudConsole.get(), 0, 0, engine.screenWidth, constants::PANEL_HEIGHT,
 		TCODConsole::root, 0, engine.screenHeight - constants::PANEL_HEIGHT);
+
+	// Render the dedicated message log panel
+	renderMessageLog();
+
+	// Render the skill bar below the message log.
+	// Currently renders an empty bar (no skill system yet). When skills are added
+	// to the player, build a vector<SkillBarEntry> here from the player's skill set.
+	std::vector<SkillBarEntry> skills; // empty until skill system is implemented
+	renderSkillBar(skills);
+}
+
+void Gui::renderSkillBar(const std::vector<SkillBarEntry>& skills)
+{
+	// Skill bar renders at row VIEWPORT_HEIGHT + MSG_LOG_HEIGHT + 1 on the root console.
+	const int barY = layout::VIEWPORT_HEIGHT + layout::MSG_LOG_HEIGHT + 1;
+	const int barX = layout::VIEWPORT_X;
+	const int maxWidth = layout::VIEWPORT_WIDTH;
+
+	// Clear the skill bar row
+	TCODConsole::root->setDefaultBackground(Colors::black);
+	for (int col = barX; col < barX + maxWidth; ++col) {
+		TCODConsole::root->putChar(col, barY, ' ', TCOD_BKGND_SET);
+	}
+
+	int cursorX = barX;
+	for (const auto& skill : skills) {
+		// Format: "[key] Name  " — 2 brackets + 1 char + 1 space + name + 2 trailing spaces
+		std::string entry = "[" + std::string(1, skill.keybinding) + "] " + skill.name;
+		int entryWidth = static_cast<int>(entry.size()) + 2; // +2 for spacing between entries
+
+		// Truncate if more skills than fit on screen width
+		if (cursorX + static_cast<int>(entry.size()) > barX + maxWidth) {
+			break;
+		}
+
+		// Apply color based on availability
+		TCODColor color = skill.available
+			? Colors::white
+			: TCODColor(SkillBarColors::DIMMED_R, SkillBarColors::DIMMED_G, SkillBarColors::DIMMED_B);
+
+		TCODConsole::root->setDefaultForeground(color);
+		TCODConsole::root->printf(cursorX, barY, entry.c_str());
+
+		cursorX += entryWidth;
+	}
 }
 
 void Gui::renderBar(int x, int y, int width, std::string_view name,
@@ -105,6 +139,32 @@ void Gui::renderMouseLook()
 
 	hudConsole->setDefaultForeground(Colors::uiText);
 	hudConsole->printf(1, 0, actorNames.c_str());
+}
+
+void Gui::renderMessageLog()
+{
+	// Render the message log into its dedicated sub-console, then blit to root.
+	// Position: (VIEWPORT_X, VIEWPORT_HEIGHT), size: (VIEWPORT_WIDTH × MSG_LOG_HEIGHT)
+	msgLogConsole->setDefaultBackground(Colors::black);
+	msgLogConsole->clear();
+
+	// Draw messages oldest-at-top, newest-at-bottom.
+	// Apply a fading effect: oldest messages are dimmer, newest are brighter.
+	int row = 0;
+	float dimFactor = 0.4f;
+	float dimStep = (log.size() > 1) ? (0.6f / (static_cast<float>(log.size()) - 1.0f)) : 0.0f;
+
+	for (const auto& msg : log) {
+		msgLogConsole->setDefaultForeground(msg->col * dimFactor);
+		msgLogConsole->printf(1, row, msg->text.c_str());
+		row++;
+		dimFactor += dimStep;
+	}
+
+	// Blit the message log console to the root console at the dedicated region
+	TCODConsole::blit(msgLogConsole.get(), 0, 0,
+		layout::VIEWPORT_WIDTH, layout::MSG_LOG_HEIGHT,
+		TCODConsole::root, layout::VIEWPORT_X, layout::VIEWPORT_HEIGHT);
 }
 
 bool Gui::replace(std::string& str, const std::string& from, const std::string& to)

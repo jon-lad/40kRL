@@ -4,6 +4,7 @@
 #include <sol/sol.hpp>
 #include "main.h"
 #include "WfcGenerator.h"
+#include "CP437.h"
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
 
@@ -257,7 +258,7 @@ void Engine::load()
 	map = std::make_unique<Map>(mapWidth, mapHeight);
 	map->load(zip);
 
-	camera = std::make_unique<Camera>(0, 0, 80, 43, map->getWidth(), map->getHeight());
+	camera = std::make_unique<Camera>(layout::VIEWPORT_X, 0, layout::VIEWPORT_WIDTH, layout::VIEWPORT_HEIGHT, map->getWidth(), map->getHeight());
 	camera->load(zip);
 
 	// Player must be emplaced before loading so engine.player is valid for subsequent loads.
@@ -605,7 +606,7 @@ void Actor::load(TCODZip& zip)
 {
 	x      = zip.getInt();
 	y      = zip.getInt();
-	glyph  = zip.getInt();
+	glyph  = cp437::sanitizeGlyph(zip.getInt());
 	color  = zip.getColor();
 	name   = zip.getString();
 	blocks  = zip.getInt();

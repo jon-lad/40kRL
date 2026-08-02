@@ -9,8 +9,6 @@
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
 static constexpr int MAP_WIDTH            = 160;
 static constexpr int MAP_HEIGHT           = 86;
-static constexpr int VIEWPORT_WIDTH       = 80;
-static constexpr int VIEWPORT_HEIGHT      = 43;
 
 Engine::Engine(int screenWidth, int screenHeight)
 	: gameStatus{ STARTUP }
@@ -495,11 +493,8 @@ void Engine::renderLook()
 	auto [screenX, screenY] = camera->apply(cursorX, cursorY);
 	renderSetBg(TCODConsole::root->get_data(), screenX, screenY, {255, 255, 63});
 
-	// --- Display actor/terrain description in the HUD panel area ---
-	// Panel starts at y = screenHeight - PANEL_HEIGHT. We write at the message area.
-	const int panelY = screenHeight - constants::PANEL_HEIGHT;
-	const int textX  = constants::MSG_X;
-	const int textStartY = panelY + 1;
+	// --- Build description string for the tile under the look cursor ---
+	std::string lookDescription;
 
 	if (map->isInFOV(cursorX, cursorY)) {
 		// Tile is in FOV — list actors (excluding player), ordered front-to-back
@@ -541,20 +536,23 @@ void Engine::renderLook()
 			lines.push_back(terrain);
 		}
 
-		// Render lines to the HUD panel area (overwrite message area)
-		int row = 0;
-		for (const auto& line : lines) {
-			if (row >= constants::MSG_HEIGHT) break;
-			TCODConsole::root->setDefaultForeground(Colors::white);
-			TCODConsole::root->printf(textX, textStartY + row, line.c_str());
-			row++;
+		// Join all description lines into one string
+		for (size_t i = 0; i < lines.size(); ++i) {
+			if (i > 0) lookDescription += ", ";
+			lookDescription += lines[i];
 		}
 	} else if (map->isExplored(cursorX, cursorY)) {
-		// Tile explored but not in FOV
-		TCODConsole::root->setDefaultForeground(Colors::uiText);
-		TCODConsole::root->printf(textX, textStartY, "You can't see that clearly from here.");
+		lookDescription = "You can't see that clearly from here.";
 	}
-	// If unexplored: display nothing (don't render any text)
+	// If unexplored: display nothing
+
+	// --- Display description via the message log API ---
+	// Only post to the message log when the cursor moves to a new tile
+	// (detected by comparing against the last description we posted).
+	if (!lookDescription.empty() && lookDescription != lookState->lastDescription) {
+		gui->message(Colors::uiText, lookDescription.c_str());
+		lookState->lastDescription = lookDescription;
+	}
 }
 
 void Engine::beginInventory(Actor* owner, InventoryState::Action action)
@@ -2692,6 +2690,7 @@ void Engine::init()
 	newPlayer->container    = std::make_unique<Container>(26);
 	newPlayer->equipment    = std::make_unique<Equipment>();
 	newPlayer->characteristics = std::make_shared<Characteristics>(25);
+	newPlayer->assignRenderLayer();
 	actors.emplace_front(std::move(newPlayer));
 
 	// Create stairsUp (always visible, never blocks). Starting level is depth 20 (deepest),
@@ -2704,7 +2703,7 @@ void Engine::init()
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true, LevelType::BSP);
-	camera = std::make_unique<Camera>(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+	camera = std::make_unique<Camera>(layout::VIEWPORT_X, 0, layout::VIEWPORT_WIDTH, layout::VIEWPORT_HEIGHT,
 		map->getWidth(), map->getHeight());
 
 	// Generate world seed from system clock for deterministic world map generation.
