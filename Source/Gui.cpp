@@ -12,6 +12,12 @@ Gui::Gui()
 {
 	hudConsole = std::make_unique<TCODConsole>(engine.screenWidth, constants::PANEL_HEIGHT);
 	msgLogConsole = std::make_unique<TCODConsole>(layout::VIEWPORT_WIDTH, layout::MSG_LOG_HEIGHT);
+	rightSidebarConsole = std::make_unique<TCODConsole>(layout::RIGHT_SIDEBAR_WIDTH, layout::SCREEN_HEIGHT);
+
+	// Only create left sidebar console when enabled; otherwise remains nullptr
+	if constexpr (layout::LEFT_SIDEBAR_ENABLED) {
+		leftSidebarConsole = std::make_unique<TCODConsole>(layout::LEFT_SIDEBAR_WIDTH, layout::SCREEN_HEIGHT);
+	}
 }
 
 void Gui::render()
@@ -64,6 +70,9 @@ void Gui::render()
 	// to the player, build a vector<SkillBarEntry> here from the player's skill set.
 	std::vector<SkillBarEntry> skills; // empty until skill system is implemented
 	renderSkillBar(skills);
+
+	// Render the right sidebar
+	renderRightSidebar();
 }
 
 void Gui::renderSkillBar(const std::vector<SkillBarEntry>& skills)
@@ -165,6 +174,167 @@ void Gui::renderMessageLog()
 	TCODConsole::blit(msgLogConsole.get(), 0, 0,
 		layout::VIEWPORT_WIDTH, layout::MSG_LOG_HEIGHT,
 		TCODConsole::root, layout::VIEWPORT_X, layout::VIEWPORT_HEIGHT);
+}
+
+void Gui::renderLeftSidebar()
+{
+	// No-op when the left sidebar is disabled (console is nullptr)
+	if (!leftSidebarConsole) { return; }
+
+	leftSidebarConsole->setDefaultBackground(Colors::black);
+	leftSidebarConsole->clear();
+
+	// Placeholder content until talent system is implemented
+	leftSidebarConsole->setDefaultForeground(Colors::uiText);
+	leftSidebarConsole->printf(1, 1, "No talents");
+
+	// Blit to root console at (0, 0)
+	TCODConsole::blit(leftSidebarConsole.get(), 0, 0,
+		layout::LEFT_SIDEBAR_WIDTH, layout::SCREEN_HEIGHT,
+		TCODConsole::root, 0, 0);
+}
+
+void Gui::renderRightSidebar()
+{
+	rightSidebarConsole->setDefaultBackground(Colors::black);
+	rightSidebarConsole->clear();
+
+	const int sidebarWidth = layout::RIGHT_SIDEBAR_WIDTH;
+	int row = 1;
+
+	// Handle null player gracefully
+	if (!engine.player) {
+		rightSidebarConsole->setDefaultForeground(Colors::uiText);
+		rightSidebarConsole->printf(1, row, "No player data");
+		TCODConsole::blit(rightSidebarConsole.get(), 0, 0,
+			sidebarWidth, layout::SCREEN_HEIGHT,
+			TCODConsole::root, layout::SCREEN_WIDTH - layout::RIGHT_SIDEBAR_WIDTH, 0);
+		return;
+	}
+
+	// ─── Equipment Section ───────────────────────────────────────────────
+	rightSidebarConsole->setDefaultForeground(Colors::white);
+	rightSidebarConsole->printf(1, row, "-- Equipment --");
+	row += 2;
+
+	if (engine.player->equipment) {
+		const char* slotNames[] = { "Weapon", "Offhand", "Head", "Body" };
+		for (int i = 0; i < static_cast<int>(EquipmentSlot::COUNT); ++i) {
+			EquipmentSlot slot = static_cast<EquipmentSlot>(i);
+			Actor* item = engine.player->equipment->getSlot(slot);
+			rightSidebarConsole->setDefaultForeground(Colors::uiText);
+			if (item) {
+				// Truncate name to fit sidebar width (leave room for slot label)
+				std::string display = std::string(slotNames[i]) + ": " + item->name;
+				if (static_cast<int>(display.size()) > sidebarWidth - 2) {
+					display = display.substr(0, sidebarWidth - 5) + "...";
+				}
+				rightSidebarConsole->printf(1, row, display.c_str());
+			} else {
+				std::string display = std::string(slotNames[i]) + ": --empty--";
+				rightSidebarConsole->printf(1, row, display.c_str());
+			}
+			row++;
+		}
+	} else {
+		rightSidebarConsole->setDefaultForeground(Colors::uiText);
+		rightSidebarConsole->printf(1, row, "No equipment");
+		row++;
+	}
+
+	row++;
+
+	// ─── Ammo Section ────────────────────────────────────────────────────
+	rightSidebarConsole->setDefaultForeground(Colors::white);
+	rightSidebarConsole->printf(1, row, "-- Ammo --");
+	row += 2;
+
+	if (engine.player->equipment) {
+		bool hasRanged = false;
+		const auto& slots = engine.player->equipment->getSlots();
+		for (const auto* item : slots) {
+			if (item && item->equippable && item->equippable->rangedStats.has_value()) {
+				hasRanged = true;
+				std::stringstream ammoLine;
+				ammoLine << item->name << ": "
+				         << item->equippable->currentAmmo << "/"
+				         << item->equippable->rangedStats->clipSize;
+				std::string display = ammoLine.str();
+				if (static_cast<int>(display.size()) > sidebarWidth - 2) {
+					display = display.substr(0, sidebarWidth - 5) + "...";
+				}
+				rightSidebarConsole->setDefaultForeground(Colors::uiText);
+				rightSidebarConsole->printf(1, row, display.c_str());
+				row++;
+			}
+		}
+		if (!hasRanged) {
+			rightSidebarConsole->setDefaultForeground(Colors::uiText);
+			rightSidebarConsole->printf(1, row, "No ranged weapon");
+			row++;
+		}
+	}
+
+	row++;
+
+	// ─── Characteristics Section ─────────────────────────────────────────
+	rightSidebarConsole->setDefaultForeground(Colors::white);
+	rightSidebarConsole->printf(1, row, "-- Characteristics --");
+	row += 2;
+
+	if (engine.player->characteristics) {
+		// Display all 9 stats in rows of 3
+		// Row 1: WS, BS, S
+		// Row 2: T, Ag, Int
+		// Row 3: Per, WP, Fel
+		const CharId statOrder[] = {
+			CharId::WS, CharId::BS, CharId::S,
+			CharId::T, CharId::Ag, CharId::Int,
+			CharId::Per, CharId::WP, CharId::Fel
+		};
+
+		for (int i = 0; i < 9; i += 3) {
+			std::stringstream statLine;
+			for (int j = 0; j < 3; ++j) {
+				CharId id = statOrder[i + j];
+				statLine << Characteristics::abbreviation(id) << " "
+				         << engine.player->characteristics->get(id);
+				if (j < 2) statLine << "  ";
+			}
+			rightSidebarConsole->setDefaultForeground(Colors::uiText);
+			rightSidebarConsole->printf(1, row, statLine.str().c_str());
+			row++;
+		}
+	} else {
+		rightSidebarConsole->setDefaultForeground(Colors::uiText);
+		rightSidebarConsole->printf(1, row, "No characteristics");
+		row++;
+	}
+
+	row++;
+
+	// ─── Skills Section ──────────────────────────────────────────────────
+	rightSidebarConsole->setDefaultForeground(Colors::white);
+	rightSidebarConsole->printf(1, row, "-- Skills --");
+	row += 2;
+
+	if (engine.player->career && !engine.player->career->skills.empty()) {
+		for (const auto& [skillName, rank] : engine.player->career->skills) {
+			if (row >= layout::SCREEN_HEIGHT - 1) break; // don't overflow sidebar
+			rightSidebarConsole->setDefaultForeground(Colors::uiText);
+			rightSidebarConsole->printf(1, row, skillName.c_str());
+			row++;
+		}
+	} else {
+		rightSidebarConsole->setDefaultForeground(Colors::uiText);
+		rightSidebarConsole->printf(1, row, "No skills");
+		row++;
+	}
+
+	// Blit sidebar to root console at (SCREEN_WIDTH - RIGHT_SIDEBAR_WIDTH, 0)
+	TCODConsole::blit(rightSidebarConsole.get(), 0, 0,
+		sidebarWidth, layout::SCREEN_HEIGHT,
+		TCODConsole::root, layout::SCREEN_WIDTH - layout::RIGHT_SIDEBAR_WIDTH, 0);
 }
 
 bool Gui::replace(std::string& str, const std::string& from, const std::string& to)

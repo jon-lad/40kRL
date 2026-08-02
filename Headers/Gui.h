@@ -44,6 +44,7 @@ public:
 
 	void render();
 	void renderSkillBar(const std::vector<SkillBarEntry>& skills);
+	void renderRightSidebar();
 	
 	template<typename Color, typename T, typename...Args>
 	void message(const Color& col, const T& text, Args&&...args) {
@@ -90,12 +91,15 @@ public:
 protected:
 	std::unique_ptr<TCODConsole> hudConsole;
 	std::unique_ptr<TCODConsole> msgLogConsole; // dedicated message log sub-console
+	std::unique_ptr<TCODConsole> rightSidebarConsole; // right sidebar sub-console (24 x SCREEN_HEIGHT)
+	std::unique_ptr<TCODConsole> leftSidebarConsole; // nullptr when LEFT_SIDEBAR_ENABLED is false
 
 	void renderBar(int x, int y, int width, const std::string_view name, 
 			float value, float maxValue, const TCODColor& barColor, 
 			const TCODColor& backColor);
 	void renderMouseLook();
 	void renderMessageLog(); // renders the message log into its dedicated HUD region
+	void renderLeftSidebar(); // renders left sidebar (no-op when disabled)
 
 	template<typename T>
 	std::string makeString(const T& val) {

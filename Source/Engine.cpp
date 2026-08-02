@@ -111,6 +111,12 @@ void Engine::render()
 	TCODConsole::root->clear();
 	map->render();
 
+	// Sort actors by render layer for correct draw order (lower layers drawn first).
+	// std::list::sort is stable, preserving insertion order within the same layer.
+	actors.sort([](const std::unique_ptr<Actor>& a, const std::unique_ptr<Actor>& b) {
+		return a->renderLayer < b->renderLayer;
+	});
+
 	for (const auto& actorPtr : actors) {
 		Actor* actor = actorPtr.get();
 		const bool isVisible  = map->isInFOV(actor->getX(), actor->getY());
