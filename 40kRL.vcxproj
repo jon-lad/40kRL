@@ -204,7 +204,10 @@
     <ClInclude Include="Headers\Openable.h" />
     <ClInclude Include="Headers\DoorFactory.h" />
     <ClInclude Include="Headers\CharacterSheet.h" />
+    <ClInclude Include="Headers\Paginator.h" />
     <ClInclude Include="Headers\CP437.h" />
+    <ClInclude Include="Headers\LayoutRect.h" />
+    <ClInclude Include="Headers\ScreenLayout.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

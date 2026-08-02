@@ -10,7 +10,8 @@ int Paginator::startIndex() const {
 }
 
 int Paginator::endIndex() const {
-    return std::min(startIndex() + pageSize, totalItems);
+    const int clamped = std::max(totalItems, 0);
+    return std::min(startIndex() + pageSize, clamped);
 }
 
 int Paginator::displayCount() const {

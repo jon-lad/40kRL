@@ -142,6 +142,7 @@
     <ClCompile Include="test_ui_layout.cpp" />
     <ClCompile Include="test_paginator.cpp" />
     <ClCompile Include="test_cp437.cpp" />
+    <ClCompile Include="test_render_layers.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -197,6 +198,8 @@
     <ClInclude Include="..\Headers\DoorFactory.h" />
     <ClInclude Include="..\Headers\Paginator.h" />
     <ClInclude Include="..\Headers\CP437.h" />
+    <ClInclude Include="..\Headers\LayoutRect.h" />
+    <ClInclude Include="..\Headers\ScreenLayout.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
