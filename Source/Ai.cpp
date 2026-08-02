@@ -90,7 +90,19 @@ void PlayerAi::update(Actor* owner)
 
 bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 {
-	if (engine.map->isWall(targetX, targetY)) { return false; }
+	if (engine.map->isWall(targetX, targetY)) {
+		// Check if there's a closed door blocking the way
+		for (auto& actorPtr : engine.actors) {
+			Actor* actor = actorPtr.get();
+			if (actor->openable && !actor->openable->isOpen()
+				&& actor->getX() == targetX && actor->getY() == targetY)
+			{
+				engine.gui->message(Colors::lightGrey, "The door is closed.");
+				return false;
+			}
+		}
+		return false;
+	}
 
 	// Attack the first living actor on the target tile.
 	for (auto& actorPtr : engine.actors) {
@@ -251,6 +263,39 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		engine.gui->message(Colors::uiText, "# reloads #.", owner->name, weaponItem->name);
 		engine.gameStatus = Engine::NEW_TURN;
 		return;
+	}
+
+	case 'o': // open an adjacent door
+	{
+		// Scan cardinal neighbours for closed doors
+		static constexpr int cardinalDX[4] = { 0, 0, 1, -1 };
+		static constexpr int cardinalDY[4] = { -1, 1, 0, 0 };
+
+		std::vector<Actor*> closedDoors;
+		for (int i = 0; i < 4; ++i) {
+			const int nx = owner->getX() + cardinalDX[i];
+			const int ny = owner->getY() + cardinalDY[i];
+			for (auto& actorPtr : engine.actors) {
+				Actor* actor = actorPtr.get();
+				if (actor->openable && !actor->openable->isOpen()
+					&& actor->getX() == nx && actor->getY() == ny)
+				{
+					closedDoors.push_back(actor);
+				}
+			}
+		}
+
+		if (closedDoors.empty()) {
+			engine.gui->message(Colors::lightGrey, "There is no door to open.");
+		} else if (closedDoors.size() == 1) {
+			closedDoors[0]->openable->open(closedDoors[0]);
+			engine.gameStatus = Engine::NEW_TURN;
+		} else {
+			// Multiple adjacent closed doors — prompt direction.
+			// For now, display a message. A full direction-selection UI can be added later.
+			engine.gui->message(Colors::lightGrey, "Which direction? (use arrow keys)");
+		}
+		break;
 	}
 
 	case 'e': // open equipment menu
