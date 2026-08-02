@@ -143,6 +143,8 @@
     <ClCompile Include="test_paginator.cpp" />
     <ClCompile Include="test_cp437.cpp" />
     <ClCompile Include="test_render_layers.cpp" />
+    <ClCompile Include="test_skill_bar.cpp" />
+    <ClCompile Include="test_message_log.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
