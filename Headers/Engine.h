@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include "Equippable.h"
+#include "CharacterData.h"
+#include "CharacterGenerator.h"
 #include "LevelCache.h"
 #include "TargetingContext.h"
 #include "WorldMap.h"
@@ -73,6 +75,12 @@ struct LookState {
 // Stores state for the character sheet overlay.
 struct CharacterSheetState {};
 
+// Stores state for the in-game advance purchase overlay.
+struct AdvancesState {
+	int selectedIndex = 0;       // cursor position in the advance list
+	std::string statusMessage;   // purchase feedback message
+};
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -89,7 +97,9 @@ public:
 		PICKUP_MENU, // pickup selection menu is open
 		LOOK,        // look-mode cursor active
 		CHARACTER_SHEET, // character sheet overlay is open
-		WORLD_MAP       // world map overlay is open
+		ADVANCES,        // advance purchase overlay is open
+		WORLD_MAP,      // world map overlay is open
+		CHARACTER_GEN   // character generation overlay is active
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -116,13 +126,19 @@ public:
 
 	std::vector<EquipmentTemplate> equipmentTemplates; // loaded from Equipment.lua
 	std::vector<DecorationTemplate> decorationTemplates; // loaded from Decorations.lua
+	std::vector<HomeworldTemplate> homeworldTemplates;   // loaded from Homeworlds.lua
+	std::vector<CareerTemplate> careerTemplates;         // loaded from Careers.lua
+	std::vector<SkillDefinition> skillDefinitions;       // loaded from Skills.lua
+	std::vector<TalentDefinition> talentDefinitions;     // loaded from Talents.lua
 
 	std::optional<TargetingContext> targetingCtx;  // active only during TARGETING state
 	std::optional<InventoryState> inventoryState; // active only during INVENTORY state
 	std::optional<PickupMenuState> pickupMenuState; // active only during PICKUP_MENU state
 	std::optional<LookState> lookState; // active only during LOOK state
 	std::optional<CharacterSheetState> characterSheetState; // active only during CHARACTER_SHEET state
+	std::optional<AdvancesState> advancesState; // active only during ADVANCES state
 	std::optional<WorldMapState> worldMapState; // active only during WORLD_MAP state
+	std::optional<CharGenState> charGenState; // active only during CHARACTER_GEN state
 
 	uint32_t worldSeed = 0; // deterministic seed for world map generation, set during init()
 
@@ -191,6 +207,28 @@ public:
 	// Renders character sheet overlay. Called from render() when CHARACTER_SHEET.
 	void renderCharacterSheet();
 
+	// Enters advance purchase mode. Called when player presses 'x' in IDLE state.
+	void beginAdvances();
+
+	// Processes one frame of advance purchase input. Called from update() when ADVANCES.
+	void updateAdvances();
+
+	// Renders advance purchase overlay. Called from render() when ADVANCES.
+	void renderAdvances();
+
+	// Enters character generation mode. Called when starting a new game.
+	void beginCharGen();
+
+	// Processes one frame of character generation input. Called from update() when CHARACTER_GEN.
+	void updateCharGen();
+
+	// Renders character generation overlay. Called from render() when CHARACTER_GEN.
+	void renderCharGen();
+
+	// Navigates back to the previous chargen step, resetting state for the step being left.
+	// On HOMEWORLD step, does nothing (cannot go back further).
+	void charGenGoBack();
+
 	// Enters world map display mode. Called when player presses 'm' in IDLE state.
 	void beginWorldMap();
 
@@ -211,6 +249,12 @@ public:
 
 	// Creates the player actor, stairs, and initial map for a new game.
 	void init();
+
+	// Lua data loaders — called during init() before player creation.
+	void loadHomeworldTemplates();
+	void loadCareerTemplates();
+	void loadSkillDefinitions();
+	void loadTalentDefinitions();
 
 	// Clears all actors and the map. Called before loading a save file or starting a new game.
 	void term();

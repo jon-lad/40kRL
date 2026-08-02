@@ -49,12 +49,7 @@ protected:
 
 class PlayerAi : public Ai {
 public:
-	int xpLevel;
-
 	PlayerAi();
-
-	// Returns the XP total required to reach the next level.
-	int getNextLevelXp();
 
 	void update(Actor* owner) override;
 

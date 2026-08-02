@@ -170,6 +170,8 @@
     <ClCompile Include="Source\WfcGenerator.cpp" />
     <ClCompile Include="Source\Openable.cpp" />
     <ClCompile Include="Source\DoorFactory.cpp" />
+    <ClCompile Include="Source\CareerProgression.cpp" />
+    <ClCompile Include="Source\CharacterSheet.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -200,6 +202,7 @@
     <ClInclude Include="Headers\WfcGenerator.h" />
     <ClInclude Include="Headers\Openable.h" />
     <ClInclude Include="Headers\DoorFactory.h" />
+    <ClInclude Include="Headers\CharacterSheet.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

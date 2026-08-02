@@ -117,6 +117,9 @@ public:
 	// Must be called BEFORE init() to take effect.
 	void setSeed(long newSeed) { seed = newSeed; }
 
+	// Returns the WFC tile description at (x, y). Only valid for WFC levels.
+	std::string getWfcTileDescription(int x, int y) const;
+
 protected:
 	mutable std::vector<Tile> tiles; // flat array indexed as x + y * width
 	std::unique_ptr<TCODMap>     map;

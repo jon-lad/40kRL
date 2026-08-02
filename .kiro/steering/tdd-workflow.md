@@ -1,35 +1,26 @@
----
-inclusion: auto
----
-
 # TDD Workflow
 
-When generating tasks for any spec, follow test-driven development ordering:
+This project follows Test-Driven Development. When implementing a new feature or component:
 
-1. **Test first** — Write the test (unit test or property-based test) that defines the expected behavior. The test should fail because the feature doesn't exist yet.
-2. **Implement** — Write the minimum code to make the test pass.
-3. **Commit** — Stage and commit after each test+implementation pair with a descriptive message.
-4. **Refactor** — Clean up if needed, ensure tests still pass, commit again.
+1. **Tests first** — The qa-tester agent writes failing tests (unit and/or property-based) that define the expected behaviour BEFORE any production code is written.
+2. **Minimal implementation** — The developer agent then writes the minimum production code needed to make those tests pass.
+3. **Verify** — Run the tests to confirm they pass. If they don't, the developer fixes the implementation until they do.
 
-## Task Ordering Convention
+## Task Ordering in Specs
 
-For each feature unit in a task list:
-- The test sub-task comes BEFORE the implementation sub-task
-- Test tasks are NOT optional — they are required
-- Property-based tests use RapidCheck (in `Tests/lib/rapidcheck_catch.h`)
-- Unit tests use Catch2 (in `Tests/lib/catch_amalgamated.hpp`)
+When generating tasks.md for a new feature, test tasks should appear BEFORE their corresponding implementation tasks in the dependency graph (or at minimum in the same wave). The pattern is:
 
-## Test File Location
+- Write test for behaviour X (expected to fail — no implementation yet)
+- Implement behaviour X (tests now pass)
 
-- All tests go in the `Tests/` directory
-- Name pattern: `test_<feature>.cpp` (e.g., `test_outdoor_map.cpp`)
-- Include the test in the `Tests/40kRL_Tests.vcxproj` project
+## Agent Responsibilities
 
-## Commit Pattern
+- **qa-tester**: Writes tests based on requirements and design docs. Tests should compile (may need stub headers/forward declarations) but are expected to FAIL until the developer implements the feature.
+- **developer**: Implements production code that makes the qa-tester's tests pass. Must not modify test assertions to make them pass — only production code.
 
-Each commit should contain either:
-- A failing test (red) — message: "Test: [description] (red)"
-- The implementation that makes it pass (green) — message: "[Feature]: [description]"
+## Practical Notes
 
-Or combined if the test+impl are small enough:
-- "TDD: [description] — test + implementation"
+- Tests go in `Tests/` directory using Catch2 v3 and RapidCheck.
+- New test `.cpp` files must be added to `Tests/40kRL_Tests.vcxproj`.
+- New source `.cpp` files must be added to BOTH `40kRL.vcxproj` AND `Tests/40kRL_Tests.vcxproj`.
+- Property-based tests use `rc::check` with minimum 100 iterations.

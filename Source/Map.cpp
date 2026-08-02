@@ -772,6 +772,14 @@ void Map::setTileProperties(int x, int y, bool transparent, bool walkable)
 	map->setProperties(x, y, transparent, walkable);
 }
 
+std::string Map::getWfcTileDescription(int x, int y) const
+{
+	if (levelType != LevelType::WFC || !wfcTileset || wfcTileIds.empty()) return "";
+	int idx = x + y * width;
+	if (idx < 0 || idx >= static_cast<int>(wfcTileIds.size())) return "";
+	return wfcTileset->tiles[wfcTileIds[idx]].description;
+}
+
 bool Map::isExplored(int x, int y) const
 {
 	const int index = x + y * width;

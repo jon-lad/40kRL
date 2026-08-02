@@ -14,6 +14,7 @@ struct WfcTile {
 	std::string id;           // unique identifier (e.g. "corridor")
 	int glyph;               // display character
 	std::string colorName;   // colour name for Colors::colorFromName()
+	std::string description; // flavour text shown in look mode
 	bool walkable;
 	bool transparent;
 	float weight = 1.0f;     // selection bias during collapse (higher = more likely)

@@ -585,7 +585,17 @@ void Actor::save(TCODZip& zip)
 	zip.putInt(characteristics != nullptr);
 	if (characteristics) characteristics->save(zip);
 
-	// Openable presence flag — appended AFTER characteristics for backward compatibility
+	// CareerProgression presence flag
+	zip.putInt(career != nullptr);
+	if (career) career->save(zip);
+
+	// CharacterSheet presence flag — the sheet is the canonical owner of characteristics
+	// and career for the player. When present, its data supersedes the individual fields
+	// (which are aliased shared_ptrs into the sheet). Written after career for compatibility.
+	zip.putInt(characterSheet != nullptr);
+	if (characterSheet) characterSheet->save(zip);
+
+	// Openable presence flag — appended AFTER characterSheet for backward compatibility
 	// (old saves without this field will read 0 from archive end → no Openable created).
 	zip.putInt(openable != nullptr);
 	if (openable) openable->save(zip);
@@ -648,7 +658,27 @@ void Actor::load(TCODZip& zip)
 		characteristics->load(zip);
 	}
 
-	// Openable presence flag — appended AFTER characteristics for backward compatibility
+	// CareerProgression presence flag
+	const bool hasCareer = zip.getInt();
+	if (hasCareer) {
+		career = std::make_shared<CareerProgression>();
+		career->load(zip);
+	}
+
+	// CharacterSheet presence flag — if present, rebuild the sheet and alias
+	// the characteristics/career shared_ptrs into it.
+	const bool hasCharSheet = zip.getInt();
+	if (hasCharSheet) {
+		characterSheet = std::make_shared<CharacterSheet>();
+		characterSheet->load(zip);
+
+		// Re-alias: point actor's characteristics and career into the sheet.
+		// Non-owning shared_ptr aliases that share lifetime with characterSheet.
+		characteristics = std::shared_ptr<Characteristics>(characterSheet, &characterSheet->characteristics);
+		career = std::shared_ptr<CareerProgression>(characterSheet, &characterSheet->career);
+	}
+
+	// Openable presence flag — appended AFTER characterSheet for backward compatibility
 	// (old saves without this field will read 0 from archive end → no Openable created).
 	const bool hasOpenable = zip.getInt();
 	if (hasOpenable) {
@@ -743,9 +773,8 @@ auto TemporaryAi::create(TCODZip& zip)
 void PlayerAi::save(TCODZip& zip)
 {
 	zip.putInt(static_cast<int>(AiType::PLAYER));
-	zip.putInt(xpLevel);
 }
-void PlayerAi::load(TCODZip& zip) { xpLevel = zip.getInt(); }
+void PlayerAi::load(TCODZip& zip) {}
 
 void MonsterAi::save(TCODZip& zip) { zip.putInt(static_cast<int>(AiType::MONSTER)); }
 void MonsterAi::load(TCODZip& zip) {}

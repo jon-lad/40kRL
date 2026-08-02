@@ -23,15 +23,17 @@ void Gui::render()
 		engine.player->destructible->maxHp,
 		Colors::damageLight, Colors::damageDark);
 
-	PlayerAi* playerAi = static_cast<PlayerAi*>(engine.player->ai.get());
-	if (playerAi) {
+	// XP bar: show Available / Pool and current rank
+	if (engine.player->career) {
+		hudConsole->setDefaultForeground(Colors::uiText);
 		std::stringstream xpLabel;
-		xpLabel << "XP(" << playerAi->xpLevel << ")";
-		renderBar(1, 5, constants::BAR_WIDTH, xpLabel.str(),
-			static_cast<float>(engine.player->destructible->xp),
-			static_cast<float>(playerAi->getNextLevelXp()),
-			Colors::healing, Colors::confusion);
+		xpLabel << "XP: " << engine.player->career->availableXp()
+		        << " / " << engine.player->career->xpPool
+		        << "  Rank " << engine.player->career->currentRank;
+		hudConsole->printf(1, 5, xpLabel.str().c_str());
 	}
+
+
 
 	// Draw the message log — oldest messages are dim, newest are bright.
 	int  row       = 1;
@@ -164,7 +166,7 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode)
 		int row = 0;
 		for (const auto& item : items) {
 			TCODConsole::root->setDefaultForeground(
-				(row == selectedItem) ? Colors::levelUp : Colors::uiText);
+				(row == selectedItem) ? Colors::menuHighlightAlt : Colors::uiText);
 			TCODConsole::root->print(menuX, menuY + row * 3, item->label.c_str());
 			row++;
 		}

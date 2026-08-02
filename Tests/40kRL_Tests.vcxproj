@@ -163,6 +163,8 @@
     <ClCompile Include="..\Source\WfcGenerator.cpp" />
     <ClCompile Include="..\Source\Openable.cpp" />
     <ClCompile Include="..\Source\DoorFactory.cpp" />
+    <ClCompile Include="..\Source\CareerProgression.cpp" />
+    <ClCompile Include="..\Source\CharacterSheet.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />

@@ -14,10 +14,6 @@ config = {
     -- FOV
     fovRadius = 10,
 
-    -- Level-up costs
-    levelUpBase   = 200,
-    levelUpFactor = 150,
-
     -- Outdoor generation (Perlin noise parameters)
     outdoorGroundThreshold = -0.1,
     outdoorWaterThreshold  = -0.5,

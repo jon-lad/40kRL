@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Pull Main Before Branch",
+  "description": "Fetches origin/main and rebases the current branch onto it, ensuring you start with the latest code.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "git fetch origin main && git rebase origin/main"
+  }
+}
