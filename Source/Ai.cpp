@@ -369,13 +369,27 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 		return;
 	}
 
+	// Before any movement: check if the step toward the target has a closed door.
+	// If so, open it and consume the turn (do not move).
+	const int stepX = static_cast<int>(std::round(dx / distance));
+	const int stepY = static_cast<int>(std::round(dy / distance));
+	const int nextX = owner->getX() + stepX;
+	const int nextY = owner->getY() + stepY;
+
+	for (auto& actorPtr : engine.actors) {
+		if (actorPtr->openable && !actorPtr->openable->isOpen()
+			&& actorPtr->getX() == nextX && actorPtr->getY() == nextY) {
+			actorPtr->openable->open(actorPtr.get());
+			engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+			return; // turn consumed
+		}
+	}
+
 	if (engine.map->isInFOV(owner->getX(), owner->getY())) {
 		// Player is visible — step directly toward them.
-		const int stepX = static_cast<int>(std::round(dx / distance));
-		const int stepY = static_cast<int>(std::round(dy / distance));
-		if (engine.map->canWalk(owner->getX() + stepX, owner->getY() + stepY)) {
-			owner->setX(owner->getX() + stepX);
-			owner->setY(owner->getY() + stepY);
+		if (engine.map->canWalk(nextX, nextY)) {
+			owner->setX(nextX);
+			owner->setY(nextY);
 			return;
 		}
 	}
@@ -401,8 +415,21 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 	}
 
 	if (bestNeighbour != -1) {
-		owner->setX(owner->getX() + neighbourDX[bestNeighbour]);
-		owner->setY(owner->getY() + neighbourDY[bestNeighbour]);
+		const int scentNextX = owner->getX() + neighbourDX[bestNeighbour];
+		const int scentNextY = owner->getY() + neighbourDY[bestNeighbour];
+
+		// Check if there's a closed door at the scent target — open it and consume the turn.
+		for (auto& actorPtr : engine.actors) {
+			if (actorPtr->openable && !actorPtr->openable->isOpen()
+				&& actorPtr->getX() == scentNextX && actorPtr->getY() == scentNextY) {
+				actorPtr->openable->open(actorPtr.get());
+				engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+				return; // turn consumed
+			}
+		}
+
+		owner->setX(scentNextX);
+		owner->setY(scentNextY);
 	}
 }
 
