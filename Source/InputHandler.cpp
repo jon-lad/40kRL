@@ -1,4 +1,5 @@
 #include "InputHandler.h"
+#include "Constants.h"
 
 void pollInput(InputState& state, int cellWidth, int cellHeight) {
     // Reset per-frame flags so callers see only this frame's events.
@@ -20,9 +21,9 @@ void pollInput(InputState& state, int cellWidth, int cellHeight) {
         int winW = 0, winH = 0;
         SDL_GetWindowSize(window, &winW, &winH);
         if (winW > 0 && winH > 0) {
-            // Console is 80x50 cells (from TCODConsole::initRoot)
-            actualCellW = winW / 80;
-            actualCellH = winH / 50;
+            // Console is SCREEN_WIDTH x SCREEN_HEIGHT cells (from TCODConsole::initRoot)
+            actualCellW = winW / layout::SCREEN_WIDTH;
+            actualCellH = winH / layout::SCREEN_HEIGHT;
             if (actualCellW < 1) actualCellW = 1;
             if (actualCellH < 1) actualCellH = 1;
         }

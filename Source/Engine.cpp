@@ -1860,14 +1860,17 @@ void Engine::renderCharGen()
 			const auto& hw = homeworldTemplates[charGenState->selectedIndex];
 			int detailY = listY + static_cast<int>(homeworldTemplates.size()) + 1;
 
-			// Description
+			// Description (word-wrapped to fit console width)
 			charGenConsole.setDefaultForeground(Colors::uiText);
-			if (!hw.description.empty()) {
-				charGenConsole.printf(2, detailY, "%s", hw.description.c_str());
-			} else {
-				charGenConsole.printf(2, detailY, "No description available.");
+			{
+				static constexpr int DESC_X = 2;
+				static constexpr int DESC_WIDTH = CHARGEN_WIDTH - 4; // 2px padding each side
+				const char* descText = hw.description.empty()
+					? "No description available."
+					: hw.description.c_str();
+				int linesUsed = charGenConsole.printRect(DESC_X, detailY, DESC_WIDTH, CHARGEN_HEIGHT - detailY, "%s", descText);
+				detailY += linesUsed + 1;
 			}
-			detailY += 2;
 
 			// Characteristics with modifiers
 			charGenConsole.setDefaultForeground(Colors::white);
@@ -1952,14 +1955,17 @@ void Engine::renderCharGen()
 				charGenConsole.printf(2, infoY, "--- %s ---", career.name.c_str());
 				infoY++;
 
-				// Description
+				// Description (word-wrapped to fit console width)
 				charGenConsole.setDefaultForeground(Colors::uiText);
-				if (!career.description.empty()) {
-					charGenConsole.printf(2, infoY, "%s", career.description.c_str());
-				} else {
-					charGenConsole.printf(2, infoY, "No description available.");
+				{
+					static constexpr int DESC_X = 2;
+					static constexpr int DESC_WIDTH = CHARGEN_WIDTH - 4; // 2px padding each side
+					const char* descText = career.description.empty()
+						? "No description available."
+						: career.description.c_str();
+					int linesUsed = charGenConsole.printRect(DESC_X, infoY, DESC_WIDTH, CHARGEN_HEIGHT - infoY, "%s", descText);
+					infoY += linesUsed + 1;
 				}
-				infoY += 2;
 
 				if (!career.ranks.empty()) {
 					const auto& rank1 = career.ranks[0];

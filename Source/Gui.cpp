@@ -10,7 +10,8 @@
 
 Gui::Gui()
 {
-	hudConsole = std::make_unique<TCODConsole>(engine.screenWidth, constants::PANEL_HEIGHT);
+	// hudConsole is used as a scratch buffer for rendering the HP bar graphic (1 row)
+	hudConsole = std::make_unique<TCODConsole>(constants::BAR_WIDTH + 1, 1);
 	msgLogConsole = std::make_unique<TCODConsole>(layout::VIEWPORT_WIDTH, layout::MSG_LOG_HEIGHT);
 	rightSidebarConsole = std::make_unique<TCODConsole>(layout::RIGHT_SIDEBAR_WIDTH, layout::SCREEN_HEIGHT);
 
@@ -22,57 +23,74 @@ Gui::Gui()
 
 void Gui::render()
 {
-	hudConsole->setDefaultBackground(Colors::black);
-	hudConsole->clear();
+	// ─── Render order: left sidebar → right sidebar → HUD (message log + HP bar + skill bar) ───
 
-	renderBar(1, 1, constants::BAR_WIDTH, "HP",
-		engine.player->destructible->hp,
-		engine.player->destructible->maxHp,
-		Colors::damageLight, Colors::damageDark);
+	// 1. Left sidebar (no-op when disabled)
+	renderLeftSidebar();
 
-	// XP bar: show Available / Pool and current rank
-	if (engine.player->career) {
-		hudConsole->setDefaultForeground(Colors::uiText);
-		std::stringstream xpLabel;
-		xpLabel << "XP: " << engine.player->career->availableXp()
-		        << " / " << engine.player->career->xpPool
-		        << "  Rank " << engine.player->career->currentRank;
-		hudConsole->printf(1, 5, xpLabel.str().c_str());
-	}
+	// 2. Right sidebar
+	renderRightSidebar();
 
-	renderMouseLook();
+	// 3. HUD: Message log
+	renderMessageLog();
 
-	hudConsole->setDefaultForeground(Colors::white);
-	std::stringstream levelLabel;
-	levelLabel << "Dungeon level " << engine.dungeonLevel;
-	hudConsole->printf(3, 3, levelLabel.str().c_str());
+	// 4. HUD: HP bar + status info rendered directly to root console
+	//    Positioned at the row between message log and skill bar (row 48).
+	{
+		const int hpBarRow = layout::VIEWPORT_HEIGHT + layout::MSG_LOG_HEIGHT;
+		const int hpBarX = layout::VIEWPORT_X;
 
-	// Display ammo when a ranged weapon is equipped
-	if (engine.player->equipment) {
-		Actor* weapon = engine.player->equipment->getSlot(EquipmentSlot::WEAPON);
-		if (weapon && weapon->equippable && weapon->equippable->rangedStats.has_value()) {
-			std::stringstream ammoLabel;
-			ammoLabel << "Ammo: " << weapon->equippable->currentAmmo
-			          << "/" << weapon->equippable->rangedStats->clipSize;
-			hudConsole->setDefaultForeground(Colors::white);
-			hudConsole->printf(constants::BAR_WIDTH + 3, 3, ammoLabel.str().c_str());
+		// Clear the HP bar row
+		TCODConsole::root->setDefaultBackground(Colors::black);
+		for (int col = hpBarX; col < hpBarX + layout::VIEWPORT_WIDTH; ++col) {
+			TCODConsole::root->putChar(col, hpBarRow, ' ', TCOD_BKGND_SET);
+		}
+
+		// HP bar (rendered into hudConsole for the bar visual, then blit just 1 row)
+		hudConsole->setDefaultBackground(Colors::black);
+		hudConsole->clear();
+
+		renderBar(0, 0, constants::BAR_WIDTH, "HP",
+			engine.player->destructible->hp,
+			engine.player->destructible->maxHp,
+			Colors::damageLight, Colors::damageDark);
+
+		// Blit just the HP bar row from hudConsole to root at the correct position
+		TCODConsole::blit(hudConsole.get(), 0, 0, constants::BAR_WIDTH + 1, 1,
+			TCODConsole::root, hpBarX, hpBarRow);
+
+		// Dungeon level label beside the HP bar
+		TCODConsole::root->setDefaultForeground(Colors::white);
+		std::stringstream levelLabel;
+		levelLabel << "Dungeon level " << engine.dungeonLevel;
+		TCODConsole::root->printf(hpBarX + constants::BAR_WIDTH + 2, hpBarRow, levelLabel.str().c_str());
+
+		// Ammo display beside dungeon level
+		if (engine.player->equipment) {
+			Actor* weapon = engine.player->equipment->getSlot(EquipmentSlot::WEAPON);
+			if (weapon && weapon->equippable && weapon->equippable->rangedStats.has_value()) {
+				std::stringstream ammoLabel;
+				ammoLabel << "Ammo: " << weapon->equippable->currentAmmo
+				          << "/" << weapon->equippable->rangedStats->clipSize;
+				TCODConsole::root->setDefaultForeground(Colors::white);
+				TCODConsole::root->printf(hpBarX + constants::BAR_WIDTH + 22, hpBarRow, ammoLabel.str().c_str());
+			}
+		}
+
+		// XP display
+		if (engine.player->career) {
+			std::stringstream xpLabel;
+			xpLabel << "XP: " << engine.player->career->availableXp()
+			        << "/" << engine.player->career->xpPool
+			        << " Rank " << engine.player->career->currentRank;
+			TCODConsole::root->setDefaultForeground(Colors::uiText);
+			TCODConsole::root->printf(hpBarX + constants::BAR_WIDTH + 42, hpBarRow, xpLabel.str().c_str());
 		}
 	}
 
-	TCODConsole::blit(hudConsole.get(), 0, 0, engine.screenWidth, constants::PANEL_HEIGHT,
-		TCODConsole::root, 0, engine.screenHeight - constants::PANEL_HEIGHT);
-
-	// Render the dedicated message log panel
-	renderMessageLog();
-
-	// Render the skill bar below the message log.
-	// Currently renders an empty bar (no skill system yet). When skills are added
-	// to the player, build a vector<SkillBarEntry> here from the player's skill set.
+	// 5. HUD: Skill bar
 	std::vector<SkillBarEntry> skills; // empty until skill system is implemented
 	renderSkillBar(skills);
-
-	// Render the right sidebar
-	renderRightSidebar();
 }
 
 void Gui::renderSkillBar(const std::vector<SkillBarEntry>& skills)
