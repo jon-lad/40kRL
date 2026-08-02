@@ -2,12 +2,14 @@
 #include <algorithm>
 #include <memory>
 #include <queue>
+#include <set>
 #include <vector>
 #include <list>
 #include <sstream>
 #include <sol/sol.hpp>
 #include "main.h"
 #include "WfcGenerator.h"
+#include "DoorFactory.h"
 
 static constexpr int ROOM_MAX_SIZE     = 12;
 static constexpr int ROOM_MIN_SIZE     = 6;
@@ -27,6 +29,73 @@ private:
 	int  roomCount = 0;
 	int  lastRoomCentreX = 0;
 	int  lastRoomCentreY = 0;
+	std::set<std::pair<int,int>> doorPositions; // tracks placed door positions to prevent duplicates
+
+	// Checks if a tile is within map bounds.
+	bool inBounds(int x, int y) const {
+		return x >= 0 && x < map.getWidth() && y >= 0 && y < map.getHeight();
+	}
+
+	// Returns true if the tile at (x, y) was walkable BEFORE the corridor was dug.
+	// Used to detect where a corridor segment enters a room.
+	// We check the TCODMap directly — a tile is a "room interior" if it was already walkable.
+	bool isFloor(int x, int y) const {
+		if (!inBounds(x, y)) return false;
+		return map.map->isWalkable(x, y);
+	}
+
+	// Attempts to place a door at (x, y) if no door has been placed there yet.
+	void tryPlaceDoor(int x, int y) {
+		if (!inBounds(x, y)) return;
+		auto pos = std::make_pair(x, y);
+		if (doorPositions.count(pos)) return; // already placed
+		doorPositions.insert(pos);
+
+		auto door = createDoor(x, y);
+		map.setTileProperties(x, y, false, false); // closed door: not transparent, not walkable
+		engine.actors.push_back(std::move(door));
+	}
+
+	// After digging a corridor segment from (x1,y1) to (x2,y2), scan for entrance tiles.
+	// An entrance tile is the first or last tile of the corridor that is adjacent to
+	// (i.e., transitions into) a room that was already dug.
+	// We check BEFORE digging: tiles that were already floor indicate room boundaries.
+	// Strategy: We record which tiles were already floor before digging, then after digging
+	// we place doors at corridor tiles that border pre-existing floor tiles.
+	void placeDoors(int x1, int y1, int x2, int y2,
+	                const std::vector<bool>& wasFloorBefore) {
+		if (x2 < x1) std::swap(x1, x2);
+		if (y2 < y1) std::swap(y1, y2);
+
+		for (int tx = x1; tx <= x2; ++tx) {
+			for (int ty = y1; ty <= y2; ++ty) {
+				if (!inBounds(tx, ty)) continue;
+				int idx = tx + ty * map.getWidth();
+				// Skip tiles that were already floor (room interior) — doors go on corridor tiles
+				if (wasFloorBefore[idx]) continue;
+
+				// Check if this corridor tile is cardinally adjacent to a tile that was floor
+				// before digging. If so, it's an entrance tile.
+				bool adjacentToRoom = false;
+				static constexpr int dx[4] = {0, 0, -1, 1};
+				static constexpr int dy[4] = {-1, 1, 0, 0};
+				for (int d = 0; d < 4; ++d) {
+					int nx = tx + dx[d];
+					int ny = ty + dy[d];
+					if (!inBounds(nx, ny)) continue;
+					int nIdx = nx + ny * map.getWidth();
+					if (wasFloorBefore[nIdx]) {
+						adjacentToRoom = true;
+						break;
+					}
+				}
+
+				if (adjacentToRoom) {
+					tryPlaceDoor(tx, ty);
+				}
+			}
+		}
+	}
 
 public:
 	explicit BspListener(Map& map) : map{ map } {}
@@ -49,8 +118,25 @@ public:
 			// Connect this room to the previous one with an L-shaped corridor.
 			const int centreX = x + w / 2;
 			const int centreY = y + h / 2;
+
+			// Snapshot which tiles are already floor BEFORE digging the corridor.
+			// This lets us detect where the corridor meets pre-existing rooms.
+			const int mapSize = map.getWidth() * map.getHeight();
+			std::vector<bool> wasFloor(mapSize, false);
+			for (int i = 0; i < mapSize; ++i) {
+				int tileX = i % map.getWidth();
+				int tileY = i / map.getWidth();
+				wasFloor[i] = map.map->isWalkable(tileX, tileY);
+			}
+
+			// Dig the L-shaped corridor (horizontal then vertical).
 			map.dig(lastRoomCentreX, lastRoomCentreY, centreX, lastRoomCentreY);
 			map.dig(centreX, lastRoomCentreY, centreX, centreY);
+
+			// Place doors at entrance tiles where corridor meets room boundary.
+			placeDoors(lastRoomCentreX, lastRoomCentreY, centreX, lastRoomCentreY, wasFloor);
+			placeDoors(centreX, lastRoomCentreY, centreX, centreY, wasFloor);
+
 			lastRoomCentreX = centreX;
 			lastRoomCentreY = centreY;
 		} else {
