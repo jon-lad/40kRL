@@ -515,3 +515,163 @@ TEST_CASE("Player moves into open door — movement succeeds", "[map-doors]")
     REQUIRE(engine.player->getX() == 11);
     REQUIRE(engine.player->getY() == 10);
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: map-doors — Property 6 & Monster Door Interaction Unit Tests (Task 5.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 6: Monster opens closed door on bump ───────────────────────────
+// **Validates: Requirements 5.1**
+//
+// For any monster with a non-null Ai that attempts to move into a tile occupied
+// by a closed door Actor, the door SHALL transition to open and the monster SHALL
+// not change position (turn consumed).
+
+TEST_CASE("PBT: Property 6 — Monster opens closed door on bump", "[property][map-doors]")
+{
+    rc::prop("monster bumping into a closed door opens it without moving", []() {
+        const int mapW = 20;
+        const int mapH = 20;
+
+        // Generate monster position away from edges (leave room for door + player)
+        const int mx = *rc::gen::inRange(2, mapW - 3);
+        const int my = *rc::gen::inRange(2, mapH - 3);
+
+        // Pick a random cardinal direction for the door relative to the monster
+        const int direction = *rc::gen::inRange(0, 3);
+        int dx = 0, dy = 0;
+        switch (direction) {
+            case 0: dy = -1; break; // North
+            case 1: dy =  1; break; // South
+            case 2: dx =  1; break; // East
+            case 3: dx = -1; break; // West
+        }
+        const int doorX = mx + dx;
+        const int doorY = my + dy;
+
+        // Place player on the far side of the door so the monster wants to move
+        // through the door to reach the player.
+        const int playerX = doorX + dx;
+        const int playerY = doorY + dy;
+
+        // Ensure player position is within bounds
+        RC_PRE(playerX >= 0 && playerX < mapW);
+        RC_PRE(playerY >= 0 && playerY < mapH);
+
+        // --- Set up the engine for this test iteration ---
+        engine.map = std::make_unique<Map>(mapW, mapH);
+        engine.map->init(false, LevelType::BSP);
+        engine.gui = std::make_unique<Gui>();
+
+        // Make all tiles walkable and transparent initially
+        for (int y = 0; y < mapH; ++y) {
+            for (int x = 0; x < mapW; ++x) {
+                engine.map->setTileProperties(x, y, true, true);
+            }
+        }
+
+        // Create a player actor (needed by MonsterAi::update which targets engine.player)
+        auto playerActor = std::make_unique<Actor>(playerX, playerY, '@', "player", Colors::white);
+        playerActor->ai = std::make_shared<PlayerAi>();
+        playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+        engine.player = playerActor.get();
+
+        engine.actors.clear();
+        engine.actors.push_back(std::move(playerActor));
+
+        // Create a closed door between the monster and the player
+        auto door = createDoor(doorX, doorY);
+        Actor* doorPtr = door.get();
+        engine.actors.push_back(std::move(door));
+
+        // Set door tile as not walkable (closed door)
+        engine.map->setTileProperties(doorX, doorY, false, false);
+
+        // Create a monster with MonsterAi at (mx, my)
+        auto monster = std::make_unique<Actor>(mx, my, 'O', "Ork", TCODColor{0, 128, 0});
+        monster->ai = std::make_shared<MonsterAi>();
+        monster->blocks = true;
+        monster->fovOnly = true;
+        Actor* monsterPtr = monster.get();
+        engine.actors.push_back(std::move(monster));
+
+        // Record original monster position
+        const int origMX = monsterPtr->getX();
+        const int origMY = monsterPtr->getY();
+
+        // Act: call the monster's update, which internally calls moveOrAttack
+        // targeting the player position. The monster should bump into the door.
+        monsterPtr->ai->update(monsterPtr);
+
+        // Assert: the door should now be open
+        RC_ASSERT(doorPtr->openable != nullptr);
+        RC_ASSERT(doorPtr->openable->isOpen() == true);
+
+        // Assert: monster should NOT have moved (turn consumed by door opening)
+        RC_ASSERT(monsterPtr->getX() == origMX);
+        RC_ASSERT(monsterPtr->getY() == origMY);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Unit Test: Monster opens door → GUI message "The X opens the door"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// **Validates: Requirements 5.2**
+
+TEST_CASE("Monster opens door — GUI message 'The X opens the door'", "[map-doors]")
+{
+    const int mapW = 20;
+    const int mapH = 20;
+
+    // Set up map with all tiles walkable
+    engine.map = std::make_unique<Map>(mapW, mapH);
+    engine.map->init(false, LevelType::BSP);
+    engine.gui = std::make_unique<Gui>();
+
+    for (int y = 0; y < mapH; ++y) {
+        for (int x = 0; x < mapW; ++x) {
+            engine.map->setTileProperties(x, y, true, true);
+        }
+    }
+
+    // Place player at (15, 10) — far enough to trigger movement, not attack
+    auto playerActor = std::make_unique<Actor>(15, 10, '@', "player", Colors::white);
+    playerActor->ai = std::make_shared<PlayerAi>();
+    playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+    engine.player = playerActor.get();
+
+    engine.actors.clear();
+    engine.actors.push_back(std::move(playerActor));
+
+    // Place a closed door at (11, 10)
+    auto door = createDoor(11, 10);
+    Actor* doorPtr = door.get();
+    engine.actors.push_back(std::move(door));
+    engine.map->setTileProperties(11, 10, false, false);
+
+    // Place an Ork monster at (10, 10) — wants to move east toward player,
+    // will bump into the door at (11, 10)
+    auto monster = std::make_unique<Actor>(10, 10, 'O', "Ork", TCODColor{0, 128, 0});
+    monster->ai = std::make_shared<MonsterAi>();
+    monster->blocks = true;
+    monster->fovOnly = true;
+    Actor* monsterPtr = monster.get();
+    engine.actors.push_back(std::move(monster));
+
+    // Act: monster updates, should bump into door and open it
+    monsterPtr->ai->update(monsterPtr);
+
+    // Assert: door is open
+    REQUIRE(doorPtr->openable->isOpen() == true);
+
+    // Assert: monster did not move
+    REQUIRE(monsterPtr->getX() == 10);
+    REQUIRE(monsterPtr->getY() == 10);
+
+    // Assert: the GUI log contains the expected message
+    std::string lastMsg = engine.gui->getLastMessage();
+    REQUIRE(lastMsg.find("Ork") != std::string::npos);
+    REQUIRE(lastMsg.find("opens the door") != std::string::npos);
+}

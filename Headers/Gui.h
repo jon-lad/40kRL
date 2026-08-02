@@ -71,6 +71,13 @@ public:
 	void load(TCODZip& zip);
 	void save(TCODZip& zip);
 	void clear();
+
+	// Returns the text of the most recently added message, or empty string if log is empty.
+	// Primarily used by tests to verify GUI feedback.
+	std::string getLastMessage() const {
+		if (log.empty()) return "";
+		return log.back()->text;
+	}
 protected:
 	std::unique_ptr<TCODConsole> hudConsole;
 
