@@ -147,6 +147,7 @@
     <ClCompile Include="test_message_log.cpp" />
     <ClCompile Include="test_sidebar.cpp" />
     <ClCompile Include="test_tabbed_menu.cpp" />
+    <ClCompile Include="test_chargen_desc.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -176,6 +177,7 @@
     <ClCompile Include="..\Source\CareerProgression.cpp" />
     <ClCompile Include="..\Source\CharacterSheet.cpp" />
     <ClCompile Include="..\Source\Paginator.cpp" />
+    <ClCompile Include="..\Source\TabbedMenuState.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
