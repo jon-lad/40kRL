@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <filesystem>
+#include <set>
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Feature: map-doors — Property-Based Tests
@@ -674,4 +675,141 @@ TEST_CASE("Monster opens door — GUI message 'The X opens the door'", "[map-doo
     std::string lastMsg = engine.gui->getLastMessage();
     REQUIRE(lastMsg.find("Ork") != std::string::npos);
     REQUIRE(lastMsg.find("opens the door") != std::string::npos);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: map-doors — Property 7 & Door Placement Unit Tests (Task 7.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 7: No duplicate door positions after generation ────────────────
+// **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5**
+//
+// For any BSP-generated map, the set of positions occupied by door Actors SHALL
+// contain no duplicates — each (x, y) pair appears at most once.
+
+TEST_CASE("PBT: Property 7 — No duplicate door positions after generation", "[property][map-doors]")
+{
+    rc::prop("BSP generation produces no duplicate door positions", []() {
+        // Use a map size representative of BSP generation
+        const int mapW = 80;
+        const int mapH = 50;
+
+        // Set up minimal engine state needed for BSP map generation
+        engine.gui = std::make_unique<Gui>();
+        engine.actors.clear();
+
+        // Create a player actor (required by Map::createRoom for placement)
+        auto playerActor = std::make_unique<Actor>(0, 0, '@', "player", Colors::white);
+        playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+        playerActor->ai = std::make_shared<PlayerAi>();
+        engine.player = playerActor.get();
+        engine.actors.push_back(std::move(playerActor));
+
+        // Create stairs actors (required by createRoom — it positions stairs during BSP gen)
+        auto stairsUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
+        stairsUp->blocks = false;
+        stairsUp->fovOnly = false;
+        engine.stairsUp = stairsUp.get();
+        engine.actors.push_back(std::move(stairsUp));
+
+        auto stairsDown = std::make_unique<Actor>(0, 0, '>', "stairs down", Colors::white);
+        stairsDown->blocks = false;
+        stairsDown->fovOnly = false;
+        engine.stairsDown = stairsDown.get();
+        engine.actors.push_back(std::move(stairsDown));
+
+        // Generate a BSP map (with actors, which triggers door placement once implemented)
+        engine.map = std::make_unique<Map>(mapW, mapH);
+        engine.map->init(true, LevelType::BSP);
+
+        // Collect all door positions (actors with non-null openable)
+        std::set<std::pair<int, int>> doorPositions;
+        int doorCount = 0;
+
+        for (const auto& actor : engine.actors) {
+            if (actor->openable != nullptr) {
+                doorCount++;
+                doorPositions.insert({actor->getX(), actor->getY()});
+            }
+        }
+
+        // Property: set size equals count (no duplicates)
+        RC_ASSERT(static_cast<int>(doorPositions.size()) == doorCount);
+
+        // Additionally verify at least one door was placed (BSP maps should have doors)
+        RC_ASSERT(doorCount > 0);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Unit Test: BSP generation produces doors only on BSP levels (not outdoor/WFC)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// **Validates: Requirements 6.3**
+
+TEST_CASE("BSP generation produces doors only on BSP levels, not outdoor or WFC", "[map-doors]")
+{
+    const int mapW = 80;
+    const int mapH = 50;
+
+    // --- Helper lambda to count doors in the current actor list ---
+    auto countDoors = []() {
+        int count = 0;
+        for (const auto& actor : engine.actors) {
+            if (actor->openable != nullptr) {
+                count++;
+            }
+        }
+        return count;
+    };
+
+    // --- Helper lambda to set up minimal engine state for map generation ---
+    auto setupEngine = [&]() {
+        engine.gui = std::make_unique<Gui>();
+        engine.actors.clear();
+
+        auto playerActor = std::make_unique<Actor>(0, 0, '@', "player", Colors::white);
+        playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+        playerActor->ai = std::make_shared<PlayerAi>();
+        engine.player = playerActor.get();
+        engine.actors.push_back(std::move(playerActor));
+
+        auto stairsUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
+        stairsUp->blocks = false;
+        stairsUp->fovOnly = false;
+        engine.stairsUp = stairsUp.get();
+        engine.actors.push_back(std::move(stairsUp));
+
+        auto stairsDown = std::make_unique<Actor>(0, 0, '>', "stairs down", Colors::white);
+        stairsDown->blocks = false;
+        stairsDown->fovOnly = false;
+        engine.stairsDown = stairsDown.get();
+        engine.actors.push_back(std::move(stairsDown));
+    };
+
+    SECTION("BSP map should produce doors") {
+        setupEngine();
+        engine.map = std::make_unique<Map>(mapW, mapH);
+        engine.map->init(true, LevelType::BSP);
+
+        // Once door placement is implemented, BSP maps should have at least one door
+        REQUIRE(countDoors() > 0);
+    }
+
+    SECTION("Outdoor map should produce zero doors") {
+        setupEngine();
+        engine.map = std::make_unique<Map>(mapW, mapH);
+        engine.map->init(true, LevelType::OUTDOOR);
+
+        REQUIRE(countDoors() == 0);
+    }
+
+    SECTION("WFC map should produce zero doors") {
+        setupEngine();
+        engine.map = std::make_unique<Map>(mapW, mapH);
+        engine.map->init(true, LevelType::WFC);
+
+        REQUIRE(countDoors() == 0);
+    }
 }
