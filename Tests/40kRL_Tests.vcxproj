@@ -61,6 +61,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <!-- /FS enables serialized PDB writes to avoid C1041 with parallel CL.EXE -->
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -137,6 +139,9 @@
     <ClCompile Include="test_decoration_render_priority.cpp" />
     <ClCompile Include="test_wfc_generator.cpp" />
     <ClCompile Include="test_map_doors.cpp" />
+    <ClCompile Include="test_ui_layout.cpp" />
+    <ClCompile Include="test_paginator.cpp" />
+    <ClCompile Include="test_cp437.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -165,6 +170,7 @@
     <ClCompile Include="..\Source\DoorFactory.cpp" />
     <ClCompile Include="..\Source\CareerProgression.cpp" />
     <ClCompile Include="..\Source\CharacterSheet.cpp" />
+    <ClCompile Include="..\Source\Paginator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -189,6 +195,8 @@
     <ClInclude Include="..\Headers\WfcGenerator.h" />
     <ClInclude Include="..\Headers\Openable.h" />
     <ClInclude Include="..\Headers\DoorFactory.h" />
+    <ClInclude Include="..\Headers\Paginator.h" />
+    <ClInclude Include="..\Headers\CP437.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
