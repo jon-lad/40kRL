@@ -7,6 +7,7 @@
 #include "CharacterData.h"
 #include "CharacterGenerator.h"
 #include "LevelCache.h"
+#include "TabbedMenuState.h"
 #include "TargetingContext.h"
 #include "WorldMap.h"
 
@@ -99,6 +100,7 @@ public:
 		LOOK,        // look-mode cursor active
 		CHARACTER_SHEET, // character sheet overlay is open
 		ADVANCES,        // advance purchase overlay is open
+		TABBED_MENU,     // tabbed menu overlay (inventory/equipment/skills) is open
 		WORLD_MAP,      // world map overlay is open
 		CHARACTER_GEN   // character generation overlay is active
 	} gameStatus;
@@ -138,6 +140,7 @@ public:
 	std::optional<LookState> lookState; // active only during LOOK state
 	std::optional<CharacterSheetState> characterSheetState; // active only during CHARACTER_SHEET state
 	std::optional<AdvancesState> advancesState; // active only during ADVANCES state
+	std::optional<TabbedMenuState> tabbedMenu; // active only during TABBED_MENU state
 	std::optional<WorldMapState> worldMapState; // active only during WORLD_MAP state
 	std::optional<CharGenState> charGenState; // active only during CHARACTER_GEN state
 
@@ -216,6 +219,15 @@ public:
 
 	// Renders advance purchase overlay. Called from render() when ADVANCES.
 	void renderAdvances();
+
+	// Opens the tabbed menu overlay on the specified starting tab.
+	void beginTabbedMenu(TabbedMenuState::Tab startTab);
+
+	// Processes one frame of tabbed menu input. Called from update() when TABBED_MENU.
+	void updateTabbedMenu();
+
+	// Renders tabbed menu overlay. Called from render() when TABBED_MENU.
+	void renderTabbedMenu();
 
 	// Enters character generation mode. Called when starting a new game.
 	void beginCharGen();

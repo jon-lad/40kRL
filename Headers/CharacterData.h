@@ -7,6 +7,7 @@
 // Loaded from Scripts/Homeworlds.lua
 struct HomeworldTemplate {
 	std::string name;
+	std::string description;                // lore text from Homeworlds.lua
 	std::array<int, 9> characteristicMods;  // indexed by CharId, can be negative
 	std::vector<std::string> startingSkills; // skill names granted at Trained
 	std::vector<std::string> startingTraits; // trait names (recorded, not mechanically active)
@@ -34,6 +35,7 @@ struct RankDefinition {
 // Loaded from Scripts/Careers.lua
 struct CareerTemplate {
 	std::string name;
+	std::string description;  // lore text from Careers.lua
 	float hp = 30.0f;
 	float defense = 2.0f;
 	float power = 5.0f;
