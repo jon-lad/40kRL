@@ -5,6 +5,8 @@
 #include <memory>
 #include <filesystem>
 #include <set>
+#include <algorithm>
+#include <vector>
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Feature: map-doors — Property-Based Tests
@@ -812,4 +814,289 @@ TEST_CASE("BSP generation produces doors only on BSP levels, not outdoor or WFC"
 
         REQUIRE(countDoors() == 0);
     }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: map-doors — Integration Tests (Task 8.2)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Integration Test 1: Save/load with mixed door states ────────────────────
+// **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
+//
+// Creates multiple doors in various states (some open, some closed),
+// serializes all of them to a single file, loads them back, and verifies
+// that positions, states, glyphs, colours, and spatial properties are preserved.
+
+TEST_CASE("Integration: save/load with mixed door states across multiple rooms", "[map-doors][integration]")
+{
+    const int mapW = 40;
+    const int mapH = 40;
+
+    // Set up a map so that Openable::open/close can update tile properties
+    engine.gui = std::make_unique<Gui>();
+    engine.actors.clear();
+    engine.fovRadius = 10;
+    engine.map = std::make_unique<Map>(mapW, mapH);
+    engine.map->init(false, LevelType::BSP);
+
+    // Create player (needed for computeFOV)
+    auto playerActor = std::make_unique<Actor>(1, 1, '@', "player", Colors::white);
+    playerActor->ai = std::make_shared<PlayerAi>();
+    playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+    engine.player = playerActor.get();
+    engine.actors.push_back(std::move(playerActor));
+
+    // Create doors at various positions simulating multiple rooms
+    struct DoorConfig {
+        int x, y;
+        bool shouldOpen;
+    };
+    std::vector<DoorConfig> configs = {
+        {5,  10, false},  // closed
+        {10, 10, true},   // open
+        {15, 10, false},  // closed
+        {20, 10, true},   // open
+        {25, 10, true},   // open
+        {5,  20, false},  // closed
+        {10, 20, false},  // closed
+        {15, 20, true},   // open
+    };
+
+    // Create doors, set their state, and track expected values
+    struct DoorExpected {
+        int x, y;
+        bool isOpen;
+        int glyph;
+        TCODColor color;
+        bool blocks;
+    };
+    std::vector<DoorExpected> expected;
+
+    for (const auto& cfg : configs) {
+        auto door = createDoor(cfg.x, cfg.y);
+        // Make the tile walkable first so the door can be placed
+        engine.map->setTileProperties(cfg.x, cfg.y, false, false);
+
+        if (cfg.shouldOpen) {
+            door->openable->open(door.get());
+        }
+        expected.push_back({
+            cfg.x, cfg.y,
+            door->openable->isOpen(),
+            door->getGlyph(),
+            door->getColor(),
+            door->blocks
+        });
+        engine.actors.push_back(std::move(door));
+    }
+
+    // Serialize all doors to a temp file
+    const char* tempFile = "__test_integration_doors_save_load.sav";
+    {
+        TCODZip zip;
+        zip.putInt(static_cast<int>(configs.size()));
+        for (const auto& actorPtr : engine.actors) {
+            if (actorPtr->openable != nullptr) {
+                actorPtr->save(zip);
+            }
+        }
+        zip.saveToFile(tempFile);
+    }
+
+    // Load the doors back into fresh actors
+    std::vector<DoorExpected> loaded;
+    {
+        TCODZip zip;
+        zip.loadFromFile(tempFile);
+        int count = zip.getInt();
+        for (int i = 0; i < count; ++i) {
+            Actor loadedActor(0, 0, 0, "", TCODColor{0, 0, 0});
+            loadedActor.load(zip);
+            REQUIRE(loadedActor.openable != nullptr);
+            loaded.push_back({
+                loadedActor.getX(), loadedActor.getY(),
+                loadedActor.openable->isOpen(),
+                loadedActor.getGlyph(),
+                loadedActor.getColor(),
+                loadedActor.blocks
+            });
+        }
+    }
+    std::filesystem::remove(tempFile);
+
+    // Verify same count
+    REQUIRE(loaded.size() == expected.size());
+
+    // Verify each door's full state
+    for (size_t i = 0; i < expected.size(); ++i) {
+        INFO("Door " << i << " at (" << expected[i].x << "," << expected[i].y << ")");
+        REQUIRE(loaded[i].x == expected[i].x);
+        REQUIRE(loaded[i].y == expected[i].y);
+        REQUIRE(loaded[i].isOpen == expected[i].isOpen);
+        REQUIRE(loaded[i].glyph == expected[i].glyph);
+        REQUIRE(loaded[i].color.r == expected[i].color.r);
+        REQUIRE(loaded[i].color.g == expected[i].color.g);
+        REQUIRE(loaded[i].color.b == expected[i].color.b);
+        REQUIRE(loaded[i].blocks == expected[i].blocks);
+    }
+
+    // Verify TCODMap properties match loaded state (Actor::load restores them)
+    for (const auto& door : loaded) {
+        if (door.isOpen) {
+            REQUIRE(engine.map->isWall(door.x, door.y) == false);
+        } else {
+            REQUIRE(engine.map->isWall(door.x, door.y) == true);
+        }
+    }
+}
+
+// ─── Integration Test 2: Reproducible door placement with known seed ─────────
+// **Validates: Requirements 3.3, 3.4**
+//
+// Uses the same Map seed (by reusing the same Map object) to verify that
+// BSP generation produces identical door positions when regenerated.
+// This tests that the seeded RNG in Map::init produces deterministic results.
+
+TEST_CASE("Integration: BSP generation with known seed produces reproducible door placements", "[map-doors][integration]")
+{
+    const int mapW = 80;
+    const int mapH = 50;
+
+    // Helper: set up engine state and generate BSP map, returning door positions.
+    // Uses a fixed seed on the Map object for determinism.
+    auto generateAndCollectDoors = [&](long fixedSeed) -> std::vector<std::pair<int, int>> {
+        engine.gui = std::make_unique<Gui>();
+        engine.actors.clear();
+        engine.fovRadius = 10;
+        engine.dungeonLevel = 1;
+
+        auto playerActor = std::make_unique<Actor>(0, 0, '@', "player", Colors::white);
+        playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+        playerActor->ai = std::make_shared<PlayerAi>();
+        engine.player = playerActor.get();
+        engine.actors.push_back(std::move(playerActor));
+
+        auto stairsUp = std::make_unique<Actor>(0, 0, '<', "stairs up", Colors::white);
+        stairsUp->blocks = false;
+        stairsUp->fovOnly = false;
+        engine.stairsUp = stairsUp.get();
+        engine.actors.push_back(std::move(stairsUp));
+
+        auto stairsDown = std::make_unique<Actor>(0, 0, '>', "stairs down", Colors::white);
+        stairsDown->blocks = false;
+        stairsDown->fovOnly = false;
+        engine.stairsDown = stairsDown.get();
+        engine.actors.push_back(std::move(stairsDown));
+
+        engine.map = std::make_unique<Map>(mapW, mapH);
+        engine.map->setSeed(fixedSeed);
+        engine.map->init(true, LevelType::BSP);
+        engine.camera = std::make_unique<Camera>(0, 0, 80, 43, mapW, mapH);
+
+        std::vector<std::pair<int, int>> positions;
+        for (const auto& actor : engine.actors) {
+            if (actor->openable != nullptr) {
+                positions.emplace_back(actor->getX(), actor->getY());
+            }
+        }
+        std::sort(positions.begin(), positions.end());
+        return positions;
+    };
+
+    // Use a known seed for reproducible BSP generation
+    const long knownSeed = 12345;
+
+    // First generation
+    auto firstPositions = generateAndCollectDoors(knownSeed);
+    REQUIRE(firstPositions.size() > 0);
+
+    // Second generation with same seed — should produce identical door placement
+    auto secondPositions = generateAndCollectDoors(knownSeed);
+
+    // Door positions must be identical (same seed → same BSP → same doors)
+    REQUIRE(secondPositions.size() == firstPositions.size());
+    for (size_t i = 0; i < firstPositions.size(); ++i) {
+        INFO("Door " << i << " expected (" << firstPositions[i].first << "," << firstPositions[i].second
+             << ") got (" << secondPositions[i].first << "," << secondPositions[i].second << ")");
+        REQUIRE(secondPositions[i].first == firstPositions[i].first);
+        REQUIRE(secondPositions[i].second == firstPositions[i].second);
+    }
+}
+
+// ─── Integration Test 3: FOV recompute after door open reveals hidden tiles ──
+// **Validates: Requirements 3.3, 3.4**
+//
+// Creates a controlled map with a closed door blocking FOV. Verifies that a tile
+// behind the door is not visible. Opens the door. Recomputes FOV. Verifies the
+// tile behind the door is now visible.
+
+TEST_CASE("Integration: FOV recompute after door open reveals previously hidden tiles", "[map-doors][integration]")
+{
+    const int mapW = 20;
+    const int mapH = 20;
+
+    // Set up engine
+    engine.gui = std::make_unique<Gui>();
+    engine.actors.clear();
+    engine.fovRadius = 10;
+
+    // Create the map — all tiles start as walls (not walkable, not transparent)
+    engine.map = std::make_unique<Map>(mapW, mapH);
+    engine.map->init(false, LevelType::BSP);
+
+    // Manually carve a corridor with a door in the middle:
+    //
+    //   Player at (5, 10), corridor extends east to (7, 10).
+    //   Door at (8, 10) — closed (not transparent, not walkable).
+    //   Room behind door at (9, 10) and (10, 10) — walkable and transparent.
+    //
+    // With the door closed, (9, 10) should NOT be in FOV.
+    // After opening the door, (9, 10) SHOULD be in FOV.
+
+    // Carve walkable/transparent tiles for the corridor and room
+    for (int x = 5; x <= 7; ++x) {
+        engine.map->setTileProperties(x, 10, true, true); // transparent, walkable
+    }
+    // Door position: initially closed (not transparent, not walkable)
+    engine.map->setTileProperties(8, 10, false, false);
+
+    // Room behind the door
+    for (int x = 9; x <= 12; ++x) {
+        engine.map->setTileProperties(x, 10, true, true); // transparent, walkable
+    }
+
+    // Create player at (5, 10)
+    auto playerActor = std::make_unique<Actor>(5, 10, '@', "player", Colors::white);
+    playerActor->ai = std::make_shared<PlayerAi>();
+    playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+    engine.player = playerActor.get();
+    engine.actors.push_back(std::move(playerActor));
+
+    // Place a closed door at (8, 10)
+    auto door = createDoor(8, 10);
+    Actor* doorPtr = door.get();
+    engine.actors.push_back(std::move(door));
+
+    // Compute FOV from the player's position
+    engine.map->computeFOV();
+
+    // The corridor tiles (5-7, 10) should be in FOV
+    REQUIRE(engine.map->isInFOV(5, 10) == true);
+    REQUIRE(engine.map->isInFOV(6, 10) == true);
+    REQUIRE(engine.map->isInFOV(7, 10) == true);
+
+    // The door tile itself should be in FOV (it's in line of sight even though not transparent)
+    // Note: TCODMap FOV algorithms include the blocking tile itself in FOV
+    REQUIRE(engine.map->isInFOV(8, 10) == true);
+
+    // The tile BEHIND the door (9, 10) should NOT be in FOV (door blocks transparency)
+    REQUIRE(engine.map->isInFOV(9, 10) == false);
+
+    // Now open the door — this should update TCODMap to transparent/walkable and recompute FOV
+    doorPtr->openable->open(doorPtr);
+
+    // After opening, the tile behind the door should now be visible
+    REQUIRE(engine.map->isInFOV(9, 10) == true);
+    REQUIRE(engine.map->isInFOV(10, 10) == true);
 }

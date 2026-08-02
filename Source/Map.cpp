@@ -134,8 +134,12 @@ public:
 			map.dig(centreX, lastRoomCentreY, centreX, centreY);
 
 			// Place doors at entrance tiles where corridor meets room boundary.
-			placeDoors(lastRoomCentreX, lastRoomCentreY, centreX, lastRoomCentreY, wasFloor);
-			placeDoors(centreX, lastRoomCentreY, centreX, centreY, wasFloor);
+			// Only place doors during first-time generation (withActors == true),
+			// not during geometry-only regeneration from a saved seed.
+			if (withActors) {
+				placeDoors(lastRoomCentreX, lastRoomCentreY, centreX, lastRoomCentreY, wasFloor);
+				placeDoors(centreX, lastRoomCentreY, centreX, centreY, wasFloor);
+			}
 
 			lastRoomCentreX = centreX;
 			lastRoomCentreY = centreY;

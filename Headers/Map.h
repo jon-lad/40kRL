@@ -113,6 +113,10 @@ public:
 	// Used by Openable to update door tiles on state transitions.
 	void setTileProperties(int x, int y, bool transparent, bool walkable);
 
+	// Sets the internal seed used for deterministic BSP generation.
+	// Must be called BEFORE init() to take effect.
+	void setSeed(long newSeed) { seed = newSeed; }
+
 protected:
 	mutable std::vector<Tile> tiles; // flat array indexed as x + y * width
 	std::unique_ptr<TCODMap>     map;
