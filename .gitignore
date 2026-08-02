@@ -71,3 +71,6 @@ Desktop.ini
 
 # ───── Kiro internal ─────
 .kiro/specs/**/tasks.md
+
+# Local build artifacts
+build_result.txt
