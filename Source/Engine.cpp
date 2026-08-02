@@ -103,8 +103,18 @@ void Engine::render()
 		Actor* actor = actorPtr.get();
 		const bool isVisible  = map->isInFOV(actor->getX(), actor->getY());
 		const bool isExplored = !actor->fovOnly && map->isExplored(actor->getX(), actor->getY());
-		if (isVisible || isExplored) {
+		if (isVisible) {
 			actor->render();
+		} else if (isExplored) {
+			// Render with dimmed colour for explored-but-not-in-FOV actors (e.g. doors, stairs).
+			auto [screenX, screenY] = camera->apply(actor->getX(), actor->getY());
+			TCODColor col = actor->getColor();
+			TCOD_ColorRGB dimmed = {
+				static_cast<uint8_t>(col.r / 2),
+				static_cast<uint8_t>(col.g / 2),
+				static_cast<uint8_t>(col.b / 2)
+			};
+			renderPutChar(TCODConsole::root->get_data(), screenX, screenY, actor->getGlyph(), dimmed);
 		}
 	}
 
