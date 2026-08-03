@@ -152,16 +152,39 @@ int proficiencyModifier(const Actor* actor, WeaponGroup group) {
 }
 
 
-// ─── Combat-Mode Gate (stub — always allows; Task 7.2 will implement the real logic) ─────
+// ─── Combat-Mode Gate ────────────────────────────────────────────────────────
 
 bool isRangedAttackAllowed(SizeClassification sizeClass, int distance, int range) {
-    // Stub: always allows. Tests for Property 6 will FAIL until Task 7.2 implements the real gate.
-    (void)sizeClass;
-    (void)distance;
-    (void)range;
-    return true;
+    switch (sizeClass) {
+        case SizeClassification::PISTOL:
+            return distance >= 1 && distance <= range;
+        case SizeClassification::BASIC:
+        case SizeClassification::HEAVY:
+            return distance >= 2 && distance <= range;
+        case SizeClassification::MELEE:
+            return false; // melee weapons cannot make ranged attacks
+        case SizeClassification::THROWN:
+            return distance >= 1 && distance <= range;
+    }
+    return false;
 }
 
-CombatModeResult checkCombatMode(SizeClassification /*sizeClass*/, int /*distance*/, int /*range*/) {
-    return { true, "" }; // stub — allows everything
+CombatModeResult checkCombatMode(SizeClassification sizeClass, int distance, int range) {
+    switch (sizeClass) {
+        case SizeClassification::PISTOL:
+            if (distance >= 1 && distance <= range) return { true, "" };
+            return { false, "Target is out of range." };
+        case SizeClassification::BASIC:
+        case SizeClassification::HEAVY:
+            if (distance == 1) return { false, "This weapon cannot be fired at adjacent targets." };
+            if (distance > range) return { false, "Target is out of range." };
+            return { true, "" };
+        case SizeClassification::MELEE:
+            if (distance == 1) return { true, "" }; // melee allowed at adjacent
+            return { false, "Target is too far for a melee weapon." };
+        case SizeClassification::THROWN:
+            if (distance >= 1 && distance <= range) return { true, "" };
+            return { false, "Target is out of range." };
+    }
+    return { false, "Unknown weapon type." };
 }

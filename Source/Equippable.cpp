@@ -4,6 +4,7 @@
 
 static constexpr int EQUIPPABLE_SAVE_V1 = -1;  // sentinel for format with MeleeStats/ArmourProfile
 static constexpr int EQUIPPABLE_SAVE_V2 = -10; // sentinel for format adding RangedStats/currentAmmo
+static constexpr int EQUIPPABLE_SAVE_V3 = -20; // sentinel for format adding classification data
 
 Equippable::Equippable(EquipmentSlot slot, StatModifiers modifiers, float weight, int value)
 	: slot{ slot }
@@ -14,7 +15,7 @@ Equippable::Equippable(EquipmentSlot slot, StatModifiers modifiers, float weight
 }
 
 void Equippable::save(TCODZip& zip) {
-	zip.putInt(EQUIPPABLE_SAVE_V2);  // V2 sentinel (newest format)
+	zip.putInt(EQUIPPABLE_SAVE_V3);  // V3 sentinel (newest format)
 	zip.putInt(static_cast<int>(slot));
 	zip.putFloat(modifiers.power);
 	zip.putFloat(modifiers.defense);
@@ -53,11 +54,81 @@ void Equippable::save(TCODZip& zip) {
 		zip.putInt(rangedStats->reloadTime);
 		zip.putInt(currentAmmo);
 	}
+
+	// Classification data (V3 addition)
+	bool hasClassification = sizeClass.has_value() && weaponGroup.has_value() && damageType.has_value();
+	zip.putInt(hasClassification ? 1 : 0);
+	if (hasClassification) {
+		zip.putInt(static_cast<int>(sizeClass.value()));
+		zip.putInt(static_cast<int>(weaponGroup.value()));
+		zip.putInt(static_cast<int>(damageType.value()));
+	}
 }
 
 void Equippable::load(TCODZip& zip) {
 	int first = zip.getInt();
-	if (first == EQUIPPABLE_SAVE_V2) {
+	if (first == EQUIPPABLE_SAVE_V3) {
+		// V3 format: V2 + classification data
+		slot = static_cast<EquipmentSlot>(zip.getInt());
+		modifiers.power = zip.getFloat();
+		modifiers.defense = zip.getFloat();
+		modifiers.maxHp = zip.getFloat();
+		modifiers.skill = zip.getInt();
+		weight = zip.getFloat();
+		value = zip.getInt();
+
+		// MeleeStats
+		int hasMelee = zip.getInt();
+		if (hasMelee) {
+			MeleeStats ms;
+			const char* diceStr = zip.getString();
+			auto parsed = DiceRoller::parse(diceStr ? diceStr : "");
+			ms.damageDice = parsed.value_or(DiceSpec{1, 5});
+			ms.penetration = zip.getInt();
+			int qualCount = zip.getInt();
+			for (int i = 0; i < qualCount; i++) {
+				const char* q = zip.getString();
+				if (q) ms.qualities.push_back(q);
+			}
+			meleeStats = ms;
+		}
+
+		// ArmourProfile
+		int hasArmour = zip.getInt();
+		if (hasArmour) {
+			ArmourProfile ap;
+			for (int i = 0; i < static_cast<int>(HitLocation::COUNT); i++) {
+				ap.values[i] = zip.getInt();
+			}
+			armourProfile = ap;
+		}
+
+		// RangedStats (V2 addition)
+		int hasRanged = zip.getInt();
+		if (hasRanged) {
+			RangedStats rs;
+			const char* diceStr = zip.getString();
+			auto parsed = DiceRoller::parse(diceStr ? diceStr : "");
+			rs.damageDice = parsed.value_or(DiceSpec{1, 10});
+			rs.penetration = zip.getInt();
+			rs.range = zip.getInt();
+			rs.rateOfFire = zip.getInt();
+			rs.clipSize = zip.getInt();
+			rs.reloadTime = zip.getInt();
+			rangedStats = rs;
+			currentAmmo = zip.getInt();
+			// Clamp currentAmmo to [0, clipSize] for safety
+			currentAmmo = std::clamp(currentAmmo, 0, rs.clipSize);
+		}
+
+		// Classification data (V3 addition)
+		int hasClassification = zip.getInt();
+		if (hasClassification) {
+			sizeClass = static_cast<SizeClassification>(zip.getInt());
+			weaponGroup = static_cast<WeaponGroup>(zip.getInt());
+			damageType = static_cast<DamageType>(zip.getInt());
+		}
+	} else if (first == EQUIPPABLE_SAVE_V2) {
 		// V2 format: has MeleeStats, ArmourProfile, and RangedStats
 		slot = static_cast<EquipmentSlot>(zip.getInt());
 		modifiers.power = zip.getFloat();

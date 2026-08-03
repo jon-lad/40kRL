@@ -6,6 +6,7 @@
 #include "RangedCombat.h"
 #include "CriticalEffects.h"
 #include "DiceRoller.h"
+#include "WeaponTypes.h"
 
 namespace {
 	int defaultRollD100() {
@@ -133,6 +134,19 @@ void resolve(Actor* shooter, Actor* target,
 			weaponEquippable = weaponItem->equippable.get();
 			weaponStats = *weaponEquippable->rangedStats;
 			currentAmmo = weaponEquippable->currentAmmo;
+		}
+	}
+
+	// ── Size classification combat-mode check ──
+	if (weaponEquippable && weaponEquippable->sizeClass) {
+		int dx = std::abs(shooter->getX() - target->getX());
+		int dy = std::abs(shooter->getY() - target->getY());
+		int distance = std::max(dx, dy); // Chebyshev distance
+		int range = weaponStats.range;
+		auto modeCheck = checkCombatMode(*weaponEquippable->sizeClass, distance, range);
+		if (!modeCheck.allowed) {
+			engine.gui->message(Colors::uiText, modeCheck.message);
+			return;
 		}
 	}
 

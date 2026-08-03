@@ -1112,20 +1112,20 @@ TEST_CASE("PBT: Property 7 — Serialization round-trip preserves classification
     std::remove(tempFile);
 }
 
-// ─── Unit test: Old save compatibility (V2 loads with nullopt classification) ─
-// **Validates: Requirements 9.2**
+// ─── Unit test: V3 save round-trips classification fields ────────────────────
+// **Validates: Requirements 9.1, 9.2**
 //
-// A V2-format save (current format, no classification data) loads with
-// classification fields as std::nullopt — graceful degradation for old saves.
+// A V3-format save (current format, includes classification data) loads with
+// classification fields correctly restored.
 
-TEST_CASE("V2 save data loads with nullopt classification fields (old save compatibility)",
+TEST_CASE("V3 save data round-trips classification fields",
           "[weapon-types]")
 {
-    const char* tempFile = "__test_v2_compat_classification.sav";
+    const char* tempFile = "__test_v3_classification_roundtrip.sav";
 
-    // Create an Equippable with classification set, but save using current V2 format.
-    // The current save() writes V2 (sentinel -10) which does NOT include classification.
-    // So after save/load, classification should be nullopt.
+    // Create an Equippable with classification set.
+    // The current save() writes V3 (sentinel -20) which DOES include classification.
+    // So after save/load, classification should be preserved.
     Equippable original(EquipmentSlot::WEAPON, StatModifiers{0.5f, 1.0f, 5.0f, 40}, 2.5f, 100);
     original.sizeClass = SizeClassification::PISTOL;
     original.weaponGroup = WeaponGroup::LAS;
@@ -1142,21 +1142,24 @@ TEST_CASE("V2 save data loads with nullopt classification fields (old save compa
     original.rangedStats = rs;
     original.currentAmmo = 30;
 
-    // Save using current (V2) format
+    // Save using current (V3) format
     TCODZip zip;
     original.save(zip);
     zip.saveToFile(tempFile);
 
-    // Load back — V2 format has no classification data
+    // Load back — V3 format preserves classification data
     TCODZip zip2;
     zip2.loadFromFile(tempFile);
     Equippable loaded(EquipmentSlot::WEAPON, StatModifiers{}, 0.0f, 0);
     loaded.load(zip2);
 
-    // Classification fields should be nullopt (old save has no classification data)
-    REQUIRE_FALSE(loaded.sizeClass.has_value());
-    REQUIRE_FALSE(loaded.weaponGroup.has_value());
-    REQUIRE_FALSE(loaded.damageType.has_value());
+    // Classification fields should be preserved via V3 round-trip
+    REQUIRE(loaded.sizeClass.has_value());
+    REQUIRE(loaded.sizeClass.value() == SizeClassification::PISTOL);
+    REQUIRE(loaded.weaponGroup.has_value());
+    REQUIRE(loaded.weaponGroup.value() == WeaponGroup::LAS);
+    REQUIRE(loaded.damageType.has_value());
+    REQUIRE(loaded.damageType.value() == DamageType::E);
 
     // But other fields should still load correctly
     REQUIRE(static_cast<int>(loaded.slot) == static_cast<int>(EquipmentSlot::WEAPON));
