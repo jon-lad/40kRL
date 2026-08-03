@@ -5,6 +5,7 @@
 #include "InjuryTracker.h"
 
 #include <algorithm>
+#include <cstdio>
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Feature: critical-injuries — Unit Tests for Characteristics Modifier Overlay
@@ -780,4 +781,168 @@ TEST_CASE("PBT: Property 2 — Injury application and debuff state invariant",
                 RC_ASSERT(actualValue == expectedValue);
             }
         });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: critical-injuries — Property 5: Serialization round-trip
+// ═══════════════════════════════════════════════════════════════════════════════
+// **Validates: Requirements 5.1, 5.2, 5.3**
+
+TEST_CASE("PBT: Property 5 — Serialization round-trip",
+          "[pbt][critical-injuries]")
+{
+    // Feature: critical-injuries, Property 5: Serialization round-trip
+    rc::prop("save then load + reapplyDebuffs preserves magnitudes and effective stats",
+        []() {
+            // 1. Generate a base stat value for the Actor's Characteristics
+            const int baseValue = *rc::gen::inRange(20, 80);
+
+            // 2. Generate random magnitudes (0-4) for each of 6 locations
+            std::array<int, 6> magnitudes;
+            for (int i = 0; i < 6; ++i) {
+                magnitudes[i] = *rc::gen::inRange(0, 5); // 0 = no injury, 1-4 = active
+            }
+
+            // 3. Create original Actor + InjuryTracker, apply all non-zero injuries
+            Actor originalActor(0, 0, '@', "Original", TCODColor::white);
+            originalActor.characteristics = std::make_shared<Characteristics>(baseValue);
+
+            InjuryTracker originalTracker;
+            for (int i = 0; i < 6; ++i) {
+                if (magnitudes[i] > 0) {
+                    originalTracker.applyInjury(&originalActor, static_cast<HitLocation>(i), magnitudes[i]);
+                }
+            }
+
+            // 4. Save to a TCODZip archive via temp file
+            const char* tempFile = "__test_injury_serialization_roundtrip.sav";
+            {
+                TCODZip zip;
+                originalTracker.save(zip);
+                zip.saveToFile(tempFile);
+            }
+
+            // 5. Load into a new InjuryTracker from the archive
+            InjuryTracker loadedTracker;
+            {
+                TCODZip zip;
+                zip.loadFromFile(tempFile);
+                loadedTracker.load(zip);
+            }
+
+            // 6. Create a fresh Actor with same base stats, reapply debuffs
+            Actor loadedActor(0, 0, '@', "Loaded", TCODColor::white);
+            loadedActor.characteristics = std::make_shared<Characteristics>(baseValue);
+            loadedTracker.reapplyDebuffs(&loadedActor);
+
+            // 7. Verify getMagnitude matches for all locations
+            for (int i = 0; i < 6; ++i) {
+                const auto loc = static_cast<HitLocation>(i);
+                RC_ASSERT(loadedTracker.getMagnitude(loc) == originalTracker.getMagnitude(loc));
+            }
+
+            // 8. Verify Characteristics get() values match between original and loaded
+            for (int c = 0; c < Characteristics::CHAR_COUNT; ++c) {
+                const auto charId = static_cast<CharId>(c);
+                RC_ASSERT(loadedActor.characteristics->get(charId) ==
+                          originalActor.characteristics->get(charId));
+            }
+
+            // Cleanup temp file
+            std::remove(tempFile);
+        });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: critical-injuries — Unit Test: Backward-compatible load
+// ═══════════════════════════════════════════════════════════════════════════════
+// **Validates: Requirements 5.4**
+
+TEST_CASE("InjuryTracker: loading archive without injury sentinel initializes empty tracker",
+          "[critical-injuries][serialization]")
+{
+    // Write some arbitrary data that is NOT the injury sentinel (0x494E4A52).
+    // This simulates a save archive from a version without critical injury support.
+    const char* tempFile = "__test_injury_backward_compat.sav";
+    {
+        TCODZip zip;
+        // Write some non-sentinel integers (e.g. old Actor data that might appear
+        // at this position in the archive before the injury system existed)
+        zip.putInt(42);       // Some arbitrary int (not 0x494E4A52)
+        zip.putInt(100);      // Another value
+        zip.putInt(7);        // Another value
+        zip.saveToFile(tempFile);
+    }
+
+    // Load the archive and attempt to load an InjuryTracker from it
+    TCODZip zip2;
+    zip2.loadFromFile(tempFile);
+
+    InjuryTracker tracker;
+    tracker.load(zip2);
+
+    // Verify no crash occurred and tracker is in empty state
+    REQUIRE(tracker.hasInjuries() == false);
+
+    // Verify all magnitudes are zero
+    REQUIRE(tracker.getMagnitude(HitLocation::HEAD) == 0);
+    REQUIRE(tracker.getMagnitude(HitLocation::RIGHT_ARM) == 0);
+    REQUIRE(tracker.getMagnitude(HitLocation::LEFT_ARM) == 0);
+    REQUIRE(tracker.getMagnitude(HitLocation::BODY) == 0);
+    REQUIRE(tracker.getMagnitude(HitLocation::RIGHT_LEG) == 0);
+    REQUIRE(tracker.getMagnitude(HitLocation::LEFT_LEG) == 0);
+
+    // Verify normal operation continues: apply an injury and confirm it works
+    auto actor = makeTestActor("PostLoadActor", 40);
+    bool applied = tracker.applyInjury(actor.get(), HitLocation::BODY, 2);
+    REQUIRE(applied == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::BODY) == 2);
+    REQUIRE(tracker.hasInjuries() == true);
+
+    // Verify the debuff was applied correctly (BODY mag 2: T -10)
+    REQUIRE(actor->characteristics->get(CharId::T) == 30);
+
+    // Clean up temp file
+    std::remove(tempFile);
+}
+
+TEST_CASE("InjuryTracker: loading with valid sentinel reads injury data correctly",
+          "[critical-injuries][serialization]")
+{
+    // This is a positive control: write a proper sentinel + magnitudes, verify they load.
+    // This test will pass once task 5.3 implements save/load, but documents expected behaviour.
+    const char* tempFile = "__test_injury_valid_sentinel.sav";
+    {
+        TCODZip zip;
+        zip.putInt(0x494E4A52);  // "INJR" sentinel
+        zip.putInt(2);           // HEAD magnitude 2
+        zip.putInt(0);           // RIGHT_ARM: no injury
+        zip.putInt(0);           // LEFT_ARM: no injury
+        zip.putInt(3);           // BODY magnitude 3
+        zip.putInt(0);           // RIGHT_LEG: no injury
+        zip.putInt(1);           // LEFT_LEG magnitude 1
+        zip.saveToFile(tempFile);
+    }
+
+    TCODZip zip2;
+    zip2.loadFromFile(tempFile);
+
+    InjuryTracker tracker;
+    tracker.load(zip2);
+
+    // Verify magnitudes loaded correctly
+    REQUIRE(tracker.getMagnitude(HitLocation::HEAD) == 2);
+    REQUIRE(tracker.getMagnitude(HitLocation::RIGHT_ARM) == 0);
+    REQUIRE(tracker.getMagnitude(HitLocation::LEFT_ARM) == 0);
+    REQUIRE(tracker.getMagnitude(HitLocation::BODY) == 3);
+    REQUIRE(tracker.getMagnitude(HitLocation::RIGHT_LEG) == 0);
+    REQUIRE(tracker.getMagnitude(HitLocation::LEFT_LEG) == 1);
+
+    REQUIRE(tracker.hasInjuries() == true);
+    REQUIRE(tracker.activeCount() == 3);
+
+    // Clean up temp file
+    std::remove(tempFile);
 }
