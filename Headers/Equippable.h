@@ -3,6 +3,7 @@
 #include "Persistent.h"
 #include "DiceRoller.h"
 #include "HitLocation.h"
+#include "WeaponTypes.h"
 #include <array>
 #include <optional>
 #include <string>
@@ -53,6 +54,11 @@ public:
 	std::optional<ArmourProfile> armourProfile; // present for armour
 	std::optional<RangedStats> rangedStats;    // present for ranged weapons
 	int currentAmmo = 0;                       // mutable runtime ammo counter
+
+	// Weapon classification metadata (empty for non-weapon items)
+	std::optional<SizeClassification> sizeClass;
+	std::optional<WeaponGroup> weaponGroup;
+	std::optional<DamageType> damageType;
 
 	Equippable(EquipmentSlot slot, StatModifiers modifiers, float weight, int value);
 

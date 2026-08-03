@@ -1,6 +1,7 @@
 #include "WeaponTypes.h"
 
 #include <array>
+#include <string>
 #include <utility>
 
 // ─── Parse functions ─────────────────────────────────────────────────────────
@@ -86,4 +87,48 @@ std::string_view damageTypeName(DamageType dt) {
         case DamageType::R: return "R";
     }
     return "";
+}
+
+
+// ─── Validation predicates ───────────────────────────────────────────────────
+
+bool isValidRange(int range) {
+    return range > 0;
+}
+
+WeaponValidationResult validateWeaponClassification(
+    const std::string& entryName,
+    bool isWeapon,
+    const std::string& sizeClassStr,
+    const std::string& weaponGroupStr,
+    const std::string& damageTypeStr)
+{
+    // Non-weapon entries (armour, shields) are always accepted
+    if (!isWeapon) {
+        return { true, "" };
+    }
+
+    // Weapon entries require all three classification fields present and valid
+    if (sizeClassStr.empty()) {
+        return { false, "Equipment.lua: skipping '" + entryName + "' — missing required sizeClass." };
+    }
+    if (weaponGroupStr.empty()) {
+        return { false, "Equipment.lua: skipping '" + entryName + "' — missing required weaponGroup." };
+    }
+    if (damageTypeStr.empty()) {
+        return { false, "Equipment.lua: skipping '" + entryName + "' — missing required damageType." };
+    }
+
+    // Validate each field
+    if (!parseSizeClassification(sizeClassStr).has_value()) {
+        return { false, "Equipment.lua: skipping '" + entryName + "' — invalid sizeClass '" + sizeClassStr + "'." };
+    }
+    if (!parseWeaponGroup(weaponGroupStr).has_value()) {
+        return { false, "Equipment.lua: skipping '" + entryName + "' — invalid weaponGroup '" + weaponGroupStr + "'." };
+    }
+    if (!parseDamageType(damageTypeStr).has_value()) {
+        return { false, "Equipment.lua: skipping '" + entryName + "' — invalid damageType '" + damageTypeStr + "'." };
+    }
+
+    return { true, "" };
 }

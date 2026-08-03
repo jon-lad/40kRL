@@ -44,3 +44,25 @@ std::optional<DamageType> parseDamageType(std::string_view str);
 std::string_view sizeClassificationName(SizeClassification sc);
 std::string_view weaponGroupName(WeaponGroup wg);
 std::string_view damageTypeName(DamageType dt);
+
+// ─── Validation predicates (used by Equipment Loader) ────────────────────────
+
+// Returns true iff range > 0 (valid range stat for a ranged weapon).
+bool isValidRange(int range);
+
+// Result of validating a weapon entry's classification fields.
+struct WeaponValidationResult {
+    bool accepted = false;          // true if entry should be loaded
+    std::string warningMessage;     // non-empty if entry was rejected (describes why)
+};
+
+// Validates classification fields for a weapon entry.
+// - If isWeapon is true (has melee or ranged stats): requires all three fields present and valid.
+// - If isWeapon is false (armour, shield): always accepted regardless of fields.
+// sizeClassStr, weaponGroupStr, damageTypeStr may be empty to indicate "field missing".
+WeaponValidationResult validateWeaponClassification(
+    const std::string& entryName,
+    bool isWeapon,
+    const std::string& sizeClassStr,
+    const std::string& weaponGroupStr,
+    const std::string& damageTypeStr);
