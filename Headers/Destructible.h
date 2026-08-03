@@ -17,9 +17,9 @@ public:
 	// Returns the effective damage dealt (0 if blocked entirely).
 	float takeDamage(Actor* owner, float damage);
 
-	// Restores up to amount HP, capped at maxHp.
-	// If owner is non-null and has an InjuryTracker with active injuries, clears all injuries.
-	// Returns the actual amount healed.
+	// Heals the actor. If owner has an InjuryTracker with magnitude > 0,
+	// healing reduces crit magnitude first; only excess amount heals HP.
+	// Returns the actual amount of HP healed.
 	float heal(float amount, Actor* owner = nullptr);
 
 	// Transforms owner into a corpse (changes glyph, disables blocking, resets AI).
