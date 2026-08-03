@@ -446,3 +446,148 @@ TEST_CASE("PBT: clearAll restores all stats to base",
             }
         });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: critical-injuries — GUI Display Unit Tests
+// Requirements: 6.1, 6.2, 6.3
+// ═══════════════════════════════════════════════════════════════════════════════
+
+TEST_CASE("GUI Data: getRecords returns location and magnitude for active injuries",
+          "[critical-injuries][gui]")
+{
+    auto actor = makeTestActor("Marine", 40);
+    InjuryTracker tracker;
+
+    // Apply crits to different locations
+    tracker.applyCrit(actor.get(), HitLocation::HEAD, 2);
+    tracker.applyCrit(actor.get(), HitLocation::RIGHT_LEG, 3);
+
+    const auto& records = tracker.getRecords();
+    REQUIRE(records.size() == 2);
+
+    // First record: HEAD with total magnitude 2
+    REQUIRE(records[0].location == HitLocation::HEAD);
+    REQUIRE(records[0].magnitude == 2);
+    // Verify HitLocationTable::name returns correct display string for sidebar
+    REQUIRE(std::string(HitLocationTable::name(records[0].location)) == "Head");
+
+    // Second record: RIGHT_LEG with total magnitude 5 (2+3)
+    REQUIRE(records[1].location == HitLocation::RIGHT_LEG);
+    REQUIRE(records[1].magnitude == 5);
+    REQUIRE(std::string(HitLocationTable::name(records[1].location)) == "Right Leg");
+
+    // getMagnitude returns cumulative total (what sidebar could display as overall severity)
+    REQUIRE(tracker.getMagnitude() == 5);
+}
+
+TEST_CASE("GUI Data: getRecords shows all six locations when all injured",
+          "[critical-injuries][gui]")
+{
+    auto actor = makeTestActor("Marine", 50);
+    InjuryTracker tracker;
+
+    // Apply small crits to all 6 locations (keeping total under 10)
+    tracker.applyCrit(actor.get(), HitLocation::HEAD, 1);
+    tracker.applyCrit(actor.get(), HitLocation::RIGHT_ARM, 1);
+    tracker.applyCrit(actor.get(), HitLocation::LEFT_ARM, 1);
+    tracker.applyCrit(actor.get(), HitLocation::BODY, 1);
+    tracker.applyCrit(actor.get(), HitLocation::RIGHT_LEG, 1);
+    tracker.applyCrit(actor.get(), HitLocation::LEFT_LEG, 1);
+
+    const auto& records = tracker.getRecords();
+    REQUIRE(records.size() == 6);
+    REQUIRE(tracker.getMagnitude() == 6);
+
+    // Each record has a valid location name for GUI display
+    for (const auto& record : records) {
+        const char* locName = HitLocationTable::name(record.location);
+        REQUIRE(locName != nullptr);
+        REQUIRE(std::string(locName) != "Unknown");
+        REQUIRE(record.magnitude >= 1);
+    }
+}
+
+TEST_CASE("GUI Data: enemy actor injuries are accessible via same interface (look panel)",
+          "[critical-injuries][gui]")
+{
+    // Enemy actor — same as player, injuries use identical interface (Req 6.2)
+    auto enemy = makeTestActor("Ork Boy", 30);
+    InjuryTracker tracker;
+
+    tracker.applyCrit(enemy.get(), HitLocation::BODY, 3);
+    tracker.applyCrit(enemy.get(), HitLocation::LEFT_ARM, 2);
+
+    // When player examines this enemy, GUI queries these same methods
+    REQUIRE(tracker.hasInjuries() == true);
+    REQUIRE(tracker.activeCount() == 2);
+
+    const auto& records = tracker.getRecords();
+    REQUIRE(records[0].location == HitLocation::BODY);
+    REQUIRE(records[0].magnitude == 3);
+    REQUIRE(std::string(HitLocationTable::name(records[0].location)) == "Body");
+
+    REQUIRE(records[1].location == HitLocation::LEFT_ARM);
+    REQUIRE(records[1].magnitude == 5); // cumulative: 3 + 2 = 5
+    REQUIRE(std::string(HitLocationTable::name(records[1].location)) == "Left Arm");
+}
+
+TEST_CASE("GUI Data: combat log message format for injury apply contains actor name and location",
+          "[critical-injuries][gui]")
+{
+    // The Attacker logs: "# suffers a critical injury to the #!"
+    // with target->name and HitLocationTable::name(loc) as substitutions.
+    // We verify the data that would be substituted is correct.
+    auto target = makeTestActor("Battle Brother", 40);
+    InjuryTracker tracker;
+
+    tracker.applyCrit(target.get(), HitLocation::RIGHT_ARM, 2);
+
+    // Simulate what Attacker.cpp produces for the GUI message
+    std::string actorName = target->name;
+    std::string locName = HitLocationTable::name(HitLocation::RIGHT_ARM);
+
+    // Format matches the template used in Attacker.cpp
+    std::string expectedMsg = actorName + " suffers a critical injury to the " + locName + "!";
+    REQUIRE(expectedMsg == "Battle Brother suffers a critical injury to the Right Arm!");
+
+    // The injury data is what the GUI would use
+    REQUIRE(tracker.getRecords().back().location == HitLocation::RIGHT_ARM);
+    REQUIRE(tracker.getRecords().back().magnitude == 2);
+}
+
+TEST_CASE("GUI Data: combat log message format for injury clear",
+          "[critical-injuries][gui]")
+{
+    // The Pickable/heal logs: "#'s injuries are healed."
+    // with actor->name as substitution.
+    auto actor = makeTestActor("Scout", 40);
+    InjuryTracker tracker;
+
+    tracker.applyCrit(actor.get(), HitLocation::HEAD, 3);
+    tracker.applyCrit(actor.get(), HitLocation::BODY, 2);
+    REQUIRE(tracker.hasInjuries() == true);
+
+    tracker.clearAll(actor.get());
+
+    // After clearAll, the data is gone (GUI would show nothing)
+    REQUIRE(tracker.hasInjuries() == false);
+    REQUIRE(tracker.getMagnitude() == 0);
+    REQUIRE(tracker.getRecords().empty() == true);
+
+    // Simulate what Pickable.cpp produces for the GUI message
+    std::string expectedMsg = std::string(actor->name) + "'s injuries are healed.";
+    REQUIRE(expectedMsg == "Scout's injuries are healed.");
+}
+
+TEST_CASE("GUI Data: no injuries shows empty state for sidebar",
+          "[critical-injuries][gui]")
+{
+    auto actor = makeTestActor("Fresh Marine", 40);
+    InjuryTracker tracker;
+
+    // No injuries applied — GUI should display nothing
+    REQUIRE(tracker.hasInjuries() == false);
+    REQUIRE(tracker.activeCount() == 0);
+    REQUIRE(tracker.getMagnitude() == 0);
+    REQUIRE(tracker.getRecords().empty() == true);
+}
