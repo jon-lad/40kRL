@@ -58,9 +58,9 @@ The critical injury system extends the existing critical hit mechanics to apply 
 
 #### Acceptance Criteria
 
-1. WHEN a non-fatal critical hit targets a HitLocation that already has an active Critical_Injury, THE Critical_Injury_System SHALL increase the existing injury's magnitude by 1 instead of creating a duplicate injury.
-2. WHEN escalation increases a Critical_Injury's magnitude from 4 to 5, THE Critical_Injury_System SHALL trigger the fatal critical effect for that HitLocation at magnitude 5 and kill the target Actor.
-3. WHEN escalation increases magnitude within the non-fatal range (1-3 to 2-4), THE Critical_Injury_System SHALL remove the old Debuff and apply the new Debuff corresponding to the escalated magnitude.
+1. WHEN a non-fatal critical hit targets a HitLocation that already has an active Critical_Injury, THE Critical_Injury_System SHALL increase the existing injury's magnitude by the incoming critMagnitude instead of creating a duplicate injury.
+2. WHEN escalation increases a Critical_Injury's magnitude beyond 4, THE Critical_Injury_System SHALL trigger the fatal critical effect for that HitLocation and kill the target Actor.
+3. WHEN escalation increases magnitude within the non-fatal range (result still ≤ 4), THE Critical_Injury_System SHALL remove the old Debuff and apply the new Debuff corresponding to the escalated magnitude.
 4. THE Critical_Injury_System SHALL permit a maximum of one active Critical_Injury per HitLocation per Actor at any time.
 
 ### Requirement 4: Healing Clears Critical Injuries

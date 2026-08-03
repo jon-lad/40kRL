@@ -113,7 +113,7 @@ bool HealthEffect::applyTo(Actor* actor)
 			sol::constructors<Actor(int, int, int, std::string, TCODColor)>());
 		actorType["name"]          = &Actor::name;
 		actorType["destructible"]  = &Actor::destructible;
-		destructibleType["heal"]   = &Destructible::heal;
+		destructibleType["heal"]   = [](Destructible& d, float amt) { return d.heal(amt); };
 		lua["act"]    = actor;
 		lua["amount"] = amount;
 
@@ -123,6 +123,11 @@ bool HealthEffect::applyTo(Actor* actor)
 			if (pointsHealed > 0) {
 				if (!message.empty()) {
 					engine.gui->message(textCol, message, actor->name, pointsHealed);
+				}
+				// Clear critical injuries on healing item use (Requirement 4.4)
+				if (actor->injuryTracker && actor->injuryTracker->hasInjuries()) {
+					actor->injuryTracker->clearAll(actor);
+					engine.gui->message(Colors::healing, "#'s injuries are healed.", actor->name);
 				}
 				return true;
 			}

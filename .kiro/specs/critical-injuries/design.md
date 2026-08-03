@@ -208,9 +208,9 @@ applyInjury(owner, loc, newMagnitude):
     applyDebuff(owner, loc, magnitudes_[loc])
     return true
   else:
-    escalated = existing + 1
+    escalated = existing + newMagnitude
     if escalated > 4:
-      return false  // caller triggers fatal effect at magnitude 5
+      return false  // caller triggers fatal effect
     removeDebuff(owner, loc, existing)
     magnitudes_[loc] = escalated
     applyDebuff(owner, loc, escalated)
@@ -237,9 +237,9 @@ When `applyInjury` returns false, the caller (Attacker) invokes `CriticalEffects
 
 **Validates: Requirements 1.1, 1.2, 3.3**
 
-### Property 3: Escalation increments magnitude
+### Property 3: Escalation increments magnitude cumulatively
 
-*For any* Actor with an existing injury at `HitLocation` L at magnitude M in [1,3], calling `applyInjury(owner, L, anyMagnitude)` SHALL result in `getMagnitude(L) == M + 1` and SHALL NOT create a second injury record at L.
+*For any* Actor with an existing injury at `HitLocation` L at magnitude M, calling `applyInjury(owner, L, newMagnitude)` where `M + newMagnitude <= 4` SHALL result in `getMagnitude(L) == M + newMagnitude` and SHALL NOT create a second injury record at L.
 
 **Validates: Requirements 3.1, 3.4**
 

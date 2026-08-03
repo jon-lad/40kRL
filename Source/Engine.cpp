@@ -222,7 +222,7 @@ void Engine::nextLevel(StairDirection direction)
 
 	// Healing and transition messages.
 	gui->message(Colors::healing, "You take a moment to rest and recover your strength.");
-	player->destructible->heal(player->destructible->maxHp / 2.0f);
+	player->destructible->heal(player->destructible->maxHp / 2.0f, player);
 
 	const bool isOutdoor = (dungeonLevel == 0);
 

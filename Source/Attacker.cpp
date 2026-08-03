@@ -210,10 +210,28 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 			"Critical Hit on #! #",
 			HitLocationTable::name(loc), critEffect.description);
 
-		// Player survives crits below magnitude 5 (unless the effect is explicitly fatal)
-		if (!critEffect.fatal && critMagnitude < 3) {
-			target->destructible->hp = 1;
+		if (!critEffect.fatal && critMagnitude <= 4) {
+			// Non-fatal critical hit: apply injury via cumulative magnitude system
+			if (!target->injuryTracker) {
+				target->injuryTracker = std::make_unique<InjuryTracker>();
+			}
+			bool survived = target->injuryTracker->applyCrit(target, loc, critMagnitude);
+			if (!survived) {
+				// Cumulative magnitude reached fatal threshold (10)
+				auto fatalEffect = CriticalEffects::resolve(loc, 10);
+				engine.gui->message(Colors::damage, "Critical overload! #", fatalEffect.description);
+				target->destructible->die(target);
+			} else {
+				// Injury applied; target survives at HP=1 for low-magnitude crits
+				if (critMagnitude < 3) {
+					target->destructible->hp = 1;
+				}
+				engine.gui->message(Colors::damage,
+					"# suffers a critical injury to the #!",
+					target->name, HitLocationTable::name(loc));
+			}
 		} else {
+			// Fatal crit (magnitude >= 5 or fatal effect) — kill target
 			target->destructible->die(target);
 		}
 	} else {

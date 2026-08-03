@@ -4,71 +4,70 @@
 
 #include <algorithm>
 
-InjuryTracker::InjuryTracker() {
-    magnitudes_.fill(0);
+InjuryTracker::InjuryTracker()
+    : magnitude_(0)
+{
 }
 
-bool InjuryTracker::applyInjury(Actor* owner, HitLocation loc, int magnitude) {
-    // Clamp magnitude to [1, 4]
-    magnitude = std::clamp(magnitude, 1, MAX_MAGNITUDE);
+int InjuryTracker::getMagnitude() const {
+    return magnitude_;
+}
 
-    int idx = static_cast<int>(loc);
-    if (idx < 0 || idx >= MAX_LOCATIONS) return false;
+bool InjuryTracker::applyCrit(Actor* owner, HitLocation loc, int critMagnitude) {
+    // Clamp incoming crit magnitude to at least 1
+    if (critMagnitude < 1) critMagnitude = 1;
 
-    int existing = magnitudes_[idx];
-    if (existing == 0) {
-        // Fresh injury — apply at the given magnitude
-        magnitudes_[idx] = magnitude;
-        applyDebuff(owner, loc, magnitudes_[idx]);
-        return true;
-    } else {
-        // Escalation: increment existing magnitude by 1
-        int escalated = existing + 1;
-        if (escalated > MAX_MAGNITUDE) {
-            return false; // caller triggers fatal effect at magnitude 5
-        }
-        removeDebuff(owner, loc, existing);
-        magnitudes_[idx] = escalated;
-        applyDebuff(owner, loc, escalated);
-        return true;
+    int newTotal = magnitude_ + critMagnitude;
+    if (newTotal >= FATAL_MAGNITUDE) {
+        return false; // caller triggers death
     }
+
+    magnitude_ = newTotal;
+
+    // Apply the debuff for this hit location at the new total magnitude
+    applyDebuff(owner, loc, newTotal);
+    records_.push_back(InjuryRecord{ loc, newTotal });
+    return true;
 }
 
-void InjuryTracker::clearAll(Actor* owner) {
-    for (int i = 0; i < MAX_LOCATIONS; ++i) {
-        if (magnitudes_[i] > 0) {
-            removeDebuff(owner, static_cast<HitLocation>(i), magnitudes_[i]);
-            magnitudes_[i] = 0;
-        }
-    }
-}
+int InjuryTracker::healMagnitude(int amount) {
+    if (amount <= 0) return 0;
+    if (magnitude_ <= 0) return amount; // no crit damage, all goes to HP
 
-int InjuryTracker::getMagnitude(HitLocation loc) const {
-    int idx = static_cast<int>(loc);
-    if (idx < 0 || idx >= MAX_LOCATIONS) return 0;
-    return magnitudes_[idx];
+    int reduction = std::min(amount, magnitude_);
+    magnitude_ -= reduction;
+    return amount - reduction; // excess for HP healing
 }
 
 bool InjuryTracker::hasInjuries() const {
-    for (int m : magnitudes_) {
-        if (m > 0) return true;
-    }
-    return false;
+    return !records_.empty();
 }
 
 int InjuryTracker::activeCount() const {
-    int count = 0;
-    for (int m : magnitudes_) {
-        if (m > 0) ++count;
+    return static_cast<int>(records_.size());
+}
+
+const std::vector<InjuryRecord>& InjuryTracker::getRecords() const {
+    return records_;
+}
+
+void InjuryTracker::clearAll(Actor* owner) {
+    // Remove all active debuffs
+    for (const auto& record : records_) {
+        removeDebuff(owner, record.location, record.magnitude);
     }
-    return count;
+    records_.clear();
+    magnitude_ = 0;
 }
 
 void InjuryTracker::save(TCODZip& zip) {
     static constexpr int SENTINEL = 0x494E4A52; // "INJR"
     zip.putInt(SENTINEL);
-    for (int i = 0; i < MAX_LOCATIONS; ++i) {
-        zip.putInt(magnitudes_[i]);
+    zip.putInt(magnitude_);
+    zip.putInt(static_cast<int>(records_.size()));
+    for (const auto& record : records_) {
+        zip.putInt(static_cast<int>(record.location));
+        zip.putInt(record.magnitude);
     }
 }
 
@@ -77,20 +76,24 @@ void InjuryTracker::load(TCODZip& zip) {
     int firstInt = zip.getInt();
     if (firstInt != SENTINEL) {
         // Backward compatibility: no valid injury data, stay empty
-        magnitudes_.fill(0);
+        magnitude_ = 0;
+        records_.clear();
         return;
     }
-    for (int i = 0; i < MAX_LOCATIONS; ++i) {
-        magnitudes_[i] = std::clamp(zip.getInt(), 0, MAX_MAGNITUDE);
+    magnitude_ = std::clamp(zip.getInt(), 0, MAX_MAGNITUDE);
+    int count = zip.getInt();
+    records_.clear();
+    for (int i = 0; i < count; ++i) {
+        int locInt = std::clamp(zip.getInt(), 0, static_cast<int>(HitLocation::COUNT) - 1);
+        int mag = std::clamp(zip.getInt(), 1, MAX_MAGNITUDE);
+        records_.push_back(InjuryRecord{ static_cast<HitLocation>(locInt), mag });
     }
 }
 
 void InjuryTracker::reapplyDebuffs(Actor* owner) {
     if (!owner || !owner->characteristics) return;
-    for (int i = 0; i < MAX_LOCATIONS; ++i) {
-        if (magnitudes_[i] > 0) {
-            applyDebuff(owner, static_cast<HitLocation>(i), magnitudes_[i]);
-        }
+    for (const auto& record : records_) {
+        applyDebuff(owner, record.location, record.magnitude);
     }
 }
 

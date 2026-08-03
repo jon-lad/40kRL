@@ -19,13 +19,20 @@ float Destructible::takeDamage(Actor* owner, float damage)
 	return damage;
 }
 
-float Destructible::heal(float amount)
+float Destructible::heal(float amount, Actor* owner)
 {
 	hp += amount;
 	if (hp > maxHp) {
 		amount -= static_cast<int>(hp) - static_cast<int>(maxHp);
 		hp = maxHp;
 	}
+
+	// Clear all critical injuries on healing event (Requirement 4.1, 4.4)
+	if (owner && owner->injuryTracker && owner->injuryTracker->hasInjuries()) {
+		owner->injuryTracker->clearAll(owner);
+		engine.gui->message(Colors::healing, "#'s injuries are healed.", owner->name);
+	}
+
 	return static_cast<float>(amount);
 }
 

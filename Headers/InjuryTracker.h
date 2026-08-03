@@ -1,38 +1,55 @@
 #pragma once
 
 #include <array>
+#include <vector>
 #include "HitLocation.h"
 #include "Persistent.h"
 
 class Actor;
 class TCODZip;
 
-// Tracks active critical injuries on an Actor and manages their stat modifiers.
-// Stub header for TDD — implementation in Source/InjuryTracker.cpp (task 3.5).
+// Records a single debuff applied from a specific critical hit event.
+struct InjuryRecord {
+    HitLocation location;  // where the crit landed
+    int magnitude;         // total magnitude at time of this crit (determines debuff severity)
+};
+
+// Tracks critical injury state for an Actor.
+// Uses a single cumulative magnitude counter. Each crit adds to the total,
+// and the debuff applied depends on (hitLocation, newTotalMagnitude).
+// Healing reduces magnitude first, then excess heals HP.
+// Debuffs are permanent once applied (cleared only by future healing systems).
 class InjuryTracker : public Persistent {
 public:
-    static constexpr int MAX_LOCATIONS = static_cast<int>(HitLocation::COUNT);
-    static constexpr int MAX_MAGNITUDE = 4; // non-fatal range
+    static constexpr int MAX_MAGNITUDE = 9;   // magnitudes 1-9 are non-fatal
+    static constexpr int FATAL_MAGNITUDE = 10; // magnitude 10 = death
 
     InjuryTracker();
 
-    // Applies or escalates an injury at the given location.
-    // magnitude is clamped to [1, 4] before applying.
-    // Returns true if the injury was applied/escalated within non-fatal range.
-    // Returns false if escalation would exceed magnitude 4 (caller handles fatality).
-    bool applyInjury(Actor* owner, HitLocation loc, int magnitude);
+    // Returns current cumulative magnitude (0 = no crits taken).
+    int getMagnitude() const;
 
-    // Removes all injuries and reverses all debuffs on the owner.
-    void clearAll(Actor* owner);
+    // Applies a critical hit: adds critMagnitude to the total, applies debuff
+    // for (location, newTotal). Returns false if new total >= FATAL_MAGNITUDE
+    // (caller handles death). Returns true if non-fatal.
+    bool applyCrit(Actor* owner, HitLocation loc, int critMagnitude);
 
-    // Returns the current magnitude at a location (0 = no injury).
-    int getMagnitude(HitLocation loc) const;
+    // Reduces magnitude by the given amount. Returns excess (amount beyond reducing
+    // magnitude to 0) which should be applied as HP healing.
+    // Does NOT remove existing debuffs — they are permanent.
+    int healMagnitude(int amount);
 
-    // Returns true if any injury is active.
+    // Returns true if any debuffs are active.
     bool hasInjuries() const;
 
-    // Returns count of active injury locations.
+    // Returns the number of active injury records (debuffs applied).
     int activeCount() const;
+
+    // Returns the list of active injury records.
+    const std::vector<InjuryRecord>& getRecords() const;
+
+    // Removes all debuffs and resets magnitude to 0 (used for level transitions / full clear).
+    void clearAll(Actor* owner);
 
     void save(TCODZip& zip) override;
     void load(TCODZip& zip) override;
@@ -41,12 +58,12 @@ public:
     void reapplyDebuffs(Actor* owner);
 
 private:
-    // Magnitude per location. 0 = no injury, 1-4 = active.
-    std::array<int, MAX_LOCATIONS> magnitudes_;
-
-    // Removes debuff for a specific location (if any) from the owner's characteristics.
-    void removeDebuff(Actor* owner, HitLocation loc, int magnitude);
+    int magnitude_;  // cumulative crit magnitude (0-9 non-fatal, 10 = fatal)
+    std::vector<InjuryRecord> records_;  // each crit event that applied a debuff
 
     // Applies debuff for a specific location/magnitude to the owner's characteristics.
     void applyDebuff(Actor* owner, HitLocation loc, int magnitude);
+
+    // Removes debuff for a specific location/magnitude from the owner's characteristics.
+    void removeDebuff(Actor* owner, HitLocation loc, int magnitude);
 };
