@@ -21,7 +21,7 @@ Engine::Engine(int screenWidth, int screenHeight)
 	, dungeonLevel{ 20 }
 	, debugMode{ false }
 {
-	TCODConsole::setCustomFont("terminal.png", TCOD_FONT_LAYOUT_CP437, 16, 16);
+	TCODConsole::setCustomFont("terminal.png", TCOD_FONT_LAYOUT_ASCII_INROW, 16, 16);
 	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
 	SDL_StartTextInput(SDL_GetKeyboardFocus());
 	gui = std::make_unique<Gui>();

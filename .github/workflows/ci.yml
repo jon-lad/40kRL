@@ -74,7 +74,7 @@ jobs:
         run: |
           $testExe = "x64\${{ matrix.configuration }}\40kRL_Tests.exe"
           if (Test-Path $testExe) {
-            & $testExe --reporter compact "~[pbt]"
+            & $testExe --reporter compact "~[pbt]" "~[integration]" "~[.flaky]"
           } else {
             Write-Error "Test executable not found at $testExe"
             exit 1

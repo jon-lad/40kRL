@@ -17,7 +17,7 @@ static constexpr int ROOM_MIN_SIZE     = 6;
 static constexpr int MAX_ROOM_MONSTERS = 3;
 static constexpr int MAX_ROOM_ITEMS    = 2;
 static constexpr int BSP_DEPTH         = 8;
-static constexpr int GROUND_GLYPH      = 250; // CP437 middle dot (·)
+static constexpr int GROUND_GLYPH      = '.';  // ASCII period — visible in all tilesets
 static constexpr int MIN_PLAYABLE_AREA = 200;
 static constexpr int MAX_RETRIES       = 10;
 
@@ -863,7 +863,12 @@ static int chooseWallGlyph(bool top, bool bottom, bool left, bool right)
 	if (!top &&  bottom && !left &&  right) return CharConst::DSW;
 	if ( top &&  bottom && !left && !right) return CharConst::DVLINE;
 	if (!top && !bottom &&  left &&  right) return CharConst::DHLINE;
-	return CharConst::RADIO_UNSET;
+	// Dead-end / isolated wall fallbacks
+	if ( top && !bottom && !left && !right) return CharConst::DVLINE;
+	if (!top &&  bottom && !left && !right) return CharConst::DVLINE;
+	if (!top && !bottom &&  left && !right) return CharConst::DHLINE;
+	if (!top && !bottom && !left &&  right) return CharConst::DHLINE;
+	return CharConst::DCROSS; // isolated wall: show as cross
 }
 
 static void renderWallTile(int screenX, int screenY, int worldX, int worldY,
