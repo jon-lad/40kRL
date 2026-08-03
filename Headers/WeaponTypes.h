@@ -78,3 +78,25 @@ bool hasProficiency(const Actor* actor, WeaponGroup group);
 // Returns the proficiency penalty (0 or -20) for the given actor and weapon group.
 // Returns -20 if the actor lacks the matching "Weapon Training (<GroupName>)" talent, else 0.
 int proficiencyModifier(const Actor* actor, WeaponGroup group);
+
+// ─── Combat-Mode Gate ────────────────────────────────────────────────────────
+
+// Returns true if a ranged attack is allowed given the weapon's size class and the distance/range.
+// Rules:
+//   PISTOL: allowed at any distance 1..range (including d=1)
+//   BASIC:  allowed at distances 2..range (blocked at d=1)
+//   HEAVY:  allowed at distances 2..range (blocked at d=1)
+//   MELEE:  ranged NEVER allowed (melee-only)
+//   THROWN: allowed at any distance 1..range
+bool isRangedAttackAllowed(SizeClassification sizeClass, int distance, int range);
+
+// Result of checking whether a weapon can be used at a given distance.
+struct CombatModeResult {
+    bool allowed = true;
+    std::string message;  // non-empty if blocked
+};
+
+// Checks if a weapon with the given size classification can attack at the given distance.
+// distance: tiles between attacker and target (1 = adjacent)
+// range: max weapon range in tiles (relevant for Thrown)
+CombatModeResult checkCombatMode(SizeClassification sizeClass, int distance, int range = 30);

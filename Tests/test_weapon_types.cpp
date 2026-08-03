@@ -904,3 +904,405 @@ TEST_CASE("Proficiency penalty clamped correctly at high skill", "[weapon-types]
     // Expected: clamp(95 + 20 - 20, 1, 99) = 95
     REQUIRE(attacker.computeThreshold() == 95);
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: weapon-types — Combat-Mode Gate Tests (Task 7.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 6: Size classification combat-mode gate ────────────────────────
+// Feature: weapon-types, Property 6: Size classification combat-mode gate
+// **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
+//
+// For any (SizeClassification, distance, range) tuple:
+//   PISTOL: ranged allowed at distances 1..range
+//   BASIC:  ranged allowed at distances 2..range (blocked at d=1)
+//   HEAVY:  ranged allowed at distances 2..range (blocked at d=1)
+//   MELEE:  ranged NEVER allowed
+//   THROWN: ranged allowed at distances 1..range
+
+TEST_CASE("PBT: Property 6 — Size classification combat-mode gate",
+          "[pbt][property][weapon-types]")
+{
+    rc::prop("isRangedAttackAllowed matches size-class rules for random inputs", []() {
+        // Generate a random SizeClassification
+        auto scIdx = *rc::gen::inRange(0, 5);
+        auto sizeClass = static_cast<SizeClassification>(scIdx);
+
+        // Generate a random range (1..50) and distance (1..60, can exceed range)
+        int range = *rc::gen::inRange(1, 51);
+        int distance = *rc::gen::inRange(1, 61);
+
+        bool allowed = isRangedAttackAllowed(sizeClass, distance, range);
+
+        switch (sizeClass) {
+            case SizeClassification::PISTOL:
+                // Pistol: allowed at any distance 1..range
+                RC_ASSERT(allowed == (distance >= 1 && distance <= range));
+                break;
+            case SizeClassification::BASIC:
+                // Basic: allowed at distances 2..range (blocked at d=1)
+                RC_ASSERT(allowed == (distance >= 2 && distance <= range));
+                break;
+            case SizeClassification::HEAVY:
+                // Heavy: allowed at distances 2..range (blocked at d=1)
+                RC_ASSERT(allowed == (distance >= 2 && distance <= range));
+                break;
+            case SizeClassification::MELEE:
+                // Melee: ranged NEVER allowed
+                RC_ASSERT(allowed == false);
+                break;
+            case SizeClassification::THROWN:
+                // Thrown: allowed at any distance 1..range
+                RC_ASSERT(allowed == (distance >= 1 && distance <= range));
+                break;
+        }
+    });
+}
+
+// ─── Unit tests: Combat-mode gate specific scenarios ─────────────────────────
+// **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
+
+TEST_CASE("Pistol at adjacent target (d=1) is allowed", "[weapon-types]")
+{
+    REQUIRE(isRangedAttackAllowed(SizeClassification::PISTOL, 1, 30));
+}
+
+TEST_CASE("Pistol at max range is allowed", "[weapon-types]")
+{
+    REQUIRE(isRangedAttackAllowed(SizeClassification::PISTOL, 30, 30));
+}
+
+TEST_CASE("Pistol beyond range is blocked", "[weapon-types]")
+{
+    REQUIRE_FALSE(isRangedAttackAllowed(SizeClassification::PISTOL, 31, 30));
+}
+
+TEST_CASE("Basic weapon at adjacent target (d=1) is blocked", "[weapon-types]")
+{
+    REQUIRE_FALSE(isRangedAttackAllowed(SizeClassification::BASIC, 1, 30));
+}
+
+TEST_CASE("Basic weapon at distance 2 is allowed", "[weapon-types]")
+{
+    REQUIRE(isRangedAttackAllowed(SizeClassification::BASIC, 2, 30));
+}
+
+TEST_CASE("Basic weapon at max range is allowed", "[weapon-types]")
+{
+    REQUIRE(isRangedAttackAllowed(SizeClassification::BASIC, 30, 30));
+}
+
+TEST_CASE("Basic weapon beyond range is blocked", "[weapon-types]")
+{
+    REQUIRE_FALSE(isRangedAttackAllowed(SizeClassification::BASIC, 31, 30));
+}
+
+TEST_CASE("Heavy weapon at adjacent target (d=1) is blocked", "[weapon-types]")
+{
+    REQUIRE_FALSE(isRangedAttackAllowed(SizeClassification::HEAVY, 1, 45));
+}
+
+TEST_CASE("Heavy weapon at distance 2 is allowed", "[weapon-types]")
+{
+    REQUIRE(isRangedAttackAllowed(SizeClassification::HEAVY, 2, 45));
+}
+
+TEST_CASE("Melee weapon ranged attack is never allowed", "[weapon-types]")
+{
+    // Melee cannot attack at any distance via ranged
+    REQUIRE_FALSE(isRangedAttackAllowed(SizeClassification::MELEE, 1, 1));
+    REQUIRE_FALSE(isRangedAttackAllowed(SizeClassification::MELEE, 1, 30));
+    REQUIRE_FALSE(isRangedAttackAllowed(SizeClassification::MELEE, 5, 30));
+}
+
+TEST_CASE("Thrown weapon at adjacent target (d=1) is allowed", "[weapon-types]")
+{
+    REQUIRE(isRangedAttackAllowed(SizeClassification::THROWN, 1, 10));
+}
+
+TEST_CASE("Thrown weapon at max range is allowed", "[weapon-types]")
+{
+    REQUIRE(isRangedAttackAllowed(SizeClassification::THROWN, 10, 10));
+}
+
+TEST_CASE("Thrown weapon beyond range is blocked", "[weapon-types]")
+{
+    REQUIRE_FALSE(isRangedAttackAllowed(SizeClassification::THROWN, 11, 10));
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: weapon-types — Serialization Tests (Task 9.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 7: Serialization round-trip for classification data ─────────────
+// Feature: weapon-types, Property 7: Serialization round-trip for classification data
+// **Validates: Requirements 9.1, 9.2**
+//
+// For any valid combination of (SizeClassification, WeaponGroup, DamageType)
+// stored on an Equippable, saving to a TCODZip buffer and loading from that
+// buffer produces an Equippable with identical classification values.
+
+TEST_CASE("PBT: Property 7 — Serialization round-trip preserves classification data",
+          "[pbt][property][weapon-types]")
+{
+    const char* tempFile = "__test_classification_roundtrip.sav";
+
+    rc::prop("save/load cycle preserves classification values exactly", [&]() {
+        // Generate random classification values
+        auto scIdx = *rc::gen::inRange(0, 5);
+        auto wgIdx = *rc::gen::inRange(0, 9);
+        auto dtIdx = *rc::gen::inRange(0, 4);
+
+        auto sc = static_cast<SizeClassification>(scIdx);
+        auto wg = static_cast<WeaponGroup>(wgIdx);
+        auto dt = static_cast<DamageType>(dtIdx);
+
+        // Create an Equippable with classification fields set
+        Equippable original(EquipmentSlot::WEAPON, StatModifiers{}, 1.0f, 10);
+        original.sizeClass = sc;
+        original.weaponGroup = wg;
+        original.damageType = dt;
+
+        // Optionally add melee or ranged stats (should not affect classification serialization)
+        bool addMelee = (*rc::gen::inRange(0, 2)) == 1;
+        bool addRanged = (*rc::gen::inRange(0, 2)) == 1;
+
+        if (addMelee) {
+            MeleeStats ms;
+            ms.damageDice = {1, 10};
+            ms.penetration = *rc::gen::inRange(0, 5);
+            original.meleeStats = ms;
+        }
+
+        if (addRanged) {
+            RangedStats rs;
+            rs.damageDice = {1, 10};
+            rs.penetration = *rc::gen::inRange(0, 5);
+            rs.range = *rc::gen::inRange(1, 100);
+            rs.rateOfFire = *rc::gen::inRange(1, 4);
+            rs.clipSize = *rc::gen::inRange(1, 30);
+            rs.reloadTime = 1;
+            original.rangedStats = rs;
+            original.currentAmmo = *rc::gen::inRange(0, rs.clipSize + 1);
+        }
+
+        // Save to file
+        TCODZip zip;
+        original.save(zip);
+        zip.saveToFile(tempFile);
+
+        // Load from file
+        TCODZip zip2;
+        zip2.loadFromFile(tempFile);
+        Equippable loaded(EquipmentSlot::WEAPON, StatModifiers{}, 0.0f, 0);
+        loaded.load(zip2);
+
+        // Verify classification fields are preserved exactly
+        RC_ASSERT(loaded.sizeClass.has_value());
+        RC_ASSERT(loaded.weaponGroup.has_value());
+        RC_ASSERT(loaded.damageType.has_value());
+        RC_ASSERT(loaded.sizeClass.value() == sc);
+        RC_ASSERT(loaded.weaponGroup.value() == wg);
+        RC_ASSERT(loaded.damageType.value() == dt);
+    });
+
+    // Cleanup temp file
+    std::remove(tempFile);
+}
+
+// ─── Unit test: Old save compatibility (V2 loads with nullopt classification) ─
+// **Validates: Requirements 9.2**
+//
+// A V2-format save (current format, no classification data) loads with
+// classification fields as std::nullopt — graceful degradation for old saves.
+
+TEST_CASE("V2 save data loads with nullopt classification fields (old save compatibility)",
+          "[weapon-types]")
+{
+    const char* tempFile = "__test_v2_compat_classification.sav";
+
+    // Create an Equippable with classification set, but save using current V2 format.
+    // The current save() writes V2 (sentinel -10) which does NOT include classification.
+    // So after save/load, classification should be nullopt.
+    Equippable original(EquipmentSlot::WEAPON, StatModifiers{0.5f, 1.0f, 5.0f, 40}, 2.5f, 100);
+    original.sizeClass = SizeClassification::PISTOL;
+    original.weaponGroup = WeaponGroup::LAS;
+    original.damageType = DamageType::E;
+
+    // Add ranged stats to make it a more realistic weapon
+    RangedStats rs;
+    rs.damageDice = {1, 10};
+    rs.penetration = 0;
+    rs.range = 30;
+    rs.rateOfFire = 1;
+    rs.clipSize = 30;
+    rs.reloadTime = 1;
+    original.rangedStats = rs;
+    original.currentAmmo = 30;
+
+    // Save using current (V2) format
+    TCODZip zip;
+    original.save(zip);
+    zip.saveToFile(tempFile);
+
+    // Load back — V2 format has no classification data
+    TCODZip zip2;
+    zip2.loadFromFile(tempFile);
+    Equippable loaded(EquipmentSlot::WEAPON, StatModifiers{}, 0.0f, 0);
+    loaded.load(zip2);
+
+    // Classification fields should be nullopt (old save has no classification data)
+    REQUIRE_FALSE(loaded.sizeClass.has_value());
+    REQUIRE_FALSE(loaded.weaponGroup.has_value());
+    REQUIRE_FALSE(loaded.damageType.has_value());
+
+    // But other fields should still load correctly
+    REQUIRE(static_cast<int>(loaded.slot) == static_cast<int>(EquipmentSlot::WEAPON));
+    REQUIRE(loaded.modifiers.power == Catch::Approx(0.5f));
+    REQUIRE(loaded.modifiers.defense == Catch::Approx(1.0f));
+    REQUIRE(loaded.modifiers.maxHp == Catch::Approx(5.0f));
+    REQUIRE(loaded.modifiers.skill == 40);
+    REQUIRE(loaded.weight == Catch::Approx(2.5f));
+    REQUIRE(loaded.value == 100);
+    REQUIRE(loaded.rangedStats.has_value());
+    REQUIRE(loaded.rangedStats->range == 30);
+    REQUIRE(loaded.currentAmmo == 30);
+
+    // Cleanup
+    std::remove(tempFile);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: weapon-types — checkCombatMode Tests (Task 7.1 - message variant)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 6 (extended): checkCombatMode returns message when blocked ─────
+// Feature: weapon-types, Property 6: Size classification combat-mode gate
+// **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
+//
+// checkCombatMode returns allowed=true with empty message when permitted,
+// and allowed=false with non-empty message when blocked.
+
+TEST_CASE("PBT: Property 6 (extended) — checkCombatMode message consistency",
+          "[pbt][property][weapon-types]")
+{
+    rc::prop("checkCombatMode message is empty iff allowed, non-empty iff blocked", []() {
+        // Generate a random SizeClassification
+        auto scIdx = *rc::gen::inRange(0, 5);
+        auto sizeClass = static_cast<SizeClassification>(scIdx);
+
+        // Generate a random range (1..50) and distance (1..60, can exceed range)
+        int range = *rc::gen::inRange(1, 51);
+        int distance = *rc::gen::inRange(1, 61);
+
+        auto result = checkCombatMode(sizeClass, distance, range);
+
+        // allowed field must match isRangedAttackAllowed (except MELEE at d=1 is a melee-only case)
+        // For MELEE: checkCombatMode should block ranged (allowed=false with message)
+        // For others: same logic as isRangedAttackAllowed
+        bool expectedAllowed = false;
+        switch (sizeClass) {
+            case SizeClassification::PISTOL:
+                expectedAllowed = (distance >= 1 && distance <= range);
+                break;
+            case SizeClassification::BASIC:
+                expectedAllowed = (distance >= 2 && distance <= range);
+                break;
+            case SizeClassification::HEAVY:
+                expectedAllowed = (distance >= 2 && distance <= range);
+                break;
+            case SizeClassification::MELEE:
+                // Melee at d=1: allowed (melee attack). Melee at d>1: blocked.
+                expectedAllowed = (distance == 1);
+                break;
+            case SizeClassification::THROWN:
+                expectedAllowed = (distance >= 1 && distance <= range);
+                break;
+        }
+
+        RC_ASSERT(result.allowed == expectedAllowed);
+
+        // Message consistency: non-empty iff blocked
+        if (result.allowed) {
+            RC_ASSERT(result.message.empty());
+        } else {
+            RC_ASSERT(!result.message.empty());
+        }
+    });
+}
+
+// ─── Unit tests: checkCombatMode message content ─────────────────────────────
+// **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
+
+TEST_CASE("checkCombatMode: Pistol at adjacent target is allowed with empty message", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::PISTOL, 1, 30);
+    REQUIRE(result.allowed);
+    REQUIRE(result.message.empty());
+}
+
+TEST_CASE("checkCombatMode: Basic weapon at adjacent target produces block message", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::BASIC, 1, 30);
+    REQUIRE_FALSE(result.allowed);
+    REQUIRE_FALSE(result.message.empty());
+    // Message should indicate the weapon cannot be used at this range
+    REQUIRE(result.message.find("cannot") != std::string::npos);
+}
+
+TEST_CASE("checkCombatMode: Heavy weapon at adjacent target produces block message", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::HEAVY, 1, 45);
+    REQUIRE_FALSE(result.allowed);
+    REQUIRE_FALSE(result.message.empty());
+    REQUIRE(result.message.find("cannot") != std::string::npos);
+}
+
+TEST_CASE("checkCombatMode: Basic weapon at distance 2 is allowed", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::BASIC, 2, 30);
+    REQUIRE(result.allowed);
+    REQUIRE(result.message.empty());
+}
+
+TEST_CASE("checkCombatMode: Melee weapon at adjacent target is allowed", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::MELEE, 1, 1);
+    REQUIRE(result.allowed);
+    REQUIRE(result.message.empty());
+}
+
+TEST_CASE("checkCombatMode: Melee weapon at distance > 1 produces block message", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::MELEE, 5, 30);
+    REQUIRE_FALSE(result.allowed);
+    REQUIRE_FALSE(result.message.empty());
+}
+
+TEST_CASE("checkCombatMode: Thrown weapon at any distance within range is allowed", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::THROWN, 1, 10);
+    REQUIRE(result.allowed);
+    REQUIRE(result.message.empty());
+
+    auto result2 = checkCombatMode(SizeClassification::THROWN, 10, 10);
+    REQUIRE(result2.allowed);
+    REQUIRE(result2.message.empty());
+}
+
+TEST_CASE("checkCombatMode: Thrown weapon beyond range is blocked", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::THROWN, 11, 10);
+    REQUIRE_FALSE(result.allowed);
+    REQUIRE_FALSE(result.message.empty());
+}
+
+TEST_CASE("checkCombatMode: Pistol beyond range is blocked with message", "[weapon-types]")
+{
+    auto result = checkCombatMode(SizeClassification::PISTOL, 31, 30);
+    REQUIRE_FALSE(result.allowed);
+    REQUIRE_FALSE(result.message.empty());
+}

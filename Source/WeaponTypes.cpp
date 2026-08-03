@@ -1,5 +1,7 @@
 #include "main.h"
 #include "WeaponTypes.h"
+#include "Actor.h"
+#include "CareerProgression.h"
 
 #include <array>
 #include <string>
@@ -137,10 +139,29 @@ WeaponValidationResult validateWeaponClassification(
 
 // ─── Proficiency Check Utility ───────────────────────────────────────────────
 
-bool hasProficiency(const Actor* /*actor*/, WeaponGroup /*group*/) {
-    return false; // stub — always returns no proficiency
+bool hasProficiency(const Actor* actor, WeaponGroup group) {
+    if (!actor || !actor->career) {
+        return false;
+    }
+    std::string talentStr = "Weapon Training (" + std::string(weaponGroupName(group)) + ")";
+    return actor->career->talents.count(talentStr) > 0;
 }
 
-int proficiencyModifier(const Actor* /*actor*/, WeaponGroup /*group*/) {
-    return 0; // stub — will be implemented in Task 6.2
+int proficiencyModifier(const Actor* actor, WeaponGroup group) {
+    return hasProficiency(actor, group) ? 0 : -20;
+}
+
+
+// ─── Combat-Mode Gate (stub — always allows; Task 7.2 will implement the real logic) ─────
+
+bool isRangedAttackAllowed(SizeClassification sizeClass, int distance, int range) {
+    // Stub: always allows. Tests for Property 6 will FAIL until Task 7.2 implements the real gate.
+    (void)sizeClass;
+    (void)distance;
+    (void)range;
+    return true;
+}
+
+CombatModeResult checkCombatMode(SizeClassification /*sizeClass*/, int /*distance*/, int /*range*/) {
+    return { true, "" }; // stub — allows everything
 }
