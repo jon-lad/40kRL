@@ -11,6 +11,42 @@ void PlayerAi::update(Actor* owner)
 {
 	if (owner->destructible && owner->destructible->isDead()) { return; }
 
+	// Handle pending door direction selection
+	if (waitingForDoorDirection) {
+		int dx = 0, dy = 0;
+		switch (engine.inputState.key.key) {
+			case SDLK_UP:    dy = -1; break;
+			case SDLK_DOWN:  dy =  1; break;
+			case SDLK_LEFT:  dx = -1; break;
+			case SDLK_RIGHT: dx =  1; break;
+			case SDLK_ESCAPE:
+				// Cancel door direction selection
+				waitingForDoorDirection = false;
+				pendingDoors.clear();
+				engine.gui->message(Colors::lightGrey, "Cancelled.");
+				return;
+			default: return; // Ignore other keys while waiting for direction
+		}
+		if (dx != 0 || dy != 0) {
+			int targetX = owner->getX() + dx;
+			int targetY = owner->getY() + dy;
+			// Find a door at the chosen direction
+			for (Actor* door : pendingDoors) {
+				if (door->getX() == targetX && door->getY() == targetY) {
+					door->openable->open(door);
+					engine.gameStatus = Engine::NEW_TURN;
+					waitingForDoorDirection = false;
+					pendingDoors.clear();
+					return;
+				}
+			}
+			engine.gui->message(Colors::lightGrey, "There is no door in that direction.");
+			waitingForDoorDirection = false;
+			pendingDoors.clear();
+		}
+		return;
+	}
+
 	int dx = 0, dy = 0;
 	switch (engine.inputState.key.key) {
 		case SDLK_UP:    dy = -1; break;
@@ -256,9 +292,13 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			closedDoors[0]->openable->open(closedDoors[0]);
 			engine.gameStatus = Engine::NEW_TURN;
 		} else {
-			// Multiple adjacent closed doors — prompt direction.
-			// For now, display a message. A full direction-selection UI can be added later.
-			engine.gui->message(Colors::lightGrey, "Which direction? (use arrow keys)");
+			// Multiple adjacent closed doors — prompt for direction.
+			PlayerAi* playerAi = dynamic_cast<PlayerAi*>(owner->ai.get());
+			if (playerAi) {
+				playerAi->waitingForDoorDirection = true;
+				playerAi->pendingDoors = closedDoors;
+				engine.gui->message(Colors::lightGrey, "Which direction? (use arrow keys)");
+			}
 		}
 		break;
 	}

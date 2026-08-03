@@ -59,6 +59,10 @@ public:
 	void save(TCODZip& zip) override;
 	void load(TCODZip& zip) override;
 
+	// Door direction selection state
+	bool waitingForDoorDirection = false;
+	std::vector<Actor*> pendingDoors; // doors found during 'o' key; awaiting direction
+
 protected:
 	// Moves to (targetX, targetY) or attacks the living actor there.
 	// Returns true if the player actually moved (FOV needs recomputing).
