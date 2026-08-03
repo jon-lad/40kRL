@@ -148,6 +148,7 @@
     <ClCompile Include="test_sidebar.cpp" />
     <ClCompile Include="test_tabbed_menu.cpp" />
     <ClCompile Include="test_chargen_desc.cpp" />
+    <ClCompile Include="test_critical_injuries.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
