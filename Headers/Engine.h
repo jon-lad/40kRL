@@ -27,6 +27,11 @@ struct EquipmentTemplate {
 	std::optional<MeleeStats> meleeStats;      // present for weapons
 	std::optional<ArmourProfile> armourProfile; // present for armour
 	std::optional<RangedStats> rangedStats;    // present for ranged weapons
+
+	// Weapon classification metadata (empty for non-weapon items)
+	std::optional<SizeClassification> sizeClass;
+	std::optional<WeaponGroup> weaponGroup;
+	std::optional<DamageType> damageType;
 };
 
 // Parsed from Lua during enemy template loading. Determines how an enemy
