@@ -210,11 +210,10 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 			"Critical Hit on #! #",
 			HitLocationTable::name(loc), critEffect.description);
 
-		// Trigger death — die() handles corpse transformation
-		if (critEffect.fatal || critMagnitude >= 5) {
-			target->destructible->die(target);
+		// Player survives crits below magnitude 5 (unless the effect is explicitly fatal)
+		if (!critEffect.fatal && critMagnitude < 3) {
+			target->destructible->hp = 1;
 		} else {
-			// Non-fatal critical but HP <= 0: still die
 			target->destructible->die(target);
 		}
 	} else {

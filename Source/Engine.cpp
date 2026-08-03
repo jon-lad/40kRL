@@ -43,8 +43,21 @@ void Engine::update()
 	// Handle targeting state — skip all normal game logic.
 	if (gameStatus == TARGETING) {
 		updateTargeting();
-		// If targeting resolved (set NEW_TURN), fall through to process enemy turns this frame.
-		if (gameStatus != NEW_TURN) return;
+		// If targeting resolved (set NEW_TURN), skip player update and run enemy turns directly.
+		if (gameStatus == NEW_TURN) {
+			map->currentScentValue++;
+			for (auto i = actors.begin(); i != actors.end(); ) {
+				if (i->get() == nullptr) {
+					i = actors.erase(i);
+				} else if (i->get() != player) {
+					i->get()->update();
+					++i;
+				} else {
+					++i;
+				}
+			}
+		}
+		return;
 	}
 
 	// Handle inventory state — skip all normal game logic.
@@ -89,10 +102,7 @@ void Engine::update()
 		return;
 	}
 
-	// Only reset to IDLE if not already in a turn-advancing state (e.g. from targeting resolution)
-	if (gameStatus != NEW_TURN) {
-		gameStatus = IDLE;
-	}
+	gameStatus = IDLE;
 
 	if (inputState.key.key == SDLK_ESCAPE) {
 		save();
