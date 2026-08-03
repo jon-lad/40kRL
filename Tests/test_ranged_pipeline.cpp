@@ -238,8 +238,8 @@ TEST_CASE("RangedAi: melee attack when adjacent to target", "[ranged-ai][integra
 // ═══════════════════════════════════════════════════════════════════════════════
 
 TEST_CASE("RangedAi: moves toward player when out of weapon range", "[ranged-ai][integration]") {
-    // Setup: enemy at (5, 5), player at (5, 18) — distance 13, weapon range only 5
-    auto player = makeTestPlayer(5, 18);
+    // Setup: enemy at (5, 5), player at (5, 13) — distance 8 (within FOV radius 10), weapon range only 5
+    auto player = makeTestPlayer(5, 13);
     auto enemy = makeRangedEnemy(5, 5, "Ork Shooter", 40, 30, 30, 30, 20.0f, 18, 10, 5);
 
     Actor* oldPlayer = engine.player;
@@ -248,7 +248,7 @@ TEST_CASE("RangedAi: moves toward player when out of weapon range", "[ranged-ai]
     auto oldMap = std::move(engine.map);
     engine.map = makeOpenMap(20, 20);
     player->setX(5);
-    player->setY(18);
+    player->setY(13);
     engine.map->computeFOV();
 
     int startX = enemy->getX();
@@ -270,8 +270,8 @@ TEST_CASE("RangedAi: moves toward player when out of weapon range", "[ranged-ai]
         CHECK(moved);
 
         // Should be closer to player after moving
-        float distBefore = sqrtf(static_cast<float>((startX - 5) * (startX - 5) + (startY - 18) * (startY - 18)));
-        float distAfter = sqrtf(static_cast<float>((enemy->getX() - 5) * (enemy->getX() - 5) + (enemy->getY() - 18) * (enemy->getY() - 18)));
+        float distBefore = sqrtf(static_cast<float>((startX - 5) * (startX - 5) + (startY - 13) * (startY - 13)));
+        float distAfter = sqrtf(static_cast<float>((enemy->getX() - 5) * (enemy->getX() - 5) + (enemy->getY() - 13) * (enemy->getY() - 13)));
         CHECK(distAfter <= distBefore);
     } else {
         WARN("Enemy not in FOV — BSP map generation placed walls. Test inconclusive.");
