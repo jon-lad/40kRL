@@ -21,6 +21,7 @@ class Actor;
 #include "CharacterData.h"
 #include "CareerProgression.h"
 #include "CharacterSheet.h"
+#include "InjuryTracker.h"
 #include "Actor.h"
 #include "Map.h"
 #include "SkillBarEntry.h"

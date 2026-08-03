@@ -161,6 +161,14 @@ void Gui::renderMouseLook()
 		if (actor->getX() == worldX && actor->getY() == worldY) {
 			if (!actorNames.empty()) { actorNames += ", "; }
 			actorNames += actor->name;
+
+			// Append injury summary if the actor has active injuries
+			if (actor->injuryTracker && actor->injuryTracker->hasInjuries()) {
+				std::stringstream injInfo;
+				injInfo << " [Injuries: " << actor->injuryTracker->activeCount()
+				        << " (Mag " << actor->injuryTracker->getMagnitude() << ")]";
+				actorNames += injInfo.str();
+			}
 		}
 	}
 
@@ -347,6 +355,38 @@ void Gui::renderRightSidebar()
 		rightSidebarConsole->setDefaultForeground(Colors::uiText);
 		rightSidebarConsole->printf(1, row, "No skills");
 		row++;
+	}
+
+	row++;
+
+	// ─── Critical Injuries Section ───────────────────────────────────────
+	if (engine.player->injuryTracker && engine.player->injuryTracker->hasInjuries()) {
+		rightSidebarConsole->setDefaultForeground(Colors::white);
+		rightSidebarConsole->printf(1, row, "-- Critical Injuries --");
+		row += 2;
+
+		// Total magnitude
+		std::stringstream magLine;
+		magLine << "Magnitude: " << engine.player->injuryTracker->getMagnitude();
+		rightSidebarConsole->setDefaultForeground(Colors::uiText);
+		rightSidebarConsole->printf(1, row, magLine.str().c_str());
+		row++;
+
+		// List each injury record
+		const auto& records = engine.player->injuryTracker->getRecords();
+		for (const auto& record : records) {
+			if (row >= layout::SCREEN_HEIGHT - 1) break;
+			std::stringstream injuryLine;
+			injuryLine << "  " << HitLocationTable::name(record.location)
+			           << " (mag " << record.magnitude << ")";
+			std::string display = injuryLine.str();
+			if (static_cast<int>(display.size()) > sidebarWidth - 2) {
+				display = display.substr(0, sidebarWidth - 5) + "...";
+			}
+			rightSidebarConsole->setDefaultForeground(Colors::uiText);
+			rightSidebarConsole->printf(1, row, display.c_str());
+			row++;
+		}
 	}
 
 	// Blit sidebar to root console at (SCREEN_WIDTH - RIGHT_SIDEBAR_WIDTH, 0)

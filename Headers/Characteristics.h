@@ -23,6 +23,14 @@ public:
 	int  get(CharId id) const;
 	void set(CharId id, int value);
 
+	// Returns the raw base value without modifiers applied.
+	int  getBase(CharId id) const;
+
+	// Modifier overlay for temporary stat adjustments (injuries, buffs).
+	void addModifier(CharId id, int amount);
+	void removeModifier(CharId id, int amount);
+	int  getModifier(CharId id) const;
+
 	// Bonus = value / 10 (integer division, always in [0, 9]).
 	int  bonus(CharId id) const;
 
@@ -35,6 +43,7 @@ public:
 
 private:
 	std::array<int, CHAR_COUNT> values_;
+	std::array<int, CHAR_COUNT> modifiers_{}; // sum of all active modifiers per stat
 
 	static int clamp(int value);
 };

@@ -202,8 +202,12 @@ void resolve(Actor* shooter, Actor* target,
 						"Critical Hit on #! #",
 						HitLocationTable::name(result.location), critEffect.description);
 
-					target->destructible->die(target);
-					result.targetKilled = true;
+					if (!critEffect.fatal && critMagnitude < 3) {
+						target->destructible->hp = 1;
+					} else {
+						target->destructible->die(target);
+						result.targetKilled = true;
+					}
 				} else {
 					engine.gui->message(Colors::damage, "# deals # damage to #'s #.",
 						shooter->name, result.finalDamage, target->name,

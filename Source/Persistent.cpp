@@ -600,6 +600,10 @@ void Actor::save(TCODZip& zip)
 	// (old saves without this field will read 0 from archive end → no Openable created).
 	zip.putInt(openable != nullptr);
 	if (openable) openable->save(zip);
+
+	// InjuryTracker presence flag — appended AFTER openable for backward compatibility
+	zip.putInt(injuryTracker != nullptr);
+	if (injuryTracker) injuryTracker->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -694,6 +698,14 @@ void Actor::load(TCODZip& zip)
 				engine.map->setTileProperties(x, y, false, false);
 			}
 		}
+	}
+
+	// InjuryTracker presence flag — appended AFTER openable for backward compatibility
+	const bool hasInjuryTracker = zip.getInt();
+	if (hasInjuryTracker) {
+		injuryTracker = std::make_unique<InjuryTracker>();
+		injuryTracker->load(zip);
+		injuryTracker->reapplyDebuffs(this);
 	}
 }
 

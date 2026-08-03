@@ -19,14 +19,32 @@ float Destructible::takeDamage(Actor* owner, float damage)
 	return damage;
 }
 
-float Destructible::heal(float amount)
+float Destructible::heal(float amount, Actor* owner)
 {
-	hp += amount;
-	if (hp > maxHp) {
-		amount -= static_cast<int>(hp) - static_cast<int>(maxHp);
-		hp = maxHp;
+	float healAmount = amount;
+
+	// If the actor has crit magnitude, healing reduces it first
+	if (owner && owner->injuryTracker && owner->injuryTracker->getMagnitude() > 0) {
+		int intAmount = static_cast<int>(healAmount);
+		int excess = owner->injuryTracker->healMagnitude(intAmount);
+		healAmount = static_cast<float>(excess); // only excess heals HP
+
+		if (intAmount > excess) {
+			engine.gui->message(Colors::healing, "#'s critical injuries are reduced.",
+				owner->name);
+		}
 	}
-	return static_cast<float>(amount);
+
+	// Apply remaining healing to HP
+	if (healAmount > 0) {
+		hp += healAmount;
+		if (hp > maxHp) {
+			healAmount -= (hp - maxHp);
+			hp = maxHp;
+		}
+	}
+
+	return healAmount;
 }
 
 void Destructible::die(Actor* owner)
