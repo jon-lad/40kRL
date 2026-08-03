@@ -22,15 +22,16 @@ TEST_CASE("PBT: CP437 codepoint maps to correct tile coordinates",
           "[pbt][property][ui-rework][cp437]")
 {
     // Feature: ui-rework, Property 11: CP437 glyph mapping correctness
+    // Exhaustive check: all 256 valid codepoints map to correct tile coordinates.
+    // This replaces the randomized PBT because the function is pure and the domain
+    // is small enough to check exhaustively, avoiding flaky interactions with other
+    // RapidCheck tests in the same process.
     SECTION("Any valid codepoint produces (codepoint % 16, codepoint / 16)") {
-        rc::prop("tileCoords(cp) == (cp % 16, cp / 16) for cp in [0,255]", []() {
-            const int codepoint = *rc::gen::inRange(0, 256);
-
+        for (int codepoint = 0; codepoint <= 255; ++codepoint) {
             auto [col, row] = cp437::tileCoords(codepoint);
-
-            RC_ASSERT(col == codepoint % 16);
-            RC_ASSERT(row == codepoint / 16);
-        });
+            REQUIRE(col == codepoint % 16);
+            REQUIRE(row == codepoint / 16);
+        }
     }
 }
 
