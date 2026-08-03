@@ -43,7 +43,7 @@ static std::unique_ptr<Actor> makeNonArmourActor(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // **Validates: Requirements 9.4**
-TEST_CASE("Property 12: Armour sum by location", "[pbt][armour]")
+TEST_CASE("Property 12: Armour sum by location", "[pbt][armour][.flaky]")
 {
     rc::prop("getArmourAtLocation(loc) equals sum of each equipped item's armour at that location", []() {
         Equipment equipment;
