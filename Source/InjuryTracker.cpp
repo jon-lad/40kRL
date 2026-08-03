@@ -65,11 +65,24 @@ int InjuryTracker::activeCount() const {
 }
 
 void InjuryTracker::save(TCODZip& zip) {
-    // STUB: to be implemented in task 5.3
+    static constexpr int SENTINEL = 0x494E4A52; // "INJR"
+    zip.putInt(SENTINEL);
+    for (int i = 0; i < MAX_LOCATIONS; ++i) {
+        zip.putInt(magnitudes_[i]);
+    }
 }
 
 void InjuryTracker::load(TCODZip& zip) {
-    // STUB: to be implemented in task 5.3
+    static constexpr int SENTINEL = 0x494E4A52; // "INJR"
+    int firstInt = zip.getInt();
+    if (firstInt != SENTINEL) {
+        // Backward compatibility: no valid injury data, stay empty
+        magnitudes_.fill(0);
+        return;
+    }
+    for (int i = 0; i < MAX_LOCATIONS; ++i) {
+        magnitudes_[i] = std::clamp(zip.getInt(), 0, MAX_MAGNITUDE);
+    }
 }
 
 void InjuryTracker::reapplyDebuffs(Actor* owner) {
