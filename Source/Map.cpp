@@ -812,7 +812,12 @@ bool Map::isInFOV(int x, int y) const
 
 void Map::computeFOV()
 {
-	map->computeFov(engine.player->getX(), engine.player->getY(), engine.fovRadius);
+	int px = engine.player->getX();
+	int py = engine.player->getY();
+	// Guard against out-of-bounds player position (can happen during test init)
+	if (px < 0 || px >= width || py < 0 || py >= height) return;
+
+	map->computeFov(px, py, engine.fovRadius);
 
 	// Stamp scent on every tile now in FOV, attenuated by distance.
 	for (int x = 0; x < width; ++x) {
