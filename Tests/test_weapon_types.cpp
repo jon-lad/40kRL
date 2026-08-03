@@ -1309,3 +1309,124 @@ TEST_CASE("checkCombatMode: Pistol beyond range is blocked with message", "[weap
     REQUIRE_FALSE(result.allowed);
     REQUIRE_FALSE(result.message.empty());
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: weapon-types — Integration Test: Equipment.lua Classification (Task 10.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Integration: Load Equipment.lua and verify weapon classification metadata ─
+// **Validates: Requirements 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9, 10.10**
+//
+// This test loads the actual Equipment.lua file via sol2, iterates through
+// all weapon entries, and verifies:
+// 1) Every weapon has non-null sizeClass, weaponGroup, and damageType fields
+// 2) Each of the 10 existing weapons has the specific values from Requirement 10
+
+#include <sol/sol.hpp>
+
+TEST_CASE("Integration: Equipment.lua weapons have correct classification metadata",
+          "[weapon-types][integration]")
+{
+    sol::state lua;
+    lua.open_libraries(sol::lib::base);
+    lua.script_file("Scripts/Equipment.lua");
+
+    sol::table equipTable = lua["equipment"];
+    REQUIRE(equipTable.valid());
+
+    // Helper lambda: find entry by name in the equipment table
+    auto findEntry = [&](const std::string& name) -> sol::table {
+        for (size_t i = 1; i <= equipTable.size(); i++) {
+            sol::table entry = equipTable[i];
+            if (entry.get_or<std::string>("name", "") == name)
+                return entry;
+        }
+        return sol::table();
+    };
+
+    // Helper lambda: check that a weapon entry has valid classification fields
+    auto checkClassification = [](sol::table entry, const std::string& name,
+                                   const std::string& expectedSize,
+                                   const std::string& expectedGroup,
+                                   const std::string& expectedDamage) {
+        REQUIRE(entry.valid());
+        INFO("Checking weapon: " << name);
+
+        std::string sizeClass = entry.get_or<std::string>("sizeClass", "");
+        std::string weaponGroup = entry.get_or<std::string>("weaponGroup", "");
+        std::string damageType = entry.get_or<std::string>("damageType", "");
+
+        CHECK(sizeClass == expectedSize);
+        CHECK(weaponGroup == expectedGroup);
+        CHECK(damageType == expectedDamage);
+    };
+
+    SECTION("All weapon entries have non-null sizeClass, weaponGroup, damageType") {
+        for (size_t i = 1; i <= equipTable.size(); i++) {
+            sol::table entry = equipTable[i];
+            std::string name = entry.get_or<std::string>("name", "<unknown>");
+
+            // Determine if this is a weapon (has melee or ranged stats)
+            bool hasMelee = entry["melee"].valid() && entry["melee"].get_type() == sol::type::table;
+            bool hasRanged = entry["ranged"].valid() && entry["ranged"].get_type() == sol::type::table;
+            bool isWeapon = hasMelee || hasRanged;
+
+            if (isWeapon) {
+                INFO("Weapon entry: " << name);
+                std::string sc = entry.get_or<std::string>("sizeClass", "");
+                std::string wg = entry.get_or<std::string>("weaponGroup", "");
+                std::string dt = entry.get_or<std::string>("damageType", "");
+
+                CHECK_FALSE(sc.empty());
+                CHECK_FALSE(wg.empty());
+                CHECK_FALSE(dt.empty());
+
+                // Also verify they parse to valid enum values
+                if (!sc.empty()) CHECK(parseSizeClassification(sc).has_value());
+                if (!wg.empty()) CHECK(parseWeaponGroup(wg).has_value());
+                if (!dt.empty()) CHECK(parseDamageType(dt).has_value());
+            }
+        }
+    }
+
+    SECTION("Combat Knife has correct classification") {
+        checkClassification(findEntry("Combat Knife"), "Combat Knife", "Melee", "Primitive", "R");
+    }
+
+    SECTION("Chainsword has correct classification") {
+        checkClassification(findEntry("Chainsword"), "Chainsword", "Melee", "Primitive", "R");
+    }
+
+    SECTION("Power Sword has correct classification") {
+        checkClassification(findEntry("Power Sword"), "Power Sword", "Melee", "Primitive", "E");
+    }
+
+    SECTION("Laspistol has correct classification") {
+        checkClassification(findEntry("Laspistol"), "Laspistol", "Pistol", "Las", "E");
+    }
+
+    SECTION("Autogun has correct classification") {
+        checkClassification(findEntry("Autogun"), "Autogun", "Basic", "SP", "I");
+    }
+
+    SECTION("Choppa has correct classification") {
+        checkClassification(findEntry("Choppa"), "Choppa", "Melee", "Primitive", "R");
+    }
+
+    SECTION("Slugga has correct classification") {
+        checkClassification(findEntry("Slugga"), "Slugga", "Pistol", "SP", "I");
+    }
+
+    SECTION("Shoota has correct classification") {
+        checkClassification(findEntry("Shoota"), "Shoota", "Basic", "SP", "I");
+    }
+
+    SECTION("Big Choppa has correct classification") {
+        checkClassification(findEntry("Big Choppa"), "Big Choppa", "Melee", "Primitive", "I");
+    }
+
+    SECTION("Power Klaw has correct classification") {
+        checkClassification(findEntry("Power Klaw"), "Power Klaw", "Melee", "Exotic", "I");
+    }
+}
