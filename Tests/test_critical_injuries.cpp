@@ -2,6 +2,7 @@
 #include "lib/rapidcheck_catch.h"
 #include "main.h"
 #include "InjuryDebuffs.h"
+#include "InjuryTracker.h"
 
 #include <algorithm>
 
@@ -373,4 +374,410 @@ TEST_CASE("Debuff lookup table correctness — all 24 entries match spec", "[cri
     REQUIRE(e.modifiers[0].penalty == -20);
     REQUIRE(e.modifiers[1].stat == CharId::WS);
     REQUIRE(e.modifiers[1].penalty == -10);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: critical-injuries — Property 4: Heal clears all injuries (round-trip)
+// ═══════════════════════════════════════════════════════════════════════════════
+// **Validates: Requirements 4.1, 4.2**
+
+TEST_CASE("PBT: Property 4 — Heal clears all injuries (round-trip)",
+          "[pbt][critical-injuries]")
+{
+    // Feature: critical-injuries, Property 4: Heal clears all injuries (round-trip)
+    rc::prop("clearAll restores all magnitudes to zero and stats to base for any injury state",
+        []() {
+            // 1. Create an Actor with known base Characteristics
+            const int baseValue = *rc::gen::inRange(20, 80); // reasonable base stat range
+            Actor owner(0, 0, '@', "TestSubject", TCODColor::white);
+            owner.characteristics = std::make_shared<Characteristics>(baseValue);
+
+            // 2. Generate random injuries: 0-6 locations, magnitudes 1-4
+            //    Each location can have 0 or 1 injury (per design: one injury per location max).
+            //    We generate a random magnitude for each of the 6 locations; 0 means no injury.
+            std::array<int, 6> injuryMagnitudes;
+            for (int i = 0; i < 6; ++i) {
+                injuryMagnitudes[i] = *rc::gen::inRange(0, 5); // 0 = none, 1-4 = active
+            }
+
+            // 3. Create InjuryTracker and apply all generated injuries
+            InjuryTracker tracker;
+            for (int i = 0; i < 6; ++i) {
+                if (injuryMagnitudes[i] > 0) {
+                    const auto loc = static_cast<HitLocation>(i);
+                    tracker.applyInjury(&owner, loc, injuryMagnitudes[i]);
+                }
+            }
+
+            // 4. Call clearAll to remove all injuries and reverse debuffs
+            tracker.clearAll(&owner);
+
+            // 5. Verify all magnitudes are zero
+            for (int i = 0; i < 6; ++i) {
+                const auto loc = static_cast<HitLocation>(i);
+                RC_ASSERT(tracker.getMagnitude(loc) == 0);
+            }
+
+            // 6. Verify each Characteristic's get() value equals its base value
+            //    (all modifiers fully reversed)
+            for (int c = 0; c < Characteristics::CHAR_COUNT; ++c) {
+                const auto charId = static_cast<CharId>(c);
+                RC_ASSERT(owner.characteristics->get(charId) == baseValue);
+                RC_ASSERT(owner.characteristics->getModifier(charId) == 0);
+            }
+        });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: critical-injuries — Property 3: Escalation increments magnitude
+// ═══════════════════════════════════════════════════════════════════════════════
+// **Validates: Requirements 3.1, 3.4**
+
+TEST_CASE("PBT: Property 3 — Escalation increments magnitude",
+          "[pbt][critical-injuries]")
+{
+    rc::prop("applying injury to already-injured location escalates magnitude by 1 with no duplicates",
+        []() {
+            // Generate a random HitLocation (0-5)
+            const int locInt = *rc::gen::inRange(0, 5);
+            const auto loc = static_cast<HitLocation>(locInt);
+
+            // Generate an initial magnitude in [1,3] (must leave room to escalate)
+            const int initialMag = *rc::gen::inRange(1, 3);
+
+            // Create an Actor with Characteristics
+            Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+            actor.characteristics = std::make_shared<Characteristics>(40);
+
+            // Create an InjuryTracker and apply the initial injury
+            InjuryTracker tracker;
+            bool applied = tracker.applyInjury(&actor, loc, initialMag);
+            RC_ASSERT(applied);
+            RC_ASSERT(tracker.getMagnitude(loc) == initialMag);
+
+            // Apply another injury at the SAME location (should escalate)
+            bool escalated = tracker.applyInjury(&actor, loc, initialMag);
+            RC_ASSERT(escalated);
+
+            // Verify magnitude incremented by exactly 1
+            RC_ASSERT(tracker.getMagnitude(loc) == initialMag + 1);
+
+            // Verify no duplicate injury records — only one active injury location
+            RC_ASSERT(tracker.activeCount() == 1);
+        });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: critical-injuries — Unit Tests for Escalation Edge Cases
+// ═══════════════════════════════════════════════════════════════════════════════
+// **Validates: Requirements 3.2, 1.3, 1.4**
+
+// ─── Helper: create a minimal Actor with Characteristics for injury tests ────
+
+namespace {
+    // Creates a test actor with a Characteristics component initialized to a given base.
+    std::unique_ptr<Actor> makeTestActor(const std::string& name, int baseStat = 40) {
+        auto actor = std::make_unique<Actor>(0, 0, '@', name, TCODColor::white);
+        actor->characteristics = std::make_shared<Characteristics>(baseStat);
+        return actor;
+    }
+}
+
+// ─── Escalation from magnitude 4 returns false (triggers fatal) ──────────────
+// Validates: Requirement 3.2
+
+TEST_CASE("InjuryTracker: escalation from magnitude 4 returns false",
+          "[critical-injuries][escalation]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    // Apply initial injuries to reach magnitude 4 via escalation
+    // First injury at mag 1
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::HEAD, 1) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::HEAD) == 1);
+
+    // Escalate to 2
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::HEAD, 1) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::HEAD) == 2);
+
+    // Escalate to 3
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::HEAD, 1) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::HEAD) == 3);
+
+    // Escalate to 4
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::HEAD, 1) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::HEAD) == 4);
+
+    // Attempting to escalate from 4 should return false (fatal trigger)
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::HEAD, 1) == false);
+    // Magnitude should remain at 4 (not 5)
+    REQUIRE(tracker.getMagnitude(HitLocation::HEAD) == 4);
+}
+
+TEST_CASE("InjuryTracker: direct mag 4 then escalation returns false",
+          "[critical-injuries][escalation]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    // Apply directly at magnitude 4
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::BODY, 4) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::BODY) == 4);
+
+    // Escalation attempt should return false
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::BODY, 2) == false);
+    // Magnitude stays at 4
+    REQUIRE(tracker.getMagnitude(HitLocation::BODY) == 4);
+}
+
+// ─── Magnitude clamping: values outside [1,4] are clamped ────────────────────
+// Validates: Requirement 1.4 (design error-handling section)
+
+TEST_CASE("InjuryTracker: magnitude 0 is clamped to 1",
+          "[critical-injuries][injury-tracker]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    // magnitude 0 should be clamped to 1
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::LEFT_ARM, 0) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::LEFT_ARM) == 1);
+}
+
+TEST_CASE("InjuryTracker: negative magnitude is clamped to 1",
+          "[critical-injuries][injury-tracker]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    // Negative magnitude should be clamped to 1
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::RIGHT_LEG, -5) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::RIGHT_LEG) == 1);
+}
+
+TEST_CASE("InjuryTracker: magnitude 5 is clamped to 4",
+          "[critical-injuries][injury-tracker]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    // magnitude 5 should be clamped to 4
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::LEFT_LEG, 5) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::LEFT_LEG) == 4);
+}
+
+TEST_CASE("InjuryTracker: magnitude 10 is clamped to 4",
+          "[critical-injuries][injury-tracker]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    // Large magnitude should be clamped to 4
+    REQUIRE(tracker.applyInjury(actor.get(), HitLocation::BODY, 10) == true);
+    REQUIRE(tracker.getMagnitude(HitLocation::BODY) == 4);
+}
+
+// ─── hasInjuries() and activeCount() reflect state correctly ─────────────────
+// Validates: Requirement 1.3
+
+TEST_CASE("InjuryTracker: hasInjuries() is false on fresh tracker",
+          "[critical-injuries][injury-tracker]")
+{
+    InjuryTracker tracker;
+    REQUIRE(tracker.hasInjuries() == false);
+    REQUIRE(tracker.activeCount() == 0);
+}
+
+TEST_CASE("InjuryTracker: hasInjuries() true after single injury",
+          "[critical-injuries][injury-tracker]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    tracker.applyInjury(actor.get(), HitLocation::HEAD, 2);
+
+    REQUIRE(tracker.hasInjuries() == true);
+    REQUIRE(tracker.activeCount() == 1);
+}
+
+TEST_CASE("InjuryTracker: activeCount() reflects multiple locations",
+          "[critical-injuries][injury-tracker]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    tracker.applyInjury(actor.get(), HitLocation::HEAD, 1);
+    tracker.applyInjury(actor.get(), HitLocation::BODY, 2);
+    tracker.applyInjury(actor.get(), HitLocation::LEFT_LEG, 3);
+
+    REQUIRE(tracker.hasInjuries() == true);
+    REQUIRE(tracker.activeCount() == 3);
+}
+
+TEST_CASE("InjuryTracker: escalation does not increase activeCount",
+          "[critical-injuries][injury-tracker]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    tracker.applyInjury(actor.get(), HitLocation::RIGHT_ARM, 1);
+    REQUIRE(tracker.activeCount() == 1);
+
+    // Escalate same location — should stay at 1 active
+    tracker.applyInjury(actor.get(), HitLocation::RIGHT_ARM, 2);
+    REQUIRE(tracker.activeCount() == 1);
+    REQUIRE(tracker.getMagnitude(HitLocation::RIGHT_ARM) == 2);
+}
+
+TEST_CASE("InjuryTracker: clearAll resets hasInjuries and activeCount",
+          "[critical-injuries][injury-tracker]")
+{
+    auto actor = makeTestActor("TestVictim", 40);
+    InjuryTracker tracker;
+
+    tracker.applyInjury(actor.get(), HitLocation::HEAD, 1);
+    tracker.applyInjury(actor.get(), HitLocation::BODY, 3);
+    tracker.applyInjury(actor.get(), HitLocation::LEFT_LEG, 2);
+    REQUIRE(tracker.activeCount() == 3);
+
+    tracker.clearAll(actor.get());
+
+    REQUIRE(tracker.hasInjuries() == false);
+    REQUIRE(tracker.activeCount() == 0);
+}
+
+// ─── Player and enemy actors receive identical debuffs for same injury ───────
+// Validates: Requirement 1.3
+
+TEST_CASE("InjuryTracker: player and enemy get identical debuffs for same injury",
+          "[critical-injuries][injury-tracker]")
+{
+    // Create two actors with identical base stats
+    auto player = makeTestActor("Player", 40);
+    auto enemy  = makeTestActor("Ork Boy", 40);
+
+    InjuryTracker playerTracker;
+    InjuryTracker enemyTracker;
+
+    // Apply the same injury to both
+    playerTracker.applyInjury(player.get(), HitLocation::HEAD, 3);
+    enemyTracker.applyInjury(enemy.get(), HitLocation::HEAD, 3);
+
+    // HEAD mag 3: WS -10, BS -10
+    // Both should have identical effective stats
+    REQUIRE(player->characteristics->get(CharId::WS) == enemy->characteristics->get(CharId::WS));
+    REQUIRE(player->characteristics->get(CharId::BS) == enemy->characteristics->get(CharId::BS));
+
+    // Verify the actual penalty values (base 40 - 10 = 30)
+    REQUIRE(player->characteristics->get(CharId::WS) == 30);
+    REQUIRE(player->characteristics->get(CharId::BS) == 30);
+    REQUIRE(enemy->characteristics->get(CharId::WS) == 30);
+    REQUIRE(enemy->characteristics->get(CharId::BS) == 30);
+}
+
+TEST_CASE("InjuryTracker: player and enemy get identical debuffs for body injury",
+          "[critical-injuries][injury-tracker]")
+{
+    auto player = makeTestActor("Player", 50);
+    auto enemy  = makeTestActor("Chaos Marine", 50);
+
+    InjuryTracker playerTracker;
+    InjuryTracker enemyTracker;
+
+    // Apply BODY magnitude 4: T -20, S -10
+    playerTracker.applyInjury(player.get(), HitLocation::BODY, 4);
+    enemyTracker.applyInjury(enemy.get(), HitLocation::BODY, 4);
+
+    // T should be 50 - 20 = 30
+    REQUIRE(player->characteristics->get(CharId::T) == 30);
+    REQUIRE(enemy->characteristics->get(CharId::T) == 30);
+
+    // S should be 50 - 10 = 40
+    REQUIRE(player->characteristics->get(CharId::S) == 40);
+    REQUIRE(enemy->characteristics->get(CharId::S) == 40);
+
+    // Verify exact equality between player and enemy
+    REQUIRE(player->characteristics->get(CharId::T) == enemy->characteristics->get(CharId::T));
+    REQUIRE(player->characteristics->get(CharId::S) == enemy->characteristics->get(CharId::S));
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: critical-injuries — Property 2: Injury application and debuff state invariant
+// ═══════════════════════════════════════════════════════════════════════════════
+// **Validates: Requirements 1.1, 1.2, 3.3**
+
+TEST_CASE("PBT: Property 2 — Injury application and debuff state invariant",
+          "[pbt][critical-injuries]")
+{
+    // Feature: critical-injuries, Property 2: Injury application and debuff state invariant
+    rc::prop("effective stats equal base + sum of active debuffs (clamped [1,99]) after injury sequence",
+        []() {
+            // Generate a random base stat value in [10, 90] to keep room for penalties
+            const int baseStat = *rc::gen::inRange(10, 91);
+
+            // Create an Actor with Characteristics set to the base value
+            Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+            actor.characteristics = std::make_shared<Characteristics>(baseStat);
+
+            // Create an InjuryTracker
+            InjuryTracker tracker;
+
+            // Generate a random number of injury operations (1 to 12)
+            const int numOps = *rc::gen::inRange(1, 13);
+
+            // Track whether at least one applyInjury succeeded
+            bool anyApplied = false;
+
+            for (int i = 0; i < numOps; ++i) {
+                // Pick a random location and magnitude
+                const int locInt = *rc::gen::inRange(0, 6);
+                const int mag = *rc::gen::inRange(1, 5); // [1,4]
+                const auto loc = static_cast<HitLocation>(locInt);
+
+                bool result = tracker.applyInjury(&actor, loc, mag);
+                if (result) anyApplied = true;
+            }
+
+            // The invariant requires that applyInjury actually records injuries.
+            // If we applied at least one injury to a fresh tracker, it must have injuries.
+            // (first apply to any location should always succeed)
+            RC_ASSERT(anyApplied);
+            RC_ASSERT(tracker.hasInjuries());
+
+            // Now verify the invariant:
+            // For each Characteristic, get() must equal base + sum of all active debuff modifiers, clamped [1,99]
+
+            // Compute expected modifiers by summing the debuff table entries for each active injury
+            std::array<int, Characteristics::CHAR_COUNT> expectedModifiers{};
+
+            for (int locIdx = 0; locIdx < InjuryTracker::MAX_LOCATIONS; ++locIdx) {
+                int activeMag = tracker.getMagnitude(static_cast<HitLocation>(locIdx));
+                if (activeMag > 0) {
+                    auto entry = InjuryDebuffs::lookup(static_cast<HitLocation>(locIdx), activeMag);
+                    for (int m = 0; m < entry.count; ++m) {
+                        int statIdx = static_cast<int>(entry.modifiers[m].stat);
+                        expectedModifiers[statIdx] += entry.modifiers[m].penalty;
+                    }
+                }
+            }
+
+            // Check each Characteristic
+            for (int c = 0; c < Characteristics::CHAR_COUNT; ++c) {
+                int expectedValue = baseStat + expectedModifiers[c];
+                // Clamp to [1, 99]
+                if (expectedValue < Characteristics::MIN_VALUE)
+                    expectedValue = Characteristics::MIN_VALUE;
+                if (expectedValue > Characteristics::MAX_VALUE)
+                    expectedValue = Characteristics::MAX_VALUE;
+
+                int actualValue = actor.characteristics->get(static_cast<CharId>(c));
+
+                RC_ASSERT(actualValue == expectedValue);
+            }
+        });
 }

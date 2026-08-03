@@ -167,6 +167,7 @@
     <ClCompile Include="..\Source\Equipment.cpp" />
     <ClCompile Include="..\Source\LevelCache.cpp" />
     <ClCompile Include="..\Source\Characteristics.cpp" />
+    <ClCompile Include="..\Source\InjuryTracker.cpp" />
     <ClCompile Include="..\Source\DiceRoller.cpp" />
     <ClCompile Include="..\Source\HitLocation.cpp" />
     <ClCompile Include="..\Source\CriticalEffects.cpp" />
