@@ -175,6 +175,7 @@
     <ClCompile Include="Source\CharacterSheet.cpp" />
     <ClCompile Include="Source\Paginator.cpp" />
     <ClCompile Include="Source\TabbedMenuState.cpp" />
+    <ClCompile Include="Source\WeaponTypes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -213,6 +214,7 @@
     <ClInclude Include="Headers\ScreenLayout.h" />
     <ClInclude Include="Headers\SkillBarEntry.h" />
     <ClInclude Include="Headers\TabbedMenuState.h" />
+    <ClInclude Include="Headers\WeaponTypes.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
