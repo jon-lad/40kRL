@@ -1174,6 +1174,9 @@ void Map::addMonster(int x, int y)
 					item->equippable->meleeStats = tmpl->meleeStats;
 					item->equippable->armourProfile = tmpl->armourProfile;
 					item->equippable->rangedStats = tmpl->rangedStats;
+					item->equippable->sizeClass = tmpl->sizeClass;
+					item->equippable->weaponGroup = tmpl->weaponGroup;
+					item->equippable->damageType = tmpl->damageType;
 
 					// Equip the item (pass nullptr for Container since enemies don't use inventory)
 					Actor* itemPtr = item.get();
@@ -1234,6 +1237,9 @@ void Map::addItem(int x, int y)
 		item->equippable->meleeStats = tmpl.meleeStats;
 		item->equippable->armourProfile = tmpl.armourProfile;
 		item->equippable->rangedStats = tmpl.rangedStats;
+		item->equippable->sizeClass = tmpl.sizeClass;
+		item->equippable->weaponGroup = tmpl.weaponGroup;
+		item->equippable->damageType = tmpl.damageType;
 		item->assignRenderLayer();
 		engine.actors.emplace_front(std::move(item));
 		return;

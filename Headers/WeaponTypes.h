@@ -66,3 +66,15 @@ WeaponValidationResult validateWeaponClassification(
     const std::string& sizeClassStr,
     const std::string& weaponGroupStr,
     const std::string& damageTypeStr);
+
+// ─── Proficiency Check Utility ───────────────────────────────────────────────
+
+class Actor;  // forward declaration
+
+// Returns true if the actor has the required weapon training talent for the given group.
+// Checks CareerProgression::talents for "Weapon Training (<GroupName>)".
+bool hasProficiency(const Actor* actor, WeaponGroup group);
+
+// Returns the proficiency penalty (0 or -20) for the given actor and weapon group.
+// Returns -20 if the actor lacks the matching "Weapon Training (<GroupName>)" talent, else 0.
+int proficiencyModifier(const Actor* actor, WeaponGroup group);

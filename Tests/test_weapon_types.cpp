@@ -695,3 +695,212 @@ TEST_CASE("Weapon entry with each valid combination is accepted", "[weapon-types
     auto r4 = validateWeaponClassification("Krak Grenade", true, "Thrown", "Launcher", "X");
     REQUIRE(r4.accepted);
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: weapon-types — Proficiency Check Tests (Task 6.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 4: Proficiency modifier is determined by talent membership ─────
+// Feature: weapon-types, Property 4: Proficiency modifier is determined by talent membership
+// **Validates: Requirements 6.1, 6.2**
+//
+// For any WeaponGroup g, proficiencyModifier returns −20 iff the actor's talent set
+// lacks "Weapon Training (<GroupName>)", and 0 if it contains the matching talent.
+
+TEST_CASE("PBT: Property 4 — proficiencyModifier returns -20 iff talent missing",
+          "[pbt][property][weapon-types]")
+{
+    rc::prop("proficiencyModifier is -20 when talent absent, 0 when present", []() {
+        // Pick a random WeaponGroup
+        auto wgIdx = *rc::gen::inRange(0, 9);
+        auto group = static_cast<WeaponGroup>(wgIdx);
+        std::string groupName(weaponGroupName(group));
+
+        // Decide whether the actor has the matching talent
+        bool hasTalent = (*rc::gen::inRange(0, 2)) == 1;
+
+        // Create an actor with a CareerProgression component
+        Actor actor(0, 0, '@', "TestChar", TCODColor::white);
+        actor.career = std::make_shared<CareerProgression>();
+
+        if (hasTalent) {
+            actor.career->talents.insert("Weapon Training (" + groupName + ")");
+        }
+
+        // Also add some random unrelated talents to make the test more robust
+        auto numExtra = *rc::gen::inRange(0, 4);
+        for (int i = 0; i < numExtra; ++i) {
+            actor.career->talents.insert("Unrelated Talent " + std::to_string(i));
+        }
+
+        int modifier = proficiencyModifier(&actor, group);
+
+        if (hasTalent) {
+            RC_ASSERT(modifier == 0);
+        } else {
+            RC_ASSERT(modifier == -20);
+        }
+    });
+}
+
+TEST_CASE("PBT: Property 4 — hasProficiency matches talent membership",
+          "[pbt][property][weapon-types]")
+{
+    rc::prop("hasProficiency returns true iff matching talent present", []() {
+        // Pick a random WeaponGroup
+        auto wgIdx = *rc::gen::inRange(0, 9);
+        auto group = static_cast<WeaponGroup>(wgIdx);
+        std::string groupName(weaponGroupName(group));
+
+        // Decide whether the actor has the matching talent
+        bool hasTalent = (*rc::gen::inRange(0, 2)) == 1;
+
+        Actor actor(0, 0, '@', "TestChar", TCODColor::white);
+        actor.career = std::make_shared<CareerProgression>();
+
+        if (hasTalent) {
+            actor.career->talents.insert("Weapon Training (" + groupName + ")");
+        }
+
+        bool result = hasProficiency(&actor, group);
+        RC_ASSERT(result == hasTalent);
+    });
+}
+
+// ─── Property 5: Proficiency penalty stacks additively ───────────────────────
+// Feature: weapon-types, Property 5: Proficiency penalty stacks additively
+// **Validates: Requirements 6.3**
+//
+// Adding −20 to existing modifiers produces correct clamped threshold:
+// clamp(skillValue + sum(existingModifiers) - 20, 1, 99)
+
+TEST_CASE("PBT: Property 5 — proficiency penalty stacks additively with modifiers",
+          "[pbt][property][weapon-types]")
+{
+    rc::prop("adding -20 to modifiers produces clamp(skill + mods - 20, 1, 99)", []() {
+        // Generate a skill value in reasonable range
+        int skillValue = *rc::gen::inRange(1, 100);
+
+        // Generate 0-5 existing modifiers in range [-30, +30]
+        auto numMods = *rc::gen::inRange(0, 6);
+        std::vector<int> existingMods;
+        for (int i = 0; i < numMods; ++i) {
+            int mod = *rc::gen::inRange(-30, 31);
+            existingMods.push_back(mod);
+        }
+
+        // Create an Attacker with the given skill and modifiers
+        Attacker attacker(0.0f, skillValue);
+        for (int m : existingMods) {
+            attacker.addModifier(m);
+        }
+
+        // Compute threshold before adding penalty (verify basic consistency)
+        int thresholdBefore = attacker.computeThreshold();
+
+        // Add the proficiency penalty
+        attacker.addModifier(-20);
+
+        // Compute threshold after adding penalty
+        int thresholdAfter = attacker.computeThreshold();
+
+        // The relationship: thresholdAfter == clamp(thresholdBefore's raw - 20, 1, 99)
+        // Or equivalently: the raw value decreases by exactly 20
+        int modSum = 0;
+        for (int m : existingMods) modSum += m;
+        int rawBefore = attacker.skillValue + modSum;
+        int rawAfter = rawBefore - 20;
+        int expectedAfter = std::max(1, std::min(99, rawAfter));
+        RC_ASSERT(thresholdAfter == expectedAfter);
+    });
+}
+
+// ─── Unit tests: Proficiency check with matching talent ──────────────────────
+// **Validates: Requirements 6.2**
+
+TEST_CASE("Actor with matching weapon training talent has proficiency", "[weapon-types]")
+{
+    Actor actor(0, 0, '@', "Guardsman", TCODColor::white);
+    actor.career = std::make_shared<CareerProgression>();
+    actor.career->talents.insert("Weapon Training (Las)");
+
+    REQUIRE(hasProficiency(&actor, WeaponGroup::LAS));
+    REQUIRE(proficiencyModifier(&actor, WeaponGroup::LAS) == 0);
+}
+
+TEST_CASE("Actor with multiple weapon training talents has correct proficiency", "[weapon-types]")
+{
+    Actor actor(0, 0, '@', "Veteran", TCODColor::white);
+    actor.career = std::make_shared<CareerProgression>();
+    actor.career->talents.insert("Weapon Training (Las)");
+    actor.career->talents.insert("Weapon Training (SP)");
+    actor.career->talents.insert("Weapon Training (Bolt)");
+
+    REQUIRE(hasProficiency(&actor, WeaponGroup::LAS));
+    REQUIRE(hasProficiency(&actor, WeaponGroup::SP));
+    REQUIRE(hasProficiency(&actor, WeaponGroup::BOLT));
+    REQUIRE(proficiencyModifier(&actor, WeaponGroup::LAS) == 0);
+    REQUIRE(proficiencyModifier(&actor, WeaponGroup::SP) == 0);
+    REQUIRE(proficiencyModifier(&actor, WeaponGroup::BOLT) == 0);
+}
+
+// ─── Unit tests: Proficiency check without matching talent ───────────────────
+// **Validates: Requirements 6.1**
+
+TEST_CASE("Actor lacking weapon training talent has no proficiency", "[weapon-types]")
+{
+    Actor actor(0, 0, '@', "Untrained", TCODColor::white);
+    actor.career = std::make_shared<CareerProgression>();
+    // No talents added
+
+    REQUIRE_FALSE(hasProficiency(&actor, WeaponGroup::LAS));
+    REQUIRE(proficiencyModifier(&actor, WeaponGroup::LAS) == -20);
+}
+
+TEST_CASE("Actor with wrong weapon training talent still lacks proficiency for other groups", "[weapon-types]")
+{
+    Actor actor(0, 0, '@', "Specialist", TCODColor::white);
+    actor.career = std::make_shared<CareerProgression>();
+    actor.career->talents.insert("Weapon Training (Las)");
+
+    // Has Las training but not SP, Bolt, etc.
+    REQUIRE_FALSE(hasProficiency(&actor, WeaponGroup::SP));
+    REQUIRE_FALSE(hasProficiency(&actor, WeaponGroup::BOLT));
+    REQUIRE_FALSE(hasProficiency(&actor, WeaponGroup::EXOTIC));
+    REQUIRE(proficiencyModifier(&actor, WeaponGroup::SP) == -20);
+    REQUIRE(proficiencyModifier(&actor, WeaponGroup::BOLT) == -20);
+    REQUIRE(proficiencyModifier(&actor, WeaponGroup::EXOTIC) == -20);
+}
+
+// ─── Unit tests: Proficiency penalty stacking ────────────────────────────────
+// **Validates: Requirements 6.3**
+
+TEST_CASE("Proficiency penalty of -20 stacks with existing modifiers", "[weapon-types]")
+{
+    Attacker attacker(0.0f, 50);
+    attacker.addModifier(10);  // +10 bonus
+    attacker.addModifier(-20); // -20 proficiency penalty
+
+    // Expected: clamp(50 + 10 - 20, 1, 99) = 40
+    REQUIRE(attacker.computeThreshold() == 40);
+}
+
+TEST_CASE("Proficiency penalty clamped to minimum 1", "[weapon-types]")
+{
+    Attacker attacker(0.0f, 10);
+    attacker.addModifier(-20); // -20 proficiency penalty
+
+    // Expected: clamp(10 - 20, 1, 99) = 1 (clamped to minimum)
+    REQUIRE(attacker.computeThreshold() == 1);
+}
+
+TEST_CASE("Proficiency penalty clamped correctly at high skill", "[weapon-types]")
+{
+    Attacker attacker(0.0f, 95);
+    attacker.addModifier(20);  // +20 bonus
+    attacker.addModifier(-20); // -20 proficiency penalty
+
+    // Expected: clamp(95 + 20 - 20, 1, 99) = 95
+    REQUIRE(attacker.computeThreshold() == 95);
+}

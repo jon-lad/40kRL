@@ -1,3 +1,4 @@
+#include "main.h"
 #include "WeaponTypes.h"
 
 #include <array>
@@ -131,4 +132,15 @@ WeaponValidationResult validateWeaponClassification(
     }
 
     return { true, "" };
+}
+
+
+// ─── Proficiency Check Utility ───────────────────────────────────────────────
+
+bool hasProficiency(const Actor* /*actor*/, WeaponGroup /*group*/) {
+    return false; // stub — always returns no proficiency
+}
+
+int proficiencyModifier(const Actor* /*actor*/, WeaponGroup /*group*/) {
+    return 0; // stub — will be implemented in Task 6.2
 }
