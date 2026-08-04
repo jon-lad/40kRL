@@ -179,6 +179,7 @@
     <ClCompile Include="Source\ActionBudget.cpp" />
     <ClCompile Include="Source\ActionRegistry.cpp" />
     <ClCompile Include="Source\ChargeResolver.cpp" />
+    <ClCompile Include="Source\ReactionResolver.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -221,6 +222,7 @@
     <ClInclude Include="Headers\ActionBudget.h" />
     <ClInclude Include="Headers\ActionRegistry.h" />
     <ClInclude Include="Headers\ChargeResolver.h" />
+    <ClInclude Include="Headers\ReactionResolver.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
