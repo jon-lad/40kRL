@@ -180,6 +180,7 @@
     <ClCompile Include="Source\ActionRegistry.cpp" />
     <ClCompile Include="Source\ChargeResolver.cpp" />
     <ClCompile Include="Source\ReactionResolver.cpp" />
+    <ClCompile Include="Source\HelpContent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -223,6 +224,7 @@
     <ClInclude Include="Headers\ActionRegistry.h" />
     <ClInclude Include="Headers\ChargeResolver.h" />
     <ClInclude Include="Headers\ReactionResolver.h" />
+    <ClInclude Include="Headers\HelpContent.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
