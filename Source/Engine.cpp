@@ -43,10 +43,17 @@ void Engine::update()
 	// Handle targeting state — skip all normal game logic.
 	if (gameStatus == TARGETING) {
 		updateTargeting();
-		// If targeting resolved (set NEW_TURN), run enemy turns via helper.
+		// If targeting resolved (gameStatus changed from TARGETING):
 		if (gameStatus == NEW_TURN) {
+			// Legacy path (shouldn't be hit anymore, but safe fallback).
 			runEnemyTurns();
 			gameStatus = IDLE;
+		} else if (gameStatus == PLAYER_TURN) {
+			// Targeting resolved, AP was spent. Check if turn should end.
+			if (player->actionBudget && player->actionBudget->getAP() <= 0) {
+				runEnemyTurns();
+				gameStatus = IDLE;
+			}
 		}
 		return;
 	}
@@ -470,12 +477,23 @@ void Engine::updateTargeting()
 				return; // no valid target, remain in TARGETING
 			}
 
+			// Standard Attack (ranged): +10 BS modifier per RT-CoreMechanics §4
+			if (targetingCtx->owner->attacker) {
+				targetingCtx->owner->attacker->addModifier(10);
+			}
+
 			// Resolve the ranged attack.
 			RangedCombat::resolve(targetingCtx->owner, target);
 
-			// Clear context and advance turn.
+			// Remove standard attack modifier
+			if (targetingCtx->owner->attacker) {
+				targetingCtx->owner->attacker->removeModifier(10);
+			}
+
+			// Clear context and spend AP.
 			targetingCtx = std::nullopt;
-			gameStatus = NEW_TURN;
+			if (player->actionBudget) player->actionBudget->spend(1);
+			gameStatus = PLAYER_TURN;
 			return;
 		}
 
@@ -526,9 +544,10 @@ void Engine::updateTargeting()
 			targetingCtx->owner->container->remove(targetingCtx->item);
 		}
 
-		// Clear context and advance turn.
+		// Clear context and spend AP.
 		targetingCtx = std::nullopt;
-		gameStatus = NEW_TURN;
+		if (player->actionBudget) player->actionBudget->spend(1);
+		gameStatus = PLAYER_TURN;
 	}
 }
 
@@ -665,28 +684,44 @@ void Engine::updateInventory()
 			if (inventoryState->pendingAction == InventoryState::Action::USE) {
 				// Equippable items get equipped; others are used normally.
 				if (item->equippable && owner->equipment) {
+					if (!owner->actionBudget || !owner->actionBudget->canAfford(1)) {
+						gui->message(Colors::lightGrey, "Not enough AP.");
+						inventoryState = std::nullopt;
+						gameStatus = PLAYER_TURN;
+						return;
+					}
 					Actor* previous = owner->equipment->equip(item, owner->container.get(), owner->attacker.get());
 					if (previous) {
 						gui->message(Colors::uiText, "You unequip the # and equip the #.", previous->name, item->name);
 					} else {
 						gui->message(Colors::uiText, "You equip the #.", item->name);
 					}
-					gameStatus = NEW_TURN;
+					owner->actionBudget->spend(1);
 				} else {
 					// use() may initiate TARGETING (returns false) or apply immediately (returns true).
 					// If targeting was initiated, gameStatus is already TARGETING — don't override.
+					if (!owner->actionBudget || !owner->actionBudget->canAfford(1)) {
+						gui->message(Colors::lightGrey, "Not enough AP.");
+						inventoryState = std::nullopt;
+						gameStatus = PLAYER_TURN;
+						return;
+					}
 					if (item->pickable->use(item, owner)) {
-						gameStatus = NEW_TURN;
+						owner->actionBudget->spend(1);
 					}
 					// If use returned false and gameStatus == TARGETING, leave it.
+					if (gameStatus == TARGETING) {
+						inventoryState = std::nullopt;
+						return;
+					}
 				}
 			} else {
-				// DROP action
+				// DROP action — free action, no AP cost
 				item->pickable->drop(item, owner);
-				gameStatus = NEW_TURN;
 			}
 
 			inventoryState = std::nullopt;
+			gameStatus = PLAYER_TURN;
 			return;
 		}
 		// Invalid index (beyond unequipped item count) — ignore, remain in INVENTORY.

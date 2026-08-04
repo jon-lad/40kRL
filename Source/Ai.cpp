@@ -63,6 +63,67 @@ void PlayerAi::update(Actor* owner)
 		return;
 	}
 
+	// Handle pending run direction selection
+	if (pendingRun) {
+		int dx = 0, dy = 0;
+		switch (engine.inputState.key.key) {
+			case SDLK_UP:    dy = -1; break;
+			case SDLK_DOWN:  dy =  1; break;
+			case SDLK_LEFT:  dx = -1; break;
+			case SDLK_RIGHT: dx =  1; break;
+			case SDLK_KP_7:  dx = -1; dy = -1; break;
+			case SDLK_KP_8:  dy = -1; break;
+			case SDLK_KP_9:  dx =  1; dy = -1; break;
+			case SDLK_KP_4:  dx = -1; break;
+			case SDLK_KP_6:  dx =  1; break;
+			case SDLK_KP_1:  dx = -1; dy =  1; break;
+			case SDLK_KP_2:  dy =  1; break;
+			case SDLK_KP_3:  dx =  1; dy =  1; break;
+			case SDLK_ESCAPE:
+				// Cancel run
+				pendingRun = false;
+				pendingRunDistance = 0;
+				engine.gui->message(Colors::lightGrey, "Cancelled.");
+				return;
+			default: return; // Ignore other keys while waiting for direction
+		}
+		if (dx != 0 || dy != 0) {
+			// Spend 2 AP for Run (Full Action)
+			if (!owner->actionBudget->canAfford(2)) {
+				engine.gui->message(Colors::lightGrey, "Not enough AP to run.");
+				pendingRun = false;
+				pendingRunDistance = 0;
+				return;
+			}
+			owner->actionBudget->spend(2);
+
+			// Move up to pendingRunDistance tiles in the chosen direction
+			int tilesMoved = 0;
+			for (int i = 0; i < pendingRunDistance; ++i) {
+				int nextX = owner->getX() + dx;
+				int nextY = owner->getY() + dy;
+				if (!engine.map->canWalk(nextX, nextY)) {
+					break; // blocked
+				}
+				owner->setX(nextX);
+				owner->setY(nextY);
+				tilesMoved++;
+			}
+
+			if (tilesMoved > 0) {
+				engine.map->computeFOV();
+				engine.camera->update(owner, engine.map->getLevelType() == LevelType::OUTDOOR);
+				engine.gui->message(Colors::playerAction, "You run %d tiles!", tilesMoved);
+			} else {
+				engine.gui->message(Colors::lightGrey, "You can't run in that direction.");
+			}
+
+			pendingRun = false;
+			pendingRunDistance = 0;
+		}
+		return;
+	}
+
 	int dx = 0, dy = 0;
 	switch (engine.inputState.key.key) {
 		// Arrow keys
@@ -145,7 +206,10 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 		if (actor->destructible && !actor->destructible->isDead()
 			&& actor->getX() == targetX && actor->getY() == targetY)
 		{
+			// Standard Attack (melee): +10 WS modifier per RT-CoreMechanics §4
+			owner->attacker->addModifier(10);
 			owner->attacker->attack(owner, actor);
+			owner->attacker->removeModifier(10);
 			return false;
 		}
 	}
@@ -269,6 +333,11 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		// Check ammo.
 		if (weaponItem->equippable->currentAmmo <= 0) {
 			engine.gui->message(Colors::uiText, "Your weapon is empty. Press 'r' to reload.");
+			return;
+		}
+		// Check AP before entering targeting.
+		if (!owner->actionBudget->canAfford(1)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP.");
 			return;
 		}
 		// Enter targeting mode for ranged attack.
@@ -413,41 +482,13 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		}
 		int maxTiles = agB * 6;
 
-		// Determine run direction from last movement or facing direction
-		// Simple implementation: run in the direction the player last moved
-		// Use the current input direction if available, otherwise prompt
-		// For now, run forward in the last direction pressed (use numpad/arrow)
-		// We'll just move the player multiple tiles in a straight line
-		// The player must press a direction key after 'R' — use pending state
-		// Simplified: run requires a direction. We'll check for an adjacent walkable tile
-		// and run in that direction as far as possible.
-		
-		// Get direction from pending input - for simplicity, auto-run away from closest enemy
-		// or we can just move forward. Let's store a "pending run" state and handle next input.
-		// 
-		// Simplest approach: move the player in the direction of their last move, up to maxTiles
-		// But we don't track last direction. Instead, let's just run forward using
-		// dx/dy from pending input. Since 'R' is a character key, not a direction,
-		// we'll apply run in the next pressed direction.
-		// 
-		// Actually, the simplest working approach per the task description:
-		// "just move multiple tiles in the current direction, checking walkability"
-		// We'll need a follow-up direction press. For now, let's just check if there's 
-		// a clear path in the direction the player previously moved (not tracked), 
-		// or prompt for direction.
-		//
-		// Best approach: spend AP now, then check each cardinal direction and run
-		// in the first open one. Actually, let's just inform the user they need to
-		// press a direction after R (two-step input like door opening).
-		// But to keep it simple and match task spec, let's just move player in a prompted direction.
-		
-		// For a clean implementation: mark pending run mode, wait for direction key
-		// Similar to how door direction selection works
+		// Enter pending run mode — wait for direction key, then move
+		// AP is deducted in the pendingRun handler after direction is chosen
 		PlayerAi* playerAi = dynamic_cast<PlayerAi*>(owner->ai.get());
 		if (playerAi) {
 			playerAi->pendingRun = true;
 			playerAi->pendingRunDistance = maxTiles;
-			engine.gui->message(Colors::lightGrey, "Run in which direction?");
+			engine.gui->message(Colors::lightGrey, "Run in which direction? (up to %d tiles)", maxTiles);
 		}
 		return;
 	}
@@ -490,24 +531,6 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		return;
 	}
 
-	case 'R': // Run (Full Action, 2 AP)
-	{
-		if (!owner->actionBudget || !owner->actionBudget->canAfford(2)) {
-			engine.gui->message(Colors::lightGrey, "Not enough AP to run (requires 2 AP).");
-			return;
-		}
-		int agB = 3; // default
-		if (owner->characteristics) {
-			agB = owner->characteristics->bonus(CharId::Ag);
-		}
-		int maxDist = agB * 6;
-		owner->actionBudget->spend(2);
-		// For now, log the action — full multi-tile pathfinding with direction
-		// selection will be refined when we add movement UI
-		engine.gui->message(Colors::playerAction, "You break into a run! (up to %d tiles)", maxDist);
-		// TODO: Implement actual multi-tile movement with direction selection
-		return;
-	}
 
 	case 'e': // open equipment menu
 	{
@@ -597,7 +620,10 @@ bool MonsterAi::selectAndExecuteAction(Actor* owner)
 
 		owner->actionBudget->spend(1);
 		if (owner->attacker) {
+			// Standard Attack (melee): +10 WS modifier per RT-CoreMechanics §4
+			owner->attacker->addModifier(10);
 			owner->attacker->attack(owner, engine.player);
+			owner->attacker->removeModifier(10);
 		}
 		return true;
 	}
@@ -713,9 +739,11 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 	const float distance = sqrtf(static_cast<float>(dx * dx + dy * dy));
 
 	if (distance < 2.0f) {
-		// Adjacent — attack.
+		// Adjacent — standard attack with +10 WS modifier.
 		if (owner->attacker) {
+			owner->attacker->addModifier(10);
 			owner->attacker->attack(owner, engine.player);
+			owner->attacker->removeModifier(10);
 		}
 		return;
 	}
@@ -832,7 +860,14 @@ void RangedAi::update(Actor* owner)
 
 void RangedAi::shoot(Actor* owner, Actor* target)
 {
+	// Standard Attack (ranged): +10 BS modifier per RT-CoreMechanics §4
+	if (owner->attacker) {
+		owner->attacker->addModifier(10);
+	}
 	RangedCombat::resolve(owner, target);
+	if (owner->attacker) {
+		owner->attacker->removeModifier(10);
+	}
 }
 
 void RangedAi::reload(Actor* owner)
