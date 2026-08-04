@@ -101,7 +101,16 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 	// ── Compute effective WS ──
 	const int baseWS = owner->characteristics->get(CharId::WS);
 	const int modSum = std::accumulate(modifiers.begin(), modifiers.end(), 0);
-	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum));
+
+	// ── Proficiency penalty (weapon types) ──
+	int profPenalty = 0;
+	if (owner->equipment) {
+		Actor* weaponItem = owner->equipment->getSlot(EquipmentSlot::WEAPON);
+		if (weaponItem && weaponItem->equippable && weaponItem->equippable->weaponGroup) {
+			profPenalty = proficiencyModifier(owner, *weaponItem->equippable->weaponGroup);
+		}
+	}
+	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty));
 
 	// ── Roll d100 ──
 	const int roll = rollD100();

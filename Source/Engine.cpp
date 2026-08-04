@@ -2908,6 +2908,13 @@ void Engine::init()
 					rs.rateOfFire   = (*rangedTable).get_or("rateOfFire", 1);
 					rs.clipSize     = (*rangedTable).get_or("clipSize", 6);
 					rs.reloadTime   = (*rangedTable).get_or("reloadTime", 1);
+
+					// Validate range: must be > 0
+					if (!isValidRange(rs.range)) {
+						gui->message(Colors::damage, "Equipment.lua: skipping '#' — range must be > 0.", name);
+						continue;
+					}
+
 					rangedStats = rs;
 
 					// If weapon has ranged table but no melee table, ensure default melee stats are assigned
@@ -2952,6 +2959,31 @@ void Engine::init()
 					armourProfile = ap;
 				}
 
+				// ─── Weapon classification parsing and validation ─────────────────
+				bool isWeapon = meleeStats.has_value() || rangedStats.has_value();
+
+				// Read classification strings from Lua entry
+				std::string sizeClassStr = entry.get_or("sizeClass", std::string(""));
+				std::string weaponGroupStr = entry.get_or("weaponGroup", std::string(""));
+				std::string damageTypeStr = entry.get_or("damageType", std::string(""));
+
+				// Validate classification: weapons require all three fields present and valid
+				auto validationResult = validateWeaponClassification(name, isWeapon, sizeClassStr, weaponGroupStr, damageTypeStr);
+				if (!validationResult.accepted) {
+					gui->message(Colors::damage, validationResult.warningMessage);
+					continue;
+				}
+
+				// Parse classification values for weapons
+				std::optional<SizeClassification> sizeClass;
+				std::optional<WeaponGroup> weaponGroup;
+				std::optional<DamageType> damageType;
+				if (isWeapon) {
+					sizeClass = parseSizeClassification(sizeClassStr);
+					weaponGroup = parseWeaponGroup(weaponGroupStr);
+					damageType = parseDamageType(damageTypeStr);
+				}
+
 				// Create template
 				EquipmentTemplate tmpl;
 				tmpl.name      = name;
@@ -2965,6 +2997,9 @@ void Engine::init()
 				tmpl.meleeStats    = meleeStats;
 				tmpl.armourProfile = armourProfile;
 				tmpl.rangedStats   = rangedStats;
+				tmpl.sizeClass     = sizeClass;
+				tmpl.weaponGroup   = weaponGroup;
+				tmpl.damageType    = damageType;
 
 				equipmentTemplates.push_back(tmpl);
 			}

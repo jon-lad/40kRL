@@ -149,6 +149,7 @@
     <ClCompile Include="test_tabbed_menu.cpp" />
     <ClCompile Include="test_chargen_desc.cpp" />
     <ClCompile Include="test_critical_injuries.cpp" />
+    <ClCompile Include="test_weapon_types.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -180,6 +181,7 @@
     <ClCompile Include="..\Source\CharacterSheet.cpp" />
     <ClCompile Include="..\Source\Paginator.cpp" />
     <ClCompile Include="..\Source\TabbedMenuState.cpp" />
+    <ClCompile Include="..\Source\WeaponTypes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -209,6 +211,7 @@
     <ClInclude Include="..\Headers\LayoutRect.h" />
     <ClInclude Include="..\Headers\ScreenLayout.h" />
     <ClInclude Include="..\Headers\SkillBarEntry.h" />
+    <ClInclude Include="..\Headers\WeaponTypes.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
