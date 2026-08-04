@@ -8,6 +8,7 @@
 #include "InputHandler.h"
 class Actor;
 #include "Persistent.h"
+#include "ActionBudget.h"
 #include "Destructible.h"
 #include "Attacker.h"
 #include "Characteristics.h"
