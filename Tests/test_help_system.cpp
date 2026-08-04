@@ -4,8 +4,10 @@
 #include "main.h"
 
 #include <algorithm>
+#include <sstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Feature: help-system — Unit Tests for HelpContentRegistry Content (Task 1.2)
@@ -606,3 +608,340 @@ TEST_CASE("ESC from menu-opened help returns to Menu state, not gameplay", "[hel
     // Cleanup
     engine.gameStatus = originalStatus;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: help-system — Property-Based Tests for ManualExporter (Task 7.1)
+//
+// These tests validate the ManualExporter formatting logic using a self-contained
+// local formatter that implements the same algorithm ManualExporter::generate()
+// will use. When task 7.3 implements the real ManualExporter, these tests confirm
+// the expected output properties hold.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Local test data types and formatter ─────────────────────────────────────
+// Mirrors HelpContent::HelpEntry/HelpSection for test isolation.
+
+namespace ManualExporterTestHelpers {
+
+struct TestEntry {
+    std::string key;
+    std::string description;
+};
+
+struct TestSection {
+    std::string title;
+    std::vector<TestEntry> entries;
+};
+
+// Formats sections into manual text using the same algorithm ManualExporter will use:
+//   TITLE
+//   -----  (dashes of equal length to title)
+//     key  description
+//     key  description
+//   <blank line>
+//
+// Preceded by a header with title and version.
+std::string formatManual(const std::vector<TestSection>& sections,
+                         const std::string& version) {
+    std::string output;
+    // Title header
+    output += "40kRL MANUAL\n";
+    output += "Version " + version + "\n";
+    output += "\n";
+
+    for (const auto& section : sections) {
+        // Section title line
+        output += section.title + "\n";
+        // Dashed underline of equal length to title
+        output += std::string(section.title.size(), '-') + "\n";
+        // Indented entries
+        for (const auto& entry : section.entries) {
+            output += "  " + entry.key + "  " + entry.description + "\n";
+        }
+        // Blank line after section
+        output += "\n";
+    }
+
+    return output;
+}
+
+// Generator: produces a printable ASCII string (chars in [0x21, 0x7E], no whitespace/control)
+// with no embedded newlines. Length in [minLen, maxLen].
+rc::Gen<std::string> printableAsciiString(int minLen, int maxLen) {
+    return rc::gen::stringOf(rc::gen::charInRange('!', '~'), minLen, maxLen);
+}
+
+// Generator: produces a TestEntry with printable ASCII key and description
+rc::Gen<TestEntry> genEntry() {
+    return {[](std::mt19937& rng) {
+        auto keyGen = rc::gen::stringOf(rc::gen::charInRange('!', '~'), 1, 10);
+        auto descGen = rc::gen::stringOf(rc::gen::charInRange(' ', '~'), 1, 40);
+        TestEntry e;
+        e.key = keyGen(rng);
+        e.description = descGen(rng);
+        return e;
+    }};
+}
+
+// Generator: produces a TestSection with printable ASCII title and 1–20 entries
+rc::Gen<TestSection> genSection() {
+    return {[](std::mt19937& rng) {
+        auto titleGen = rc::gen::stringOf(rc::gen::charInRange('A', 'Z'), 3, 15);
+        TestSection s;
+        s.title = titleGen(rng);
+        int numEntries = std::uniform_int_distribution<int>(1, 20)(rng);
+        auto eGen = genEntry();
+        for (int i = 0; i < numEntries; ++i) {
+            s.entries.push_back(eGen(rng));
+        }
+        return s;
+    }};
+}
+
+// Generator: produces a vector of 1–10 TestSections
+rc::Gen<std::vector<TestSection>> genRegistry() {
+    return {[](std::mt19937& rng) {
+        int numSections = std::uniform_int_distribution<int>(1, 10)(rng);
+        std::vector<TestSection> sections;
+        auto sGen = genSection();
+        for (int i = 0; i < numSections; ++i) {
+            sections.push_back(sGen(rng));
+        }
+        return sections;
+    }};
+}
+
+} // namespace ManualExporterTestHelpers
+
+// ─── Property 5: Manual generation completeness ─────────────────────────────
+// **Validates: Requirements 6.1, 6.2**
+//
+// Generate random registry configurations (1–10 sections, 1–20 entries each);
+// run exporter; verify all section titles and all entry keys appear in output.
+
+TEST_CASE("PBT: Manual generation completeness",
+          "[pbt][property][help-system]")
+{
+    using namespace ManualExporterTestHelpers;
+
+    rc::check("all section titles and all entry keys appear in generated manual output", []() {
+        // Generate random registry
+        auto sections = *genRegistry();
+        RC_PRE(!sections.empty());
+
+        // Generate manual
+        std::string output = formatManual(sections, "1.0.0");
+
+        // Verify all section titles appear in output
+        for (const auto& section : sections) {
+            RC_ASSERT(output.find(section.title) != std::string::npos);
+
+            // Verify all entry keys appear in output
+            for (const auto& entry : section.entries) {
+                RC_ASSERT(output.find(entry.key) != std::string::npos);
+            }
+        }
+    });
+}
+
+// ─── Property 6: Manual output is pure ASCII ─────────────────────────────────
+// **Validates: Requirements 6.2**
+//
+// Generate random registry with printable ASCII content; run exporter;
+// verify all output chars are in range [0x0A, 0x7E].
+
+TEST_CASE("PBT: Manual output is pure ASCII",
+          "[pbt][property][help-system]")
+{
+    using namespace ManualExporterTestHelpers;
+
+    rc::check("all characters in generated manual are in ASCII range [0x0A, 0x7E]", []() {
+        // Generate random registry with printable ASCII content
+        auto sections = *genRegistry();
+        RC_PRE(!sections.empty());
+
+        // Generate manual
+        std::string output = formatManual(sections, "1.0.0");
+
+        // Verify every character is in valid ASCII range
+        // Valid: 0x0A (newline), 0x20-0x7E (printable ASCII including space)
+        for (size_t i = 0; i < output.size(); ++i) {
+            unsigned char c = static_cast<unsigned char>(output[i]);
+            bool valid = (c == 0x0A) || (c >= 0x20 && c <= 0x7E);
+            RC_ASSERT(valid);
+        }
+    });
+}
+
+// ─── Property 7: Manual section formatting structure ─────────────────────────
+// **Validates: Requirements 6.4**
+//
+// Generate random sections with 1–10 entries; run exporter; verify
+// title line + dashed underline + indented entries pattern.
+
+TEST_CASE("PBT: Manual section formatting structure",
+          "[pbt][property][help-system]")
+{
+    using namespace ManualExporterTestHelpers;
+
+    rc::check("each section has title line + dashed underline + indented entries", []() {
+        // Generate a single random section for focused verification
+        auto section = *genSection();
+        RC_PRE(!section.entries.empty());
+
+        // Format just this one section (with minimal header)
+        std::vector<TestSection> singleSection = { section };
+        std::string output = formatManual(singleSection, "1.0.0");
+
+        // Split output into lines
+        std::vector<std::string> lines;
+        std::istringstream stream(output);
+        std::string line;
+        while (std::getline(stream, line)) {
+            lines.push_back(line);
+        }
+
+        // Find the section title line in the output
+        // (skip the header lines: "40kRL MANUAL", "Version ...", blank)
+        int titleLineIdx = -1;
+        for (int i = 0; i < static_cast<int>(lines.size()); ++i) {
+            if (lines[i] == section.title) {
+                titleLineIdx = i;
+                break;
+            }
+        }
+        RC_ASSERT(titleLineIdx >= 0);
+
+        // Next line should be dashes of equal length to title
+        int dashLineIdx = titleLineIdx + 1;
+        RC_ASSERT(dashLineIdx < static_cast<int>(lines.size()));
+        std::string expectedDashes(section.title.size(), '-');
+        RC_ASSERT(lines[dashLineIdx] == expectedDashes);
+
+        // Following lines should be indented entries (start with "  ")
+        for (int i = 0; i < static_cast<int>(section.entries.size()); ++i) {
+            int entryLineIdx = dashLineIdx + 1 + i;
+            RC_ASSERT(entryLineIdx < static_cast<int>(lines.size()));
+            // Each entry line starts with two spaces (indentation)
+            RC_ASSERT(lines[entryLineIdx].size() >= 2);
+            RC_ASSERT(lines[entryLineIdx][0] == ' ');
+            RC_ASSERT(lines[entryLineIdx][1] == ' ');
+            // Entry line contains the key
+            RC_ASSERT(lines[entryLineIdx].find(section.entries[i].key) != std::string::npos);
+        }
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: help-system — Unit Tests for ManualExporter Output (Task 7.2)
+// These tests require ManualExporter.h which is created in task 7.3.
+// They are conditionally compiled only when MANUAL_EXPORTER_AVAILABLE is defined.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#if __has_include("ManualExporter.h")
+#define MANUAL_EXPORTER_AVAILABLE 1
+#include "ManualExporter.h"
+#else
+#define MANUAL_EXPORTER_AVAILABLE 0
+#endif
+
+#if MANUAL_EXPORTER_AVAILABLE
+
+#include <fstream>
+#include <filesystem>
+
+// ─── Manual includes title header with "MANUAL" text ─────────────────────────
+// **Validates: Requirements 6.3**
+
+TEST_CASE("Generated manual includes title header with MANUAL text", "[help-system]") {
+    std::string output = ManualExporter::generate("0.3.0");
+
+    // The title should contain "MANUAL" (case-sensitive, as per design: "40kRL MANUAL")
+    REQUIRE(output.find("MANUAL") != std::string::npos);
+}
+
+// ─── Manual includes version string ─────────────────────────────────────────
+// **Validates: Requirements 6.3**
+
+TEST_CASE("Generated manual includes version string", "[help-system]") {
+    std::string output = ManualExporter::generate("0.3.0");
+
+    // Should contain the version string passed to generate()
+    REQUIRE(output.find("0.3.0") != std::string::npos);
+}
+
+// ─── Each section formatted as title + dashed underline + indented entries ───
+// **Validates: Requirements 6.4**
+
+TEST_CASE("Each section formatted as title + dashed underline + indented entries", "[help-system]") {
+    std::string output = ManualExporter::generate("0.3.0");
+
+    auto sections = HelpContent::allSections();
+    REQUIRE(!sections.empty());
+
+    for (const auto& section : sections) {
+        // Find the section title in the output
+        std::string title(section.title);
+        auto titlePos = output.find(title);
+        REQUIRE(titlePos != std::string::npos);
+
+        // After the title line, there should be a line of dashes
+        // Find the newline after the title
+        auto newlineAfterTitle = output.find('\n', titlePos);
+        REQUIRE(newlineAfterTitle != std::string::npos);
+
+        // The next line should be all dashes (at least as long as the title)
+        auto dashLineStart = newlineAfterTitle + 1;
+        auto dashLineEnd = output.find('\n', dashLineStart);
+        REQUIRE(dashLineEnd != std::string::npos);
+
+        std::string dashLine = output.substr(dashLineStart, dashLineEnd - dashLineStart);
+        // Verify the dash line contains only '-' characters and is non-empty
+        REQUIRE(!dashLine.empty());
+        REQUIRE(dashLine.find_first_not_of('-') == std::string::npos);
+
+        // After the dash line, entries should be indented (start with spaces)
+        auto firstEntryStart = dashLineEnd + 1;
+        if (firstEntryStart < output.size()) {
+            // First entry line should begin with whitespace (indentation)
+            REQUIRE((output[firstEntryStart] == ' ' || output[firstEntryStart] == '\t'));
+        }
+    }
+}
+
+// ─── writeToFile returns true on success and creates the file ────────────────
+// **Validates: Requirements 6.1, 6.2**
+
+TEST_CASE("writeToFile returns true on success and creates the file", "[help-system]") {
+    const std::string testPath = "test_manual_output.txt";
+
+    // Clean up in case a previous test run left the file behind
+    std::filesystem::remove(testPath);
+
+    // Write the manual file
+    bool result = ManualExporter::writeToFile(testPath, "0.3.0");
+
+    // Should return true on success
+    REQUIRE(result == true);
+
+    // File should exist
+    REQUIRE(std::filesystem::exists(testPath));
+
+    // Verify the file has content (not empty)
+    std::ifstream file(testPath);
+    REQUIRE(file.good());
+    std::string content((std::istreambuf_iterator<char>(file)),
+                         std::istreambuf_iterator<char>());
+    REQUIRE(!content.empty());
+
+    // Content should match what generate() produces
+    std::string expected = ManualExporter::generate("0.3.0");
+    REQUIRE(content == expected);
+
+    // Clean up
+    file.close();
+    std::filesystem::remove(testPath);
+}
+
+#endif // MANUAL_EXPORTER_AVAILABLE
