@@ -151,6 +151,7 @@
     <ClCompile Include="test_critical_injuries.cpp" />
     <ClCompile Include="test_weapon_types.cpp" />
     <ClCompile Include="test_action_system.cpp" />
+    <ClCompile Include="test_help_system.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
