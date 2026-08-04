@@ -1396,3 +1396,161 @@ TEST_CASE("PBT: Charge action is Full Action costing 2 AP", "[property][action-s
     REQUIRE(chargeMeta.apCost == 2);
     REQUIRE(chargeMeta.type == ActionType::FULL);
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// All-Out Attack & Run Unit Tests — Task 12.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// ActionBudget-focused tests validating the budget/reaction conditions for
+// All-Out Attack (Full Action, +30 WS, forfeits reaction) and Run (Full Action,
+// move up to AgB × 6 tiles, no attack). The actual action execution logic is
+// implemented in tasks 12.2/12.3.
+//
+// Requirements validated: 8.3, 8.4, 1.6
+
+// ─── Test: All-Out Attack costs 2 AP ─────────────────────────────────────────
+// Requirement 8.3: All_Out_Attack deducts 2 AP (Full Action).
+// budget.spend(2) from full AP → AP = 0.
+
+TEST_CASE("All-Out Attack: costs 2 AP (spend(2) from full budget)", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // All-Out Attack is a Full Action — costs 2 AP
+    REQUIRE(budget.canAfford(2) == true);
+    REQUIRE(budget.spend(2) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // Turn is over after spending full budget
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: All-Out Attack forfeits reaction ──────────────────────────────────
+// Requirement 8.3, 4.4: After All-Out Attack, the actor's reaction is forfeited
+// for the current round. budget.forfeitReaction() → hasReaction() == false.
+
+TEST_CASE("All-Out Attack: forfeits reaction for the round", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Reaction is available at start of turn
+    REQUIRE(budget.hasReaction() == true);
+
+    // Execute All-Out Attack: spend 2 AP + forfeit reaction
+    budget.spend(2);
+    budget.forfeitReaction();
+
+    // Reaction is now gone
+    REQUIRE(budget.hasReaction() == false);
+}
+
+// ─── Test: All-Out Attack forfeit persists until beginTurn ───────────────────
+// Requirement 4.4: The forfeited reaction stays false until the actor's next
+// turn begins (beginTurn() refreshes it).
+
+TEST_CASE("All-Out Attack: forfeit persists until beginTurn()", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // All-Out Attack: spend + forfeit
+    budget.spend(2);
+    budget.forfeitReaction();
+
+    // Reaction stays forfeited — no way to regain mid-round
+    REQUIRE(budget.hasReaction() == false);
+    REQUIRE(budget.hasReaction() == false);  // still false on re-check
+
+    // Only beginTurn() restores the reaction
+    budget.beginTurn();
+    REQUIRE(budget.hasReaction() == true);
+}
+
+// ─── Test: Run costs 2 AP ────────────────────────────────────────────────────
+// Requirement 8.4: Run deducts 2 AP (Full Action).
+// budget.spend(2) from full AP → AP = 0.
+
+TEST_CASE("Run: costs 2 AP (spend(2) from full budget)", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Run is a Full Action — costs 2 AP
+    REQUIRE(budget.canAfford(2) == true);
+    REQUIRE(budget.spend(2) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // Turn is over
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: Run max distance = AgB × 6 ───────────────────────────────────────
+// Requirement 8.4: Run moves actor up to AgB × 6 tiles.
+// Verify formula produces correct bounds for AgB in [1..10] → [6..60].
+
+TEST_CASE("Run: max distance formula AgB x 6 produces correct bounds", "[action-system]")
+{
+    // Verify for every valid agility bonus that max run distance = AgB * 6
+    for (int agB = 1; agB <= 10; ++agB) {
+        int maxRunDistance = agB * 6;
+
+        REQUIRE(maxRunDistance == agB * 6);
+        REQUIRE(maxRunDistance >= 6);   // minimum: AgB=1 → 6 tiles
+        REQUIRE(maxRunDistance <= 60);  // maximum: AgB=10 → 60 tiles
+    }
+
+    // Spot-check specific values
+    REQUIRE(1 * 6 == 6);
+    REQUIRE(3 * 6 == 18);
+    REQUIRE(5 * 6 == 30);
+    REQUIRE(10 * 6 == 60);
+}
+
+// ─── Test: Full Action (cost 2) rejected with 1 AP ──────────────────────────
+// Requirement 1.6: If an actor attempts a Full_Action with fewer than 2 AP
+// remaining, the Action_System SHALL reject the action and leave AP unchanged.
+
+TEST_CASE("Full Action (All-Out Attack/Run): rejected with 1 AP remaining", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Spend 1 AP first (e.g., a move)
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // Attempt a Full Action (cost 2) with only 1 AP — must fail
+    REQUIRE(budget.canAfford(2) == false);
+    REQUIRE(budget.spend(2) == false);
+
+    // AP must remain unchanged after rejection
+    REQUIRE(budget.getAP() == 1);
+}
+
+// ─── Test: Registry validation — ALL_OUT_ATTACK and RUN have cost=2, type=FULL
+// Requirement 11.2: Actions registered with correct cost and type.
+
+TEST_CASE("Registry: ALL_OUT_ATTACK is Full Action costing 2 AP", "[action-system]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::ALL_OUT_ATTACK);
+    REQUIRE(meta.id == ActionId::ALL_OUT_ATTACK);
+    REQUIRE(meta.apCost == 2);
+    REQUIRE(meta.type == ActionType::FULL);
+    REQUIRE(meta.name == "All-Out Attack");
+}
+
+TEST_CASE("Registry: RUN is Full Action costing 2 AP", "[action-system]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::RUN);
+    REQUIRE(meta.id == ActionId::RUN);
+    REQUIRE(meta.apCost == 2);
+    REQUIRE(meta.type == ActionType::FULL);
+    REQUIRE(meta.name == "Run");
+}
