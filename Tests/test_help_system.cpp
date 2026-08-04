@@ -322,9 +322,8 @@ TEST_CASE("PBT: Scroll offset remains within valid bounds",
 // ═══════════════════════════════════════════════════════════════════════════════
 // Feature: help-system — Unit Tests for Help Overlay State Transitions (Task 3.2)
 // These tests require the HELP GameStatus enum and Engine::beginHelp()/updateHelp()
-// which are added in task 3.3/3.4. Guarded until then.
+// which are added in task 3.3/3.4.
 // ═══════════════════════════════════════════════════════════════════════════════
-#ifdef HELP_SYSTEM_IMPLEMENTED
 
 // ─── '?' key transitions ─────────────────────────────────────────────────────
 // **Validates: Requirements 1.1**
@@ -478,4 +477,4 @@ TEST_CASE("Section headers rendered visually distinct from entry text", "[help-s
     }
 }
 
-#endif // HELP_SYSTEM_IMPLEMENTED
+// end of help-system unit tests for state transitions
