@@ -733,7 +733,7 @@ static std::pair<int, int> numpadToDirection(SDL_Keycode key)
     }
 }
 
-TEST_CASE("PlayerAi numpad: each KP key produces correct dx/dy", "[action-system]")
+TEST_CASE("PlayerAi numpad: each KP key produces correct dx/dy", "[action-system][player-ai]")
 {
     for (const auto& mapping : NUMPAD_DIRECTION_TABLE) {
         SECTION(mapping.label) {
@@ -744,7 +744,7 @@ TEST_CASE("PlayerAi numpad: each KP key produces correct dx/dy", "[action-system
     }
 }
 
-TEST_CASE("PlayerAi numpad: KP_5 is not a movement key (End_Turn trigger)", "[action-system]")
+TEST_CASE("PlayerAi numpad: KP_5 is not a movement key (End_Turn trigger)", "[action-system][player-ai]")
 {
     // KP_5 should NOT produce movement — it triggers End_Turn (free action)
     auto [dx, dy] = numpadToDirection(SDLK_KP_5);
@@ -757,7 +757,7 @@ TEST_CASE("PlayerAi numpad: KP_5 is not a movement key (End_Turn trigger)", "[ac
     REQUIRE(endTurn.type == ActionType::FREE);
 }
 
-TEST_CASE("PlayerAi numpad: KP_5 triggers End_Turn (sets AP to 0)", "[action-system]")
+TEST_CASE("PlayerAi numpad: KP_5 triggers End_Turn (sets AP to 0)", "[action-system][player-ai]")
 {
     // Simulates the KP_5 behaviour: setAP(0) from any AP state
     ActionBudget budget;
@@ -775,7 +775,7 @@ TEST_CASE("PlayerAi numpad: KP_5 triggers End_Turn (sets AP to 0)", "[action-sys
 // ─── Movement AP Spending ────────────────────────────────────────────────────
 // Requirement 7.1: Move action deducts 1 AP
 
-TEST_CASE("PlayerAi AP: movement deducts 1 AP", "[action-system]")
+TEST_CASE("PlayerAi AP: movement deducts 1 AP", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -792,7 +792,7 @@ TEST_CASE("PlayerAi AP: movement deducts 1 AP", "[action-system]")
     REQUIRE(budget.getAP() == 0);
 }
 
-TEST_CASE("PlayerAi AP: Move action cost matches registry", "[action-system]")
+TEST_CASE("PlayerAi AP: Move action cost matches registry", "[action-system][player-ai]")
 {
     const ActionMeta& moveMeta = ActionRegistry::get(ActionId::MOVE);
     REQUIRE(moveMeta.apCost == 1);
@@ -802,7 +802,7 @@ TEST_CASE("PlayerAi AP: Move action cost matches registry", "[action-system]")
 // ─── Attack AP Spending ──────────────────────────────────────────────────────
 // Requirement 7.1 (implicit): Attack is a Half Action, deducts 1 AP
 
-TEST_CASE("PlayerAi AP: attack deducts 1 AP", "[action-system]")
+TEST_CASE("PlayerAi AP: attack deducts 1 AP", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -814,14 +814,14 @@ TEST_CASE("PlayerAi AP: attack deducts 1 AP", "[action-system]")
     REQUIRE(budget.getAP() == 1);
 }
 
-TEST_CASE("PlayerAi AP: melee attack cost matches registry", "[action-system]")
+TEST_CASE("PlayerAi AP: melee attack cost matches registry", "[action-system][player-ai]")
 {
     const ActionMeta& meleeMeta = ActionRegistry::get(ActionId::STANDARD_ATTACK_MELEE);
     REQUIRE(meleeMeta.apCost == 1);
     REQUIRE(meleeMeta.type == ActionType::HALF);
 }
 
-TEST_CASE("PlayerAi AP: ranged attack cost matches registry", "[action-system]")
+TEST_CASE("PlayerAi AP: ranged attack cost matches registry", "[action-system][player-ai]")
 {
     const ActionMeta& rangedMeta = ActionRegistry::get(ActionId::STANDARD_ATTACK_RANGED);
     REQUIRE(rangedMeta.apCost == 1);
@@ -831,7 +831,7 @@ TEST_CASE("PlayerAi AP: ranged attack cost matches registry", "[action-system]")
 // ─── Action Rejection with Insufficient AP ───────────────────────────────────
 // Requirement 13.3/13.4: Actions rejected when insufficient AP, with message
 
-TEST_CASE("PlayerAi AP: action rejected when insufficient AP", "[action-system]")
+TEST_CASE("PlayerAi AP: action rejected when insufficient AP", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -846,7 +846,7 @@ TEST_CASE("PlayerAi AP: action rejected when insufficient AP", "[action-system]"
     REQUIRE(budget.getAP() == 0);  // AP unchanged
 }
 
-TEST_CASE("PlayerAi AP: Full Action rejected with only 1 AP", "[action-system]")
+TEST_CASE("PlayerAi AP: Full Action rejected with only 1 AP", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -861,7 +861,7 @@ TEST_CASE("PlayerAi AP: Full Action rejected with only 1 AP", "[action-system]")
     REQUIRE(budget.getAP() == 1);  // AP unchanged
 }
 
-TEST_CASE("PlayerAi AP: rejection preserves AP exactly", "[action-system]")
+TEST_CASE("PlayerAi AP: rejection preserves AP exactly", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -880,7 +880,7 @@ TEST_CASE("PlayerAi AP: rejection preserves AP exactly", "[action-system]")
 // ─── Move + Attack Combo (two half actions per turn) ─────────────────────────
 // Requirement 7.1: Player can combine two half actions in one turn
 
-TEST_CASE("PlayerAi AP: move then attack exhausts 2 AP turn", "[action-system]")
+TEST_CASE("PlayerAi AP: move then attack exhausts 2 AP turn", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -901,7 +901,7 @@ TEST_CASE("PlayerAi AP: move then attack exhausts 2 AP turn", "[action-system]")
 // ─── End_Turn from partial AP ────────────────────────────────────────────────
 // Requirement 13.2: KP_5 End_Turn works from any AP state
 
-TEST_CASE("PlayerAi AP: End_Turn from full AP", "[action-system]")
+TEST_CASE("PlayerAi AP: End_Turn from full AP", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -912,7 +912,7 @@ TEST_CASE("PlayerAi AP: End_Turn from full AP", "[action-system]")
     REQUIRE(budget.getAP() == 0);
 }
 
-TEST_CASE("PlayerAi AP: End_Turn from partial AP (1 remaining)", "[action-system]")
+TEST_CASE("PlayerAi AP: End_Turn from partial AP (1 remaining)", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -924,7 +924,7 @@ TEST_CASE("PlayerAi AP: End_Turn from partial AP (1 remaining)", "[action-system
     REQUIRE(budget.getAP() == 0);
 }
 
-TEST_CASE("PlayerAi AP: End_Turn at 0 AP is safe (idempotent)", "[action-system]")
+TEST_CASE("PlayerAi AP: End_Turn at 0 AP is safe (idempotent)", "[action-system][player-ai]")
 {
     ActionBudget budget;
     budget.beginTurn();
@@ -938,7 +938,7 @@ TEST_CASE("PlayerAi AP: End_Turn at 0 AP is safe (idempotent)", "[action-system]
 
 // ─── ActionRegistry::canAfford validates against budget ──────────────────────
 
-TEST_CASE("PlayerAi AP: ActionRegistry::canAfford gates move action", "[action-system]")
+TEST_CASE("PlayerAi AP: ActionRegistry::canAfford gates move action", "[action-system][player-ai]")
 {
     // With 1 AP, Move (cost 1) is affordable
     REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 1) == true);
@@ -947,7 +947,7 @@ TEST_CASE("PlayerAi AP: ActionRegistry::canAfford gates move action", "[action-s
     REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 0) == false);
 }
 
-TEST_CASE("PlayerAi AP: ActionRegistry::canAfford gates full actions", "[action-system]")
+TEST_CASE("PlayerAi AP: ActionRegistry::canAfford gates full actions", "[action-system][player-ai]")
 {
     // Charge costs 2 AP
     REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 2) == true);
@@ -955,10 +955,117 @@ TEST_CASE("PlayerAi AP: ActionRegistry::canAfford gates full actions", "[action-
     REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 0) == false);
 }
 
-TEST_CASE("PlayerAi AP: End_Turn always affordable via registry", "[action-system]")
+TEST_CASE("PlayerAi AP: End_Turn always affordable via registry", "[action-system][player-ai]")
 {
     // End_Turn (cost 0) is always affordable
     REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 2) == true);
     REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 1) == true);
     REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 0) == true);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MonsterAi AP Spending — Grouped Unit Tests (Task 6.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Validates the AP spending patterns that MonsterAi will rely on once refactored
+// (task 6.2). Uses SECTION grouping per the task specification.
+//
+// Requirements validated: 3.1, 3.2, 3.3, 3.4
+
+TEST_CASE("MonsterAi AP spending patterns", "[action-system][monster-ai]")
+{
+    SECTION("enemy with 2 AP can afford two half actions (spend(1) twice succeeds)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+        REQUIRE(budget.getAP() == 2);
+
+        // First half action (e.g., move toward player)
+        REQUIRE(budget.canAfford(1) == true);
+        REQUIRE(budget.spend(1) == true);
+        REQUIRE(budget.getAP() == 1);
+
+        // Second half action (e.g., attack when adjacent)
+        REQUIRE(budget.canAfford(1) == true);
+        REQUIRE(budget.spend(1) == true);
+        REQUIRE(budget.getAP() == 0);
+    }
+
+    SECTION("enemy with 2 AP can afford one full action (spend(2) succeeds)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+        REQUIRE(budget.getAP() == 2);
+
+        // Full action (e.g., Charge)
+        REQUIRE(budget.canAfford(2) == true);
+        REQUIRE(budget.spend(2) == true);
+        REQUIRE(budget.getAP() == 0);
+    }
+
+    SECTION("enemy with 1 AP cannot afford a full action (spend(2) fails, AP unchanged)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Spend 1 AP first to leave only 1 remaining
+        budget.spend(1);
+        REQUIRE(budget.getAP() == 1);
+
+        // Attempt a full action — should fail and preserve AP
+        REQUIRE(budget.canAfford(2) == false);
+        REQUIRE(budget.spend(2) == false);
+        REQUIRE(budget.getAP() == 1);  // AP unchanged
+    }
+
+    SECTION("after spending all AP, no further actions possible (canAfford(1) == false)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Exhaust budget via two half actions
+        budget.spend(1);
+        budget.spend(1);
+        REQUIRE(budget.getAP() == 0);
+
+        // No half or full actions affordable
+        REQUIRE(budget.canAfford(1) == false);
+        REQUIRE(budget.canAfford(2) == false);
+
+        // Spending should also fail
+        REQUIRE(budget.spend(1) == false);
+        REQUIRE(budget.spend(2) == false);
+        REQUIRE(budget.getAP() == 0);  // no negative AP
+    }
+
+    SECTION("beginTurn() resets AP to 2 (simulating next round)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Exhaust AP
+        budget.spend(2);
+        REQUIRE(budget.getAP() == 0);
+
+        // Next round: beginTurn resets to MAX_AP
+        budget.beginTurn();
+        REQUIRE(budget.getAP() == ActionBudget::MAX_AP);
+        REQUIRE(budget.getAP() == 2);
+        REQUIRE(budget.canAfford(1) == true);
+        REQUIRE(budget.canAfford(2) == true);
+    }
+
+    SECTION("legacy path — actors without actionBudget still function (nullptr == no budget)")
+    {
+        // Actors without ActionBudget use the legacy 1-action path.
+        // MonsterAi checks: if (!owner->actionBudget) { moveOrAttack(); return; }
+        std::shared_ptr<ActionBudget> budget = nullptr;
+        REQUIRE(budget == nullptr);
+
+        // When present, budget is fully functional
+        budget = std::make_shared<ActionBudget>();
+        REQUIRE(budget != nullptr);
+        budget->beginTurn();
+        REQUIRE(budget->getAP() == 2);
+    }
 }

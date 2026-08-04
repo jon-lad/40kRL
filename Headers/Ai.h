@@ -77,8 +77,17 @@ public:
 	void load(TCODZip& zip) override;
 
 protected:
+	// AP-based action selection: attack if adjacent, move toward player otherwise.
+	// Returns false if no valid action is available.
+	bool selectAndExecuteAction(Actor* owner);
+
+	// Moves toward (targetX, targetY) using FOV line-of-sight or scent tracking.
+	// Handles door opening along the path.
+	void moveToward(Actor* owner, int targetX, int targetY);
+
 	// Attacks if adjacent; moves toward (targetX, targetY) using FOV line-of-sight
 	// or scent tracking when the player is out of sight.
+	// Kept for backward compatibility (ConfusedMonsterAi, legacy path).
 	void moveOrAttack(Actor* owner, int targetX, int targetY);
 };
 
