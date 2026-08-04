@@ -366,6 +366,40 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		return;
 	}
 
+	case 'A': // All-Out Attack (Full Action, 2 AP)
+	{
+		if (!owner->actionBudget || !owner->actionBudget->canAfford(2)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP for All-Out Attack (requires 2 AP).");
+			return;
+		}
+		// Find adjacent enemy to attack
+		Actor* target = nullptr;
+		for (int ddx = -1; ddx <= 1; ++ddx) {
+			for (int ddy = -1; ddy <= 1; ++ddy) {
+				if (ddx == 0 && ddy == 0) continue;
+				Actor* adj = engine.getActorAt(owner->getX() + ddx, owner->getY() + ddy);
+				if (adj && adj != owner && adj->destructible && !adj->destructible->isDead()) {
+					target = adj;
+					break;
+				}
+			}
+			if (target) break;
+		}
+		if (!target) {
+			engine.gui->message(Colors::lightGrey, "No adjacent enemy for All-Out Attack.");
+			return;
+		}
+		owner->actionBudget->spend(2);
+		owner->actionBudget->forfeitReaction();
+		if (owner->attacker) {
+			owner->attacker->addModifier(30);
+			owner->attacker->attack(owner, target);
+			owner->attacker->removeModifier(30);
+		}
+		engine.gui->message(Colors::playerAction, "You unleash an All-Out Attack!");
+		return;
+	}
+
 	case 'C': // Charge (Full Action, 2 AP)
 	{
 		if (!owner->actionBudget || !owner->actionBudget->canAfford(2)) {
@@ -401,6 +435,17 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		}
 		engine.gui->message(Colors::playerAction, "You charge!");
 		engine.camera->update(owner, engine.map->getLevelType() == LevelType::OUTDOOR);
+		return;
+	}
+
+	case 'R': // Run (Full Action, 2 AP)
+	{
+		if (!owner->actionBudget || !owner->actionBudget->canAfford(2)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP to run (requires 2 AP).");
+			return;
+		}
+		owner->actionBudget->spend(2);
+		engine.gui->message(Colors::playerAction, "You run! (Full Action — turn ends)");
 		return;
 	}
 
