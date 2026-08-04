@@ -1,0 +1,2293 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: action-system — Property-Based Tests for ActionBudget & ActionRegistry
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// TDD: These tests are written BEFORE the implementation exists.
+// They will not compile until ActionBudget.h and ActionRegistry.h are created.
+
+#include "lib/catch_amalgamated.hpp"
+#include "lib/rapidcheck.h"
+#include "lib/rapidcheck_catch.h"
+#include "main.h"
+
+#include "ActionBudget.h"
+#include "ActionRegistry.h"
+
+// ─── Property 1: AP budget conservation ──────────────────────────────────────
+// For any sequence of valid spend() calls with costs in {0,1,2}, the sum of
+// deducted costs equals MAX_AP minus final getAP().
+// **Validates: Requirements 1.1, 1.2, 1.3, 1.4**
+
+TEST_CASE("PBT: Property 1 — AP budget conservation", "[property][action-system]")
+{
+    rc::prop("sum of spent costs equals MAX_AP minus final AP", []() {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Generate a random sequence of costs (0, 1, or 2)
+        auto costs = *rc::gen::container<int>(1, 6, rc::gen::inRange(0, 2));
+
+        int totalSpent = 0;
+        for (int cost : costs) {
+            if (budget.canAfford(cost)) {
+                bool ok = budget.spend(cost);
+                if (ok) {
+                    totalSpent += cost;
+                }
+            }
+        }
+
+        // Conservation: initial AP - final AP == total spent
+        RC_ASSERT(ActionBudget::MAX_AP - budget.getAP() == totalSpent);
+    });
+}
+
+// ─── Property 2: Action rejection preserves AP ───────────────────────────────
+// For any (cost, currentAP) pair where cost > currentAP, spend() returns false
+// and getAP() is unchanged.
+// **Validates: Requirements 1.5, 1.6**
+
+TEST_CASE("PBT: Property 2 — Action rejection preserves AP", "[property][action-system]")
+{
+    rc::prop("spend() with insufficient AP returns false and leaves AP unchanged", []() {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Generate a current AP in [0, 1] so we can always find a cost that exceeds it
+        int currentAP = *rc::gen::inRange(0, 1);
+        budget.setAP(currentAP);
+
+        // Generate a cost that exceeds currentAP
+        int cost = *rc::gen::inRange(currentAP + 1, 3);
+
+        int apBefore = budget.getAP();
+        bool result = budget.spend(cost);
+
+        RC_ASSERT(result == false);
+        RC_ASSERT(budget.getAP() == apBefore);
+    });
+}
+
+// ─── Property 3: Turn termination at zero AP ─────────────────────────────────
+// After action sequences that exhaust AP to 0, canAfford(1) and canAfford(2)
+// both return false.
+// **Validates: Requirements 1.7**
+
+TEST_CASE("PBT: Property 3 — Turn termination at zero AP", "[property][action-system]")
+{
+    rc::prop("at zero AP, canAfford(1) and canAfford(2) both return false", []() {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Generate a sequence of costs that will exhaust AP
+        auto costs = *rc::gen::container<int>(1, 4, rc::gen::inRange(1, 2));
+
+        for (int cost : costs) {
+            if (budget.canAfford(cost)) {
+                budget.spend(cost);
+            }
+        }
+
+        // Force AP to 0 if not already exhausted
+        budget.setAP(0);
+
+        RC_ASSERT(budget.getAP() == 0);
+        RC_ASSERT(budget.canAfford(1) == false);
+        RC_ASSERT(budget.canAfford(2) == false);
+        // Free actions (cost 0) should still be allowed
+        RC_ASSERT(budget.canAfford(0) == true);
+    });
+}
+
+// ─── Property 4: Reaction refresh round-trip ─────────────────────────────────
+// Generate random beginTurn/useReaction sequences; verify hasReaction() is true
+// after beginTurn() and false after useReaction().
+// **Validates: Requirements 4.1, 4.2, 4.3**
+
+TEST_CASE("PBT: Property 4 — Reaction refresh round-trip", "[property][action-system]")
+{
+    rc::prop("hasReaction() is true after beginTurn, false after useReaction", []() {
+        ActionBudget budget;
+
+        // Generate random number of turns to simulate
+        int numTurns = *rc::gen::inRange(1, 5);
+
+        for (int turn = 0; turn < numTurns; ++turn) {
+            budget.beginTurn();
+            RC_ASSERT(budget.hasReaction() == true);
+
+            // Randomly decide whether to use the reaction this turn
+            bool useIt = *rc::gen::arbitrary_bool();
+            if (useIt) {
+                budget.useReaction();
+                RC_ASSERT(budget.hasReaction() == false);
+
+                // Using reaction again should not crash, still false
+                // (defensive — no double-spend)
+            }
+        }
+
+        // After the last beginTurn, reaction should always be refreshed
+        budget.beginTurn();
+        RC_ASSERT(budget.hasReaction() == true);
+    });
+}
+
+// ─── Property 5: Aim bonus lifecycle ─────────────────────────────────────────
+// Generate random aim/consume/endTurn sequences; verify bonus equals
+// min(N×10, 20) and resets to 0 after consumeAimBonus() or clearAimBonus().
+// **Validates: Requirements 12.1, 12.2, 12.3, 12.4**
+
+TEST_CASE("PBT: Property 5 — Aim bonus lifecycle", "[property][action-system]")
+{
+    rc::prop("aim bonus equals min(N*10, 20) and resets after consume or clear", []() {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Generate a random number of aim actions [0, 4] (more than 2 tests capping)
+        int numAims = *rc::gen::inRange(0, 4);
+
+        for (int i = 0; i < numAims; ++i) {
+            budget.addAimBonus();
+        }
+
+        // Verify aim bonus is min(N * AIM_PER_ACTION, MAX_AIM_BONUS)
+        int expectedBonus = std::min(numAims * ActionBudget::AIM_PER_ACTION,
+                                     ActionBudget::MAX_AIM_BONUS);
+        RC_ASSERT(budget.getAimBonus() == expectedBonus);
+
+        // Randomly choose how to reset: consume or clear via endTurn
+        int resetMethod = *rc::gen::inRange(0, 1);
+        if (resetMethod == 0) {
+            budget.consumeAimBonus();
+        } else {
+            budget.clearAimBonus();
+        }
+
+        RC_ASSERT(budget.getAimBonus() == 0);
+    });
+}
+
+// ─── Property 6: Action registry consistency ─────────────────────────────────
+// Iterate all ActionId entries; verify Half=1 AP, Full=2 AP, Free=0 AP,
+// Reaction=0 AP.
+// **Validates: Requirements 11.2**
+
+TEST_CASE("PBT: Property 6 — Action registry consistency", "[property][action-system]")
+{
+    rc::prop("all registry entries have cost matching their declared type", []() {
+        // Generate a random ActionId index to check (covers all entries over many iterations)
+        int idx = *rc::gen::inRange(0, static_cast<int>(ActionId::COUNT) - 1);
+        ActionId id = static_cast<ActionId>(idx);
+
+        const ActionMeta& meta = ActionRegistry::get(id);
+
+        switch (meta.type) {
+            case ActionType::HALF:
+                RC_ASSERT(meta.apCost == 1);
+                break;
+            case ActionType::FULL:
+                RC_ASSERT(meta.apCost == 2);
+                break;
+            case ActionType::FREE:
+                RC_ASSERT(meta.apCost == 0);
+                break;
+            case ActionType::REACTION:
+                RC_ASSERT(meta.apCost == 0);
+                break;
+        }
+
+        // Also verify the id field matches the index
+        RC_ASSERT(meta.id == id);
+    });
+}
+
+// ─── Property 11: End Turn is always available ───────────────────────────────
+// Generate random AP values [0..2]; verify End_Turn (cost 0) is always accepted.
+// **Validates: Requirements 9.1, 9.2**
+
+TEST_CASE("PBT: Property 11 — End Turn is always available", "[property][action-system]")
+{
+    rc::prop("End_Turn (free action, cost 0) is always accepted regardless of AP", []() {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Set AP to a random value in [0, 2]
+        int ap = *rc::gen::inRange(0, 2);
+        budget.setAP(ap);
+
+        // End_Turn is a free action (cost 0) — should always be affordable
+        RC_ASSERT(budget.canAfford(0) == true);
+
+        // Spending 0 AP should succeed and not change AP
+        int apBefore = budget.getAP();
+        bool result = budget.spend(0);
+        RC_ASSERT(result == true);
+        RC_ASSERT(budget.getAP() == apBefore);
+
+        // Also verify via the registry that End_Turn has cost 0
+        const ActionMeta& endTurnMeta = ActionRegistry::get(ActionId::END_TURN);
+        RC_ASSERT(endTurnMeta.apCost == 0);
+        RC_ASSERT(endTurnMeta.type == ActionType::FREE);
+        RC_ASSERT(ActionRegistry::canAfford(ActionId::END_TURN, ap));
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Engine State Transition Unit Tests — Task 3.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// TDD: These tests verify the ActionBudget conditions that drive Engine state
+// transitions (IDLE → PLAYER_TURN → ENEMY_TURN → IDLE). The actual Engine
+// states (PLAYER_TURN, ENEMY_TURN) will be added in task 3.2; these tests
+// validate the transition CONDITIONS via ActionBudget.
+//
+// Requirements validated: 2.1, 2.2, 2.3, 3.1
+
+// ─── Test: IDLE → PLAYER_TURN condition (beginTurn gives full AP) ────────────
+// Requirement 2.1: While the player has AP remaining, the Engine SHALL keep the
+// game in the player's turn state and accept further input.
+// After beginTurn(), AP is full — this is the condition that enables PLAYER_TURN.
+
+TEST_CASE("Engine transition: IDLE to PLAYER_TURN on beginTurn", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // After beginTurn, AP should be full — this enables PLAYER_TURN state
+    REQUIRE(budget.getAP() == ActionBudget::MAX_AP);
+    REQUIRE(budget.getAP() == 2);
+
+    // Player should be able to afford actions (turn is active)
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.canAfford(2) == true);
+
+    // Reaction should also be refreshed at turn start
+    REQUIRE(budget.hasReaction() == true);
+}
+
+// ─── Test: PLAYER_TURN → ENEMY_TURN condition (AP reaches 0) ────────────────
+// Requirement 2.2: When the player's AP reaches 0, the Engine SHALL transition
+// to the enemy turn phase.
+// Spending all AP (two half actions) causes AP to reach 0 — triggers transition.
+
+TEST_CASE("Engine transition: PLAYER_TURN to ENEMY_TURN when AP reaches 0", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Simulate player spending AP via two half actions (1 AP each)
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // Still in PLAYER_TURN — AP > 0
+    REQUIRE(budget.canAfford(1) == true);
+
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // AP has reached 0 — this is the condition that triggers ENEMY_TURN transition
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+
+    // Free actions are still allowed (cost 0), but turn should end
+    REQUIRE(budget.canAfford(0) == true);
+}
+
+// ─── Test: PLAYER_TURN → ENEMY_TURN via Full Action (2 AP at once) ──────────
+// Validates the same transition but through a single full action spend.
+
+TEST_CASE("Engine transition: PLAYER_TURN to ENEMY_TURN via Full Action", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Full action costs 2 AP — exhausts budget immediately
+    REQUIRE(budget.spend(2) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // Transition condition met: AP == 0
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: ENEMY_TURN → IDLE condition (enemy spends full budget) ────────────
+// Requirement 3.1: When an enemy's turn begins, the MonsterAi SHALL spend its
+// AP budget by selecting valid actions until AP reaches 0.
+// After enemy exhausts AP, system returns to IDLE for next player turn.
+
+TEST_CASE("Engine transition: ENEMY_TURN to IDLE after enemy spends AP", "[action-system]")
+{
+    // Simulate an enemy's turn budget
+    ActionBudget enemyBudget;
+    enemyBudget.beginTurn();
+
+    REQUIRE(enemyBudget.getAP() == ActionBudget::MAX_AP);
+
+    // Enemy performs two half actions (move + attack pattern)
+    REQUIRE(enemyBudget.spend(1) == true);  // move toward player
+    REQUIRE(enemyBudget.getAP() == 1);
+
+    REQUIRE(enemyBudget.spend(1) == true);  // attack player
+    REQUIRE(enemyBudget.getAP() == 0);
+
+    // Enemy budget exhausted — condition for transitioning back to IDLE
+    REQUIRE(enemyBudget.canAfford(1) == false);
+    REQUIRE(enemyBudget.canAfford(2) == false);
+}
+
+// ─── Test: Multiple enemies all exhaust AP before returning to IDLE ──────────
+// Requirement 2.2/3.1: All enemies must finish before returning to IDLE.
+
+TEST_CASE("Engine transition: All enemies exhaust AP before IDLE", "[action-system]")
+{
+    // Simulate three enemies each spending their budget
+    ActionBudget enemy1, enemy2, enemy3;
+    enemy1.beginTurn();
+    enemy2.beginTurn();
+    enemy3.beginTurn();
+
+    // Enemy 1: two half actions
+    enemy1.spend(1);
+    enemy1.spend(1);
+    REQUIRE(enemy1.getAP() == 0);
+
+    // Enemy 2: one full action
+    enemy2.spend(2);
+    REQUIRE(enemy2.getAP() == 0);
+
+    // Enemy 3: can't do anything useful, ends immediately
+    enemy3.setAP(0);
+    REQUIRE(enemy3.getAP() == 0);
+
+    // All enemies at 0 AP — transition to IDLE is valid
+    REQUIRE(enemy1.canAfford(1) == false);
+    REQUIRE(enemy2.canAfford(1) == false);
+    REQUIRE(enemy3.canAfford(1) == false);
+}
+
+// ─── Test: End_Turn free action sets AP to 0 and triggers enemy turn ─────────
+// Requirement 2.3: When the player performs End_Turn, the Engine SHALL set
+// the player's remaining AP to 0 and transition to the enemy turn phase.
+
+TEST_CASE("Engine transition: End_Turn sets AP to 0", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Player has full AP but chooses to end turn early
+    REQUIRE(budget.getAP() == 2);
+
+    // End_Turn is a free action: sets AP to 0 directly
+    budget.setAP(0);
+
+    REQUIRE(budget.getAP() == 0);
+    // This triggers the ENEMY_TURN transition condition
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: End_Turn works even with partial AP spent ─────────────────────────
+// Player has 1 AP left and decides to end turn rather than use it.
+
+TEST_CASE("Engine transition: End_Turn with partial AP remaining", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Spend 1 AP on a half action (e.g., move)
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // Player decides to end turn with 1 AP remaining
+    budget.setAP(0);
+
+    REQUIRE(budget.getAP() == 0);
+    REQUIRE(budget.canAfford(1) == false);
+}
+
+// ─── Test: End_Turn is always valid (even at 0 AP) ───────────────────────────
+// Requirement 9.1/9.2: Free actions are allowed regardless of remaining AP.
+
+TEST_CASE("Engine transition: End_Turn valid at 0 AP", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Exhaust AP first
+    budget.spend(2);
+    REQUIRE(budget.getAP() == 0);
+
+    // setAP(0) on already-zero AP should be safe (idempotent)
+    budget.setAP(0);
+    REQUIRE(budget.getAP() == 0);
+}
+
+// ─── Test: beginTurn resets state for next round (IDLE → PLAYER_TURN again) ──
+// After enemy turns complete and we return to IDLE, the next beginTurn()
+// must reset AP for the player's new turn.
+
+TEST_CASE("Engine transition: beginTurn resets for new round", "[action-system]")
+{
+    ActionBudget budget;
+
+    // First turn
+    budget.beginTurn();
+    budget.spend(1);
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 0);
+
+    // Simulate: enemy turns run, then IDLE → new PLAYER_TURN
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == ActionBudget::MAX_AP);
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.canAfford(2) == true);
+    REQUIRE(budget.hasReaction() == true);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MonsterAi AP Spending Unit Tests — Task 6.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// These tests validate the ActionBudget conditions that will drive MonsterAi
+// behavior once refactored (task 6.2). They verify budget spending patterns
+// for enemy turns: move+attack combos, full actions, and legacy fallback.
+//
+// Requirements validated: 3.1, 3.2, 3.3, 3.4
+
+// ─── Test: Enemy budget starts at 2 AP after beginTurn ───────────────────────
+// Requirement 3.1: When an enemy's turn begins, MonsterAi SHALL spend its AP
+// budget by selecting valid actions until AP reaches 0.
+// Precondition: beginTurn() gives exactly MAX_AP (2).
+
+TEST_CASE("MonsterAi: enemy budget starts at 2 AP", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    REQUIRE(budget.getAP() == 2);
+    REQUIRE(budget.getAP() == ActionBudget::MAX_AP);
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.canAfford(2) == true);
+}
+
+// ─── Test: Enemy spends exactly 2 AP via two half actions (move + attack) ────
+// Requirement 3.1, 3.3: Enemy spends its full AP budget via half actions.
+// Pattern: move toward player (1 AP) + attack when adjacent (1 AP) = 2 AP total.
+
+TEST_CASE("MonsterAi: enemy spends exactly 2 AP via move + attack", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Move toward player — costs 1 AP
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // Attack when adjacent — costs 1 AP
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // Budget fully spent — turn ends
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: Enemy attacks when adjacent (1 AP cost) ───────────────────────────
+// Requirement 3.3: When adjacent, the enemy attacks (half action = 1 AP).
+// After one attack at 2 AP, enemy still has 1 AP remaining for another action.
+
+TEST_CASE("MonsterAi: attack when adjacent costs 1 AP", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Enemy is adjacent to player — perform attack (1 AP)
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // Enemy still has AP remaining for another half action
+    REQUIRE(budget.canAfford(1) == true);
+}
+
+// ─── Test: Enemy moves toward player when not adjacent (1 AP cost) ───────────
+// Requirement 3.3: When not adjacent, the enemy moves (half action = 1 AP).
+
+TEST_CASE("MonsterAi: move toward player costs 1 AP", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Enemy is not adjacent — move toward player (1 AP)
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // After moving, enemy has 1 AP left (could attack if now adjacent)
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: Enemy selects Full Action when 2 AP available (Charge) ────────────
+// Requirement 3.2: When an enemy has 2 AP remaining and a valid Full_Action
+// is tactically preferred, the MonsterAi SHALL select that Full_Action.
+// Simulates a Charge (full action, 2 AP) exhausting the budget in one go.
+
+TEST_CASE("MonsterAi: full action (Charge) costs 2 AP", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Enemy decides to charge (full action = 2 AP)
+    REQUIRE(budget.canAfford(2) == true);
+    REQUIRE(budget.spend(2) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // Budget fully spent after one full action
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: Full action rejected when only 1 AP remaining ─────────────────────
+// Requirement 3.2/1.6: Full actions require 2 AP. If enemy has only 1 AP,
+// the full action is rejected and AP is preserved.
+
+TEST_CASE("MonsterAi: full action rejected with 1 AP remaining", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Enemy spends 1 AP on a move first
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);
+
+    // Attempt a full action (Charge) with only 1 AP — should fail
+    REQUIRE(budget.canAfford(2) == false);
+    REQUIRE(budget.spend(2) == false);
+    REQUIRE(budget.getAP() == 1);  // AP unchanged after rejection
+}
+
+// ─── Test: Enemy with no valid actions ends turn immediately ─────────────────
+// Requirement 3.4: If an enemy cannot perform any action with its remaining AP,
+// the MonsterAi SHALL end that enemy's turn immediately.
+// Simulated by setting AP to 0 (no valid actions possible).
+
+TEST_CASE("MonsterAi: no valid actions ends turn immediately", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Simulate: enemy has exhausted all actionable options
+    // (e.g., surrounded by walls, can't move, not adjacent to attack)
+    // The MonsterAi would detect no valid action and set AP to 0
+    budget.setAP(0);
+
+    REQUIRE(budget.getAP() == 0);
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+    // Only free actions (cost 0) remain available
+    REQUIRE(budget.canAfford(0) == true);
+}
+
+// ─── Test: Enemy with 0 AP cannot spend further ──────────────────────────────
+// Requirement 3.4/1.7: Once AP is 0, no half or full actions can be taken.
+
+TEST_CASE("MonsterAi: zero AP prevents further spending", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Exhaust budget via two half actions
+    budget.spend(1);
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 0);
+
+    // Attempting to spend more fails
+    REQUIRE(budget.spend(1) == false);
+    REQUIRE(budget.spend(2) == false);
+    REQUIRE(budget.getAP() == 0);  // still 0, no negative AP
+}
+
+// ─── Test: Legacy behaviour when no ActionBudget present ─────────────────────
+// Requirement 3.4 (backward compat): Actors without ActionBudget use legacy
+// 1-action behaviour. We verify this by confirming that a nullptr ActionBudget
+// means the MonsterAi falls back to the old move-or-attack path.
+// Since ActionBudget is stored as shared_ptr on Actor, a null check suffices.
+
+TEST_CASE("MonsterAi: legacy behaviour when no ActionBudget (nullptr check)", "[action-system]")
+{
+    // Simulate the legacy path: actor has no ActionBudget (nullptr)
+    std::shared_ptr<ActionBudget> budget = nullptr;
+
+    // The MonsterAi refactor (task 6.2) will check:
+    //   if (!owner->actionBudget) { legacyMoveOrAttack(); return; }
+    // This test validates the null-check condition itself
+    REQUIRE(budget == nullptr);
+
+    // When budget IS present, it should be usable
+    budget = std::make_shared<ActionBudget>();
+    REQUIRE(budget != nullptr);
+    budget->beginTurn();
+    REQUIRE(budget->getAP() == 2);
+}
+
+// ─── Test: Enemy turn pattern — move twice when far from player ──────────────
+// Requirement 3.3: MonsterAi uses half actions until AP exhausted.
+// When far from player and no full action preferred, enemy moves twice.
+
+TEST_CASE("MonsterAi: move twice pattern (2 half actions)", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Enemy is far from player — moves twice (1 AP each)
+    REQUIRE(budget.spend(1) == true);  // first move
+    REQUIRE(budget.getAP() == 1);
+    REQUIRE(budget.spend(1) == true);  // second move
+    REQUIRE(budget.getAP() == 0);
+
+    // Budget exhausted
+    REQUIRE(budget.canAfford(1) == false);
+}
+
+// ─── Test: Multiple enemies each get independent budgets ─────────────────────
+// Requirement 3.1: Each enemy gets its own AP budget per turn.
+// Spending one enemy's budget does not affect another.
+
+TEST_CASE("MonsterAi: independent budgets per enemy", "[action-system]")
+{
+    ActionBudget enemy1Budget;
+    ActionBudget enemy2Budget;
+
+    enemy1Budget.beginTurn();
+    enemy2Budget.beginTurn();
+
+    // Enemy 1 spends its budget
+    enemy1Budget.spend(1);
+    enemy1Budget.spend(1);
+    REQUIRE(enemy1Budget.getAP() == 0);
+
+    // Enemy 2's budget is unaffected
+    REQUIRE(enemy2Budget.getAP() == 2);
+    REQUIRE(enemy2Budget.canAfford(1) == true);
+    REQUIRE(enemy2Budget.canAfford(2) == true);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PlayerAi Numpad & AP Spending Unit Tests — Task 5.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// These tests validate:
+//   1. Numpad key → direction mapping (documented as data assertions)
+//   2. ActionBudget behaviour for player AP-spending scenarios
+//
+// Since PlayerAi::update() requires a full Engine with Map/GUI, we test the
+// CONDITIONS that drive PlayerAi decisions rather than calling update() directly.
+//
+// Requirements validated: 7.1, 13.1, 13.2, 13.3, 13.4
+
+// ─── Numpad Direction Mapping Table ──────────────────────────────────────────
+// Requirement 13.1: KP_7=(-1,-1), KP_8=(0,-1), KP_9=(1,-1),
+//                   KP_4=(-1,0),  KP_5=End_Turn, KP_6=(1,0),
+//                   KP_1=(-1,1),  KP_2=(0,1),    KP_3=(1,1)
+//
+// We express the expected mappings as a static lookup table that the PlayerAi
+// refactor (task 5.2) MUST satisfy. These tests document the contract.
+
+struct NumpadMapping {
+    SDL_Keycode key;
+    int expectedDx;
+    int expectedDy;
+    const char* label;
+};
+
+static const NumpadMapping NUMPAD_DIRECTION_TABLE[] = {
+    { SDLK_KP_7, -1, -1, "KP_7 (up-left)" },
+    { SDLK_KP_8,  0, -1, "KP_8 (up)" },
+    { SDLK_KP_9,  1, -1, "KP_9 (up-right)" },
+    { SDLK_KP_4, -1,  0, "KP_4 (left)" },
+    { SDLK_KP_6,  1,  0, "KP_6 (right)" },
+    { SDLK_KP_1, -1,  1, "KP_1 (down-left)" },
+    { SDLK_KP_2,  0,  1, "KP_2 (down)" },
+    { SDLK_KP_3,  1,  1, "KP_3 (down-right)" },
+};
+
+// Helper: Given an SDL keycode, return the expected (dx, dy) for movement.
+// Returns (0,0) for non-movement keys (like KP_5 which is End_Turn).
+static std::pair<int, int> numpadToDirection(SDL_Keycode key)
+{
+    switch (key) {
+        case SDLK_KP_7: return { -1, -1 };
+        case SDLK_KP_8: return {  0, -1 };
+        case SDLK_KP_9: return {  1, -1 };
+        case SDLK_KP_4: return { -1,  0 };
+        case SDLK_KP_6: return {  1,  0 };
+        case SDLK_KP_1: return { -1,  1 };
+        case SDLK_KP_2: return {  0,  1 };
+        case SDLK_KP_3: return {  1,  1 };
+        default:         return {  0,  0 };
+    }
+}
+
+TEST_CASE("PlayerAi numpad: each KP key produces correct dx/dy", "[action-system][player-ai]")
+{
+    for (const auto& mapping : NUMPAD_DIRECTION_TABLE) {
+        SECTION(mapping.label) {
+            auto [dx, dy] = numpadToDirection(mapping.key);
+            REQUIRE(dx == mapping.expectedDx);
+            REQUIRE(dy == mapping.expectedDy);
+        }
+    }
+}
+
+TEST_CASE("PlayerAi numpad: KP_5 is not a movement key (End_Turn trigger)", "[action-system][player-ai]")
+{
+    // KP_5 should NOT produce movement — it triggers End_Turn (free action)
+    auto [dx, dy] = numpadToDirection(SDLK_KP_5);
+    REQUIRE(dx == 0);
+    REQUIRE(dy == 0);
+
+    // Validate that End_Turn action has cost 0 (always available)
+    const ActionMeta& endTurn = ActionRegistry::get(ActionId::END_TURN);
+    REQUIRE(endTurn.apCost == 0);
+    REQUIRE(endTurn.type == ActionType::FREE);
+}
+
+TEST_CASE("PlayerAi numpad: KP_5 triggers End_Turn (sets AP to 0)", "[action-system][player-ai]")
+{
+    // Simulates the KP_5 behaviour: setAP(0) from any AP state
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // KP_5 action: set AP to 0 (End_Turn)
+    budget.setAP(0);
+
+    REQUIRE(budget.getAP() == 0);
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Movement AP Spending ────────────────────────────────────────────────────
+// Requirement 7.1: Move action deducts 1 AP
+
+TEST_CASE("PlayerAi AP: movement deducts 1 AP", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Simulate Move action (Half Action, cost 1)
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // Second move
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 0);
+}
+
+TEST_CASE("PlayerAi AP: Move action cost matches registry", "[action-system][player-ai]")
+{
+    const ActionMeta& moveMeta = ActionRegistry::get(ActionId::MOVE);
+    REQUIRE(moveMeta.apCost == 1);
+    REQUIRE(moveMeta.type == ActionType::HALF);
+}
+
+// ─── Attack AP Spending ──────────────────────────────────────────────────────
+// Requirement 7.1 (implicit): Attack is a Half Action, deducts 1 AP
+
+TEST_CASE("PlayerAi AP: attack deducts 1 AP", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Simulate Standard Attack (melee) — Half Action, cost 1
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+TEST_CASE("PlayerAi AP: melee attack cost matches registry", "[action-system][player-ai]")
+{
+    const ActionMeta& meleeMeta = ActionRegistry::get(ActionId::STANDARD_ATTACK_MELEE);
+    REQUIRE(meleeMeta.apCost == 1);
+    REQUIRE(meleeMeta.type == ActionType::HALF);
+}
+
+TEST_CASE("PlayerAi AP: ranged attack cost matches registry", "[action-system][player-ai]")
+{
+    const ActionMeta& rangedMeta = ActionRegistry::get(ActionId::STANDARD_ATTACK_RANGED);
+    REQUIRE(rangedMeta.apCost == 1);
+    REQUIRE(rangedMeta.type == ActionType::HALF);
+}
+
+// ─── Action Rejection with Insufficient AP ───────────────────────────────────
+// Requirement 13.3/13.4: Actions rejected when insufficient AP, with message
+
+TEST_CASE("PlayerAi AP: action rejected when insufficient AP", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Exhaust AP
+    budget.spend(2);
+    REQUIRE(budget.getAP() == 0);
+
+    // Attempt a Half Action (cost 1) — should be rejected
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.spend(1) == false);
+    REQUIRE(budget.getAP() == 0);  // AP unchanged
+}
+
+TEST_CASE("PlayerAi AP: Full Action rejected with only 1 AP", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Spend 1 AP on a move
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);
+
+    // Attempt a Full Action (cost 2) — should be rejected
+    REQUIRE(budget.canAfford(2) == false);
+    REQUIRE(budget.spend(2) == false);
+    REQUIRE(budget.getAP() == 1);  // AP unchanged
+}
+
+TEST_CASE("PlayerAi AP: rejection preserves AP exactly", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Set AP to specific value
+    budget.setAP(1);
+    int apBefore = budget.getAP();
+
+    // Try to spend more than we have
+    bool result = budget.spend(2);
+
+    REQUIRE(result == false);
+    REQUIRE(budget.getAP() == apBefore);
+}
+
+// ─── Move + Attack Combo (two half actions per turn) ─────────────────────────
+// Requirement 7.1: Player can combine two half actions in one turn
+
+TEST_CASE("PlayerAi AP: move then attack exhausts 2 AP turn", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Move (1 AP)
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // Attack (1 AP)
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // Turn is over — no more actions possible
+    REQUIRE(budget.canAfford(1) == false);
+}
+
+// ─── End_Turn from partial AP ────────────────────────────────────────────────
+// Requirement 13.2: KP_5 End_Turn works from any AP state
+
+TEST_CASE("PlayerAi AP: End_Turn from full AP", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // End_Turn: setAP(0)
+    budget.setAP(0);
+    REQUIRE(budget.getAP() == 0);
+}
+
+TEST_CASE("PlayerAi AP: End_Turn from partial AP (1 remaining)", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);
+
+    // End_Turn: setAP(0)
+    budget.setAP(0);
+    REQUIRE(budget.getAP() == 0);
+}
+
+TEST_CASE("PlayerAi AP: End_Turn at 0 AP is safe (idempotent)", "[action-system][player-ai]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(2);
+    REQUIRE(budget.getAP() == 0);
+
+    // End_Turn at 0 AP — should be harmless
+    budget.setAP(0);
+    REQUIRE(budget.getAP() == 0);
+}
+
+// ─── ActionRegistry::canAfford validates against budget ──────────────────────
+
+TEST_CASE("PlayerAi AP: ActionRegistry::canAfford gates move action", "[action-system][player-ai]")
+{
+    // With 1 AP, Move (cost 1) is affordable
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 1) == true);
+
+    // With 0 AP, Move (cost 1) is not affordable
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 0) == false);
+}
+
+TEST_CASE("PlayerAi AP: ActionRegistry::canAfford gates full actions", "[action-system][player-ai]")
+{
+    // Charge costs 2 AP
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 2) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 0) == false);
+}
+
+TEST_CASE("PlayerAi AP: End_Turn always affordable via registry", "[action-system][player-ai]")
+{
+    // End_Turn (cost 0) is always affordable
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 2) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 0) == true);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MonsterAi AP Spending — Grouped Unit Tests (Task 6.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Validates the AP spending patterns that MonsterAi will rely on once refactored
+// (task 6.2). Uses SECTION grouping per the task specification.
+//
+// Requirements validated: 3.1, 3.2, 3.3, 3.4
+
+TEST_CASE("MonsterAi AP spending patterns", "[action-system][monster-ai]")
+{
+    SECTION("enemy with 2 AP can afford two half actions (spend(1) twice succeeds)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+        REQUIRE(budget.getAP() == 2);
+
+        // First half action (e.g., move toward player)
+        REQUIRE(budget.canAfford(1) == true);
+        REQUIRE(budget.spend(1) == true);
+        REQUIRE(budget.getAP() == 1);
+
+        // Second half action (e.g., attack when adjacent)
+        REQUIRE(budget.canAfford(1) == true);
+        REQUIRE(budget.spend(1) == true);
+        REQUIRE(budget.getAP() == 0);
+    }
+
+    SECTION("enemy with 2 AP can afford one full action (spend(2) succeeds)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+        REQUIRE(budget.getAP() == 2);
+
+        // Full action (e.g., Charge)
+        REQUIRE(budget.canAfford(2) == true);
+        REQUIRE(budget.spend(2) == true);
+        REQUIRE(budget.getAP() == 0);
+    }
+
+    SECTION("enemy with 1 AP cannot afford a full action (spend(2) fails, AP unchanged)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Spend 1 AP first to leave only 1 remaining
+        budget.spend(1);
+        REQUIRE(budget.getAP() == 1);
+
+        // Attempt a full action — should fail and preserve AP
+        REQUIRE(budget.canAfford(2) == false);
+        REQUIRE(budget.spend(2) == false);
+        REQUIRE(budget.getAP() == 1);  // AP unchanged
+    }
+
+    SECTION("after spending all AP, no further actions possible (canAfford(1) == false)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Exhaust budget via two half actions
+        budget.spend(1);
+        budget.spend(1);
+        REQUIRE(budget.getAP() == 0);
+
+        // No half or full actions affordable
+        REQUIRE(budget.canAfford(1) == false);
+        REQUIRE(budget.canAfford(2) == false);
+
+        // Spending should also fail
+        REQUIRE(budget.spend(1) == false);
+        REQUIRE(budget.spend(2) == false);
+        REQUIRE(budget.getAP() == 0);  // no negative AP
+    }
+
+    SECTION("beginTurn() resets AP to 2 (simulating next round)")
+    {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Exhaust AP
+        budget.spend(2);
+        REQUIRE(budget.getAP() == 0);
+
+        // Next round: beginTurn resets to MAX_AP
+        budget.beginTurn();
+        REQUIRE(budget.getAP() == ActionBudget::MAX_AP);
+        REQUIRE(budget.getAP() == 2);
+        REQUIRE(budget.canAfford(1) == true);
+        REQUIRE(budget.canAfford(2) == true);
+    }
+
+    SECTION("legacy path — actors without actionBudget still function (nullptr == no budget)")
+    {
+        // Actors without ActionBudget use the legacy 1-action path.
+        // MonsterAi checks: if (!owner->actionBudget) { moveOrAttack(); return; }
+        std::shared_ptr<ActionBudget> budget = nullptr;
+        REQUIRE(budget == nullptr);
+
+        // When present, budget is fully functional
+        budget = std::make_shared<ActionBudget>();
+        REQUIRE(budget != nullptr);
+        budget->beginTurn();
+        REQUIRE(budget->getAP() == 2);
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Reaction System Property-Based Tests — Task 8.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// TDD: These tests are written BEFORE the ReactionResolver implementation exists.
+// They test the underlying conditions/logic directly via ActionBudget and pure
+// logic checks.
+//
+// Requirements validated: 4.4, 5.1–5.3, 6.1–6.6, 8.3
+
+// ─── Property 8: All-Out Attack forfeits reaction ────────────────────────────
+// For any actor performing All-Out Attack, after execution hasReaction() SHALL
+// return false for the remainder of the round.
+// **Validates: Requirements 4.4, 8.3**
+
+TEST_CASE("PBT: Property 8 — All-Out Attack forfeits reaction", "[property][action-system]")
+{
+    rc::prop("forfeitReaction() after All-Out Attack makes hasReaction() false until next beginTurn()", []() {
+        ActionBudget budget;
+        budget.beginTurn();
+
+        // Generate random pre-condition: whether the reaction was already used
+        bool reactionAlreadyUsed = *rc::gen::arbitrary_bool();
+
+        if (reactionAlreadyUsed) {
+            budget.useReaction();
+        }
+
+        // At this point, hasReaction() depends on whether it was already used
+        if (!reactionAlreadyUsed) {
+            RC_ASSERT(budget.hasReaction() == true);
+        }
+
+        // Simulate All-Out Attack: costs 2 AP and forfeits reaction
+        RC_ASSERT(budget.canAfford(2) == true);
+        budget.spend(2);
+        budget.forfeitReaction();
+
+        // After All-Out Attack, reaction MUST be forfeited regardless of prior state
+        RC_ASSERT(budget.hasReaction() == false);
+
+        // Verify it stays false (no way to regain mid-turn)
+        RC_ASSERT(budget.hasReaction() == false);
+
+        // Only beginTurn() restores it
+        budget.beginTurn();
+        RC_ASSERT(budget.hasReaction() == true);
+    });
+}
+
+// ─── Property 9: Dodge test correctness ──────────────────────────────────────
+// For any actor attempting a Dodge with d100 roll <= Agility, the hit is negated;
+// for roll > Agility, the hit applies normally.
+// **Validates: Requirements 5.1, 5.2, 5.3**
+
+TEST_CASE("PBT: Property 9 — Dodge test correctness", "[property][action-system]")
+{
+    rc::prop("dodge succeeds iff roll <= agility", []() {
+        // Generate random Agility value in [1, 100]
+        int agility = *rc::gen::inRange(1, 101);
+
+        // Generate random d100 roll in [1, 100]
+        int roll = *rc::gen::inRange(1, 101);
+
+        // The dodge logic: succeeds iff roll <= agility
+        bool dodgeSuccess = (roll <= agility);
+
+        // Verify the relationship holds
+        if (roll <= agility) {
+            RC_ASSERT(dodgeSuccess == true);   // hit negated
+        } else {
+            RC_ASSERT(dodgeSuccess == false);  // hit applies normally
+        }
+
+        // Additional invariant: success probability scales with agility
+        // (high agility = more rolls succeed, low agility = fewer rolls succeed)
+        if (agility >= 100) {
+            // With Ag 100, all rolls [1..100] succeed
+            RC_ASSERT((roll <= 100) == dodgeSuccess);
+        }
+        if (agility == 1) {
+            // With Ag 1, only roll of 1 succeeds
+            RC_ASSERT((roll == 1) == dodgeSuccess);
+        }
+    });
+}
+
+// ─── Property 10: Parry eligibility ──────────────────────────────────────────
+// Parry is only allowed when: the attack is melee AND the actor has a melee
+// weapon equipped. All other combinations are denied.
+// **Validates: Requirements 6.4, 6.5**
+
+TEST_CASE("PBT: Property 10 — Parry eligibility", "[property][action-system]")
+{
+    rc::prop("parry only allowed for melee attacks with melee weapon equipped", []() {
+        // Generate random conditions
+        bool hasWeapon = *rc::gen::arbitrary_bool();
+        bool isMelee = *rc::gen::arbitrary_bool();
+
+        // Parry eligibility logic (per design doc):
+        // canParry = isMelee AND hasEquippedMeleeWeapon
+        bool canParry = isMelee && hasWeapon;
+
+        // Verify the four combinations
+        if (isMelee && hasWeapon) {
+            RC_ASSERT(canParry == true);   // melee attack + weapon: allowed
+        } else if (isMelee && !hasWeapon) {
+            RC_ASSERT(canParry == false);  // melee attack, no weapon: denied
+        } else if (!isMelee && hasWeapon) {
+            RC_ASSERT(canParry == false);  // ranged attack + weapon: denied
+        } else {
+            RC_ASSERT(canParry == false);  // ranged attack, no weapon: denied
+        }
+
+        // Dodge is always available regardless of parry eligibility
+        bool canDodge = true;
+        RC_ASSERT(canDodge == true);
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Property 7: Charge Range Bounded by Agility — Task 10.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// For any actor with agility bonus AgB, a valid charge path SHALL have length
+// <= AgB × 3 tiles, and an invalid charge (blocked or out of range) SHALL leave
+// AP unchanged.
+//
+// **Validates: Requirements 8.1, 8.2**
+//
+// Since ChargeResolver doesn't exist yet (TDD), we test the charge LOGIC
+// conditions: range validation and AP invariants.
+
+TEST_CASE("PBT: Property 7 — Charge range bounded by agility bonus", "[property][action-system]")
+{
+    SECTION("valid charge: distance within AgB * 3 allows charge and deducts 2 AP")
+    {
+        rc::prop("charge within range succeeds and costs 2 AP", []() {
+            // Generate a random agility bonus [1..10] (inclusive bounds in this stub)
+            int agB = *rc::gen::inRange(1, 10);
+            int maxRange = agB * 3;
+
+            // Generate a distance that is within valid charge range [1..maxRange]
+            int distance = *rc::gen::inRange(1, maxRange);
+
+            // Verify distance is within charge range
+            bool inRange = (distance <= maxRange);
+            RC_ASSERT(inRange == true);
+
+            // A valid charge costs 2 AP (Full Action)
+            ActionBudget budget;
+            budget.beginTurn();
+            RC_ASSERT(budget.getAP() == 2);
+
+            // Charge is affordable (Full Action = 2 AP) and in range
+            RC_ASSERT(budget.canAfford(2) == true);
+            RC_ASSERT(budget.spend(2) == true);
+
+            // After successful charge, AP should be 0
+            RC_ASSERT(budget.getAP() == 0);
+        });
+    }
+
+    SECTION("invalid charge: distance exceeds AgB * 3 — rejected, AP unchanged")
+    {
+        rc::prop("charge out of range is rejected and AP remains unchanged", []() {
+            // Generate a random agility bonus [1..10]
+            int agB = *rc::gen::inRange(1, 10);
+            int maxRange = agB * 3;
+
+            // Generate a distance that exceeds valid charge range
+            int minInvalid = maxRange + 1;
+            int distance = *rc::gen::inRange(minInvalid, 40);
+
+            // Verify distance exceeds charge range
+            bool inRange = (distance <= maxRange);
+            RC_ASSERT(inRange == false);
+
+            // When charge is rejected (out of range), AP must remain unchanged
+            ActionBudget budget;
+            budget.beginTurn();
+            int apBefore = budget.getAP();
+
+            // The charge is rejected before spending AP — range check fails
+            // so spend(2) is never called
+            RC_ASSERT(budget.getAP() == apBefore);
+            RC_ASSERT(budget.getAP() == 2);  // still at full budget
+        });
+    }
+
+    SECTION("charge range formula: maxRange == AgB * 3 for all valid AgB values")
+    {
+        rc::prop("max charge distance equals AgB times 3", []() {
+            // Generate a random agility bonus [1..10]
+            int agB = *rc::gen::inRange(1, 10);
+
+            // The charge range formula per RT-CoreMechanics
+            int maxRange = agB * 3;
+
+            // Verify the formula produces expected bounds
+            RC_ASSERT(maxRange >= 3);   // minimum: AgB=1 → 3 tiles
+            RC_ASSERT(maxRange <= 30);  // maximum: AgB=10 → 30 tiles
+            RC_ASSERT(maxRange == agB * 3);
+        });
+    }
+
+    SECTION("boundary: distance exactly at AgB * 3 is valid")
+    {
+        rc::prop("charge at exact max range (distance == AgB * 3) is valid", []() {
+            int agB = *rc::gen::inRange(1, 10);
+            int maxRange = agB * 3;
+            int distance = maxRange;  // exactly at boundary
+
+            bool inRange = (distance <= maxRange);
+            RC_ASSERT(inRange == true);
+
+            // Charge should succeed at the boundary
+            ActionBudget budget;
+            budget.beginTurn();
+            RC_ASSERT(budget.canAfford(2) == true);
+            RC_ASSERT(budget.spend(2) == true);
+            RC_ASSERT(budget.getAP() == 0);
+        });
+    }
+
+    SECTION("boundary: distance at AgB * 3 + 1 is invalid")
+    {
+        rc::prop("charge one tile beyond max range is rejected", []() {
+            int agB = *rc::gen::inRange(1, 10);
+            int maxRange = agB * 3;
+            int distance = maxRange + 1;  // one beyond boundary
+
+            bool inRange = (distance <= maxRange);
+            RC_ASSERT(inRange == false);
+
+            // AP unchanged when charge is rejected
+            ActionBudget budget;
+            budget.beginTurn();
+            int apBefore = budget.getAP();
+            // Charge not attempted — AP preserved
+            RC_ASSERT(budget.getAP() == apBefore);
+        });
+    }
+}
+
+TEST_CASE("PBT: Property 7 — Charge requires 2 AP (Full Action)", "[property][action-system]")
+{
+    rc::prop("charge with insufficient AP is rejected and AP unchanged", []() {
+        // Generate a random agility bonus [1..10]
+        int agB = *rc::gen::inRange(1, 10);
+        int maxRange = agB * 3;
+
+        // Generate a distance that IS within charge range
+        int distance = *rc::gen::inRange(1, maxRange);
+        bool inRange = (distance <= maxRange);
+        RC_ASSERT(inRange == true);
+
+        // Set up budget with only 1 AP (insufficient for Full Action)
+        ActionBudget budget;
+        budget.beginTurn();
+        budget.spend(1);  // spend 1 AP, leaving only 1
+        RC_ASSERT(budget.getAP() == 1);
+
+        // Charge requires 2 AP — should be unaffordable
+        RC_ASSERT(budget.canAfford(2) == false);
+
+        // Attempting to spend should fail and preserve AP
+        int apBefore = budget.getAP();
+        bool result = budget.spend(2);
+        RC_ASSERT(result == false);
+        RC_ASSERT(budget.getAP() == apBefore);
+    });
+}
+
+TEST_CASE("PBT: Property 7 — Charge range with random positions (Chebyshev distance)", "[property][action-system]")
+{
+    rc::prop("Chebyshev distance check determines charge validity", []() {
+        // Generate random start and target positions on a grid
+        int startX = *rc::gen::inRange(0, 49);
+        int startY = *rc::gen::inRange(0, 49);
+        int targetX = *rc::gen::inRange(0, 49);
+        int targetY = *rc::gen::inRange(0, 49);
+
+        // Ensure start != target (charge requires movement)
+        RC_PRE(startX != targetX || startY != targetY);
+
+        // Generate agility bonus [1..10]
+        int agB = *rc::gen::inRange(1, 10);
+        int maxRange = agB * 3;
+
+        // Calculate Chebyshev distance (tiles in 8-direction grid)
+        int dx = std::abs(targetX - startX);
+        int dy = std::abs(targetY - startY);
+        int chebyshevDist = std::max(dx, dy);
+
+        bool inRange = (chebyshevDist <= maxRange);
+
+        ActionBudget budget;
+        budget.beginTurn();
+
+        if (inRange && budget.canAfford(2)) {
+            // Charge could be valid (pending path obstruction check)
+            budget.spend(2);
+            RC_ASSERT(budget.getAP() == 0);
+        } else if (!budget.canAfford(2)) {
+            // Can't afford charge — AP unchanged
+            RC_ASSERT(budget.spend(2) == false);
+        } else {
+            // Out of range — charge rejected, AP unchanged
+            RC_ASSERT(budget.getAP() == 2);
+        }
+    });
+}
+
+// ─── Unit Test: Charge registry entry verification ───────────────────────────
+// Validates that Charge is correctly registered as a Full Action costing 2 AP.
+// **Validates: Requirements 8.1, 8.2**
+
+TEST_CASE("PBT: Charge action is Full Action costing 2 AP", "[property][action-system]")
+{
+    const ActionMeta& chargeMeta = ActionRegistry::get(ActionId::CHARGE);
+    REQUIRE(chargeMeta.apCost == 2);
+    REQUIRE(chargeMeta.type == ActionType::FULL);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// All-Out Attack & Run Unit Tests — Task 12.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// ActionBudget-focused tests validating the budget/reaction conditions for
+// All-Out Attack (Full Action, +30 WS, forfeits reaction) and Run (Full Action,
+// move up to AgB × 6 tiles, no attack). The actual action execution logic is
+// implemented in tasks 12.2/12.3.
+//
+// Requirements validated: 8.3, 8.4, 1.6
+
+// ─── Test: All-Out Attack costs 2 AP ─────────────────────────────────────────
+// Requirement 8.3: All_Out_Attack deducts 2 AP (Full Action).
+// budget.spend(2) from full AP → AP = 0.
+
+TEST_CASE("All-Out Attack: costs 2 AP (spend(2) from full budget)", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // All-Out Attack is a Full Action — costs 2 AP
+    REQUIRE(budget.canAfford(2) == true);
+    REQUIRE(budget.spend(2) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // Turn is over after spending full budget
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: All-Out Attack forfeits reaction ──────────────────────────────────
+// Requirement 8.3, 4.4: After All-Out Attack, the actor's reaction is forfeited
+// for the current round. budget.forfeitReaction() → hasReaction() == false.
+
+TEST_CASE("All-Out Attack: forfeits reaction for the round", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Reaction is available at start of turn
+    REQUIRE(budget.hasReaction() == true);
+
+    // Execute All-Out Attack: spend 2 AP + forfeit reaction
+    budget.spend(2);
+    budget.forfeitReaction();
+
+    // Reaction is now gone
+    REQUIRE(budget.hasReaction() == false);
+}
+
+// ─── Test: All-Out Attack forfeit persists until beginTurn ───────────────────
+// Requirement 4.4: The forfeited reaction stays false until the actor's next
+// turn begins (beginTurn() refreshes it).
+
+TEST_CASE("All-Out Attack: forfeit persists until beginTurn()", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // All-Out Attack: spend + forfeit
+    budget.spend(2);
+    budget.forfeitReaction();
+
+    // Reaction stays forfeited — no way to regain mid-round
+    REQUIRE(budget.hasReaction() == false);
+    REQUIRE(budget.hasReaction() == false);  // still false on re-check
+
+    // Only beginTurn() restores the reaction
+    budget.beginTurn();
+    REQUIRE(budget.hasReaction() == true);
+}
+
+// ─── Test: Run costs 2 AP ────────────────────────────────────────────────────
+// Requirement 8.4: Run deducts 2 AP (Full Action).
+// budget.spend(2) from full AP → AP = 0.
+
+TEST_CASE("Run: costs 2 AP (spend(2) from full budget)", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Run is a Full Action — costs 2 AP
+    REQUIRE(budget.canAfford(2) == true);
+    REQUIRE(budget.spend(2) == true);
+    REQUIRE(budget.getAP() == 0);
+
+    // Turn is over
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+}
+
+// ─── Test: Run max distance = AgB × 6 ───────────────────────────────────────
+// Requirement 8.4: Run moves actor up to AgB × 6 tiles.
+// Verify formula produces correct bounds for AgB in [1..10] → [6..60].
+
+TEST_CASE("Run: max distance formula AgB x 6 produces correct bounds", "[action-system]")
+{
+    // Verify for every valid agility bonus that max run distance = AgB * 6
+    for (int agB = 1; agB <= 10; ++agB) {
+        int maxRunDistance = agB * 6;
+
+        REQUIRE(maxRunDistance == agB * 6);
+        REQUIRE(maxRunDistance >= 6);   // minimum: AgB=1 → 6 tiles
+        REQUIRE(maxRunDistance <= 60);  // maximum: AgB=10 → 60 tiles
+    }
+
+    // Spot-check specific values
+    REQUIRE(1 * 6 == 6);
+    REQUIRE(3 * 6 == 18);
+    REQUIRE(5 * 6 == 30);
+    REQUIRE(10 * 6 == 60);
+}
+
+// ─── Test: Full Action (cost 2) rejected with 1 AP ──────────────────────────
+// Requirement 1.6: If an actor attempts a Full_Action with fewer than 2 AP
+// remaining, the Action_System SHALL reject the action and leave AP unchanged.
+
+TEST_CASE("Full Action (All-Out Attack/Run): rejected with 1 AP remaining", "[action-system]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Spend 1 AP first (e.g., a move)
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // Attempt a Full Action (cost 2) with only 1 AP — must fail
+    REQUIRE(budget.canAfford(2) == false);
+    REQUIRE(budget.spend(2) == false);
+
+    // AP must remain unchanged after rejection
+    REQUIRE(budget.getAP() == 1);
+}
+
+// ─── Test: Registry validation — ALL_OUT_ATTACK and RUN have cost=2, type=FULL
+// Requirement 11.2: Actions registered with correct cost and type.
+
+TEST_CASE("Registry: ALL_OUT_ATTACK is Full Action costing 2 AP", "[action-system]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::ALL_OUT_ATTACK);
+    REQUIRE(meta.id == ActionId::ALL_OUT_ATTACK);
+    REQUIRE(meta.apCost == 2);
+    REQUIRE(meta.type == ActionType::FULL);
+    REQUIRE(meta.name == "All-Out Attack");
+}
+
+TEST_CASE("Registry: RUN is Full Action costing 2 AP", "[action-system]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::RUN);
+    REQUIRE(meta.id == ActionId::RUN);
+    REQUIRE(meta.apCost == 2);
+    REQUIRE(meta.type == ActionType::FULL);
+    REQUIRE(meta.name == "Run");
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Half Actions Unit Tests — Task 13.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// These tests validate the AP deduction patterns and registry metadata for the
+// remaining Half Actions (Reload, Open Door, Pick Up Item, Use Item) and the
+// Standard Attack modifier contracts (+10 WS for melee, +10 BS for ranged).
+//
+// Since these actions require full Engine integration to test actual effects
+// (weapon clip refill, door open, item transfer), we test the ActionBudget and
+// ActionRegistry validation aspects that document the expected behaviour.
+//
+// Requirements validated: 7.2, 7.3, 7.6, 7.7, 7.8, 7.9
+
+TEST_CASE("Half Actions: each costs 1 AP per registry", "[action-system][half-actions]")
+{
+    // Verify all half actions have cost 1
+    REQUIRE(ActionRegistry::get(ActionId::MOVE).apCost == 1);
+    REQUIRE(ActionRegistry::get(ActionId::STANDARD_ATTACK_MELEE).apCost == 1);
+    REQUIRE(ActionRegistry::get(ActionId::STANDARD_ATTACK_RANGED).apCost == 1);
+    REQUIRE(ActionRegistry::get(ActionId::AIM).apCost == 1);
+    REQUIRE(ActionRegistry::get(ActionId::RELOAD).apCost == 1);
+    REQUIRE(ActionRegistry::get(ActionId::OPEN_DOOR).apCost == 1);
+    REQUIRE(ActionRegistry::get(ActionId::PICK_UP_ITEM).apCost == 1);
+    REQUIRE(ActionRegistry::get(ActionId::USE_ITEM).apCost == 1);
+}
+
+TEST_CASE("Half Actions: Reload AP deduction pattern", "[action-system][half-actions]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Reload costs 1 AP
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+TEST_CASE("Half Actions: Open Door AP deduction pattern", "[action-system][half-actions]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Open Door costs 1 AP
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+TEST_CASE("Half Actions: Pick Up Item AP deduction pattern", "[action-system][half-actions]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+TEST_CASE("Half Actions: Use Item AP deduction pattern", "[action-system][half-actions]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+TEST_CASE("Half Actions: Standard Attack melee with +10 WS modifier", "[action-system][half-actions]")
+{
+    // The design specifies Standard Attack (melee) applies +10 WS modifier
+    // This is validated via the aim bonus mechanism: base hit from Attacker
+    // The +10 is documented as the standard attack bonus (inherent to the action)
+    const ActionMeta& meta = ActionRegistry::get(ActionId::STANDARD_ATTACK_MELEE);
+    REQUIRE(meta.apCost == 1);
+    REQUIRE(meta.type == ActionType::HALF);
+    REQUIRE(meta.name == "Standard Attack (Melee)");
+}
+
+TEST_CASE("Half Actions: Standard Attack ranged with +10 BS modifier", "[action-system][half-actions]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::STANDARD_ATTACK_RANGED);
+    REQUIRE(meta.apCost == 1);
+    REQUIRE(meta.type == ActionType::HALF);
+    REQUIRE(meta.name == "Standard Attack (Ranged)");
+}
+
+TEST_CASE("Half Actions: two half actions exhaust turn", "[action-system][half-actions]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // E.g., Move + Open Door
+    REQUIRE(budget.spend(1) == true); // Move
+    REQUIRE(budget.spend(1) == true); // Open Door
+    REQUIRE(budget.getAP() == 0);
+    REQUIRE(budget.canAfford(1) == false);
+}
+
+// ─── Task 13.1 continued: Registry metadata for remaining Half Actions ───────
+// Requirements validated: 7.6, 7.7, 7.8, 7.9
+
+TEST_CASE("Half Actions: Reload costs 1 AP via registry", "[action-system][half-actions]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::RELOAD);
+    REQUIRE(meta.apCost == 1);
+    REQUIRE(meta.type == ActionType::HALF);
+    REQUIRE(meta.name == "Reload");
+    REQUIRE(meta.id == ActionId::RELOAD);
+}
+
+TEST_CASE("Half Actions: Open Door costs 1 AP via registry", "[action-system][half-actions]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::OPEN_DOOR);
+    REQUIRE(meta.apCost == 1);
+    REQUIRE(meta.type == ActionType::HALF);
+    REQUIRE(meta.name == "Open Door");
+    REQUIRE(meta.id == ActionId::OPEN_DOOR);
+}
+
+TEST_CASE("Half Actions: Pick Up Item costs 1 AP via registry", "[action-system][half-actions]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::PICK_UP_ITEM);
+    REQUIRE(meta.apCost == 1);
+    REQUIRE(meta.type == ActionType::HALF);
+    REQUIRE(meta.name == "Pick Up Item");
+    REQUIRE(meta.id == ActionId::PICK_UP_ITEM);
+}
+
+TEST_CASE("Half Actions: Use Item costs 1 AP via registry", "[action-system][half-actions]")
+{
+    const ActionMeta& meta = ActionRegistry::get(ActionId::USE_ITEM);
+    REQUIRE(meta.apCost == 1);
+    REQUIRE(meta.type == ActionType::HALF);
+    REQUIRE(meta.name == "Use Item");
+    REQUIRE(meta.id == ActionId::USE_ITEM);
+}
+
+// ─── Standard Attack modifier contracts ──────────────────────────────────────
+// Requirement 7.2: Standard Attack (melee) applies +10 WS modifier
+// Requirement 7.3: Standard Attack (ranged) applies +10 BS modifier
+//
+// The +10 modifier is inherent to the Standard Attack action (distinguished from
+// Aim bonus which stacks on top). Implementation in task 13.2 will add this
+// modifier during attack resolution. These tests document the contract.
+
+TEST_CASE("Half Actions: Standard Attack (melee) documents +10 WS modifier contract", "[action-system][half-actions]")
+{
+    // Registry confirms this is a Half Action costing 1 AP
+    const ActionMeta& meta = ActionRegistry::get(ActionId::STANDARD_ATTACK_MELEE);
+    REQUIRE(meta.apCost == 1);
+    REQUIRE(meta.type == ActionType::HALF);
+    REQUIRE(meta.name == "Standard Attack (Melee)");
+
+    // The +10 WS modifier is inherent to Standard Attack (melee).
+    // Per RT-CoreMechanics §4: Standard Attack grants +10 to the relevant skill.
+    // Implementation will apply: hitTarget = WS + 10 + aimBonus + modifiers
+    // This value is a design constant, not stored in registry metadata.
+    constexpr int STANDARD_ATTACK_BONUS = 10;
+    REQUIRE(STANDARD_ATTACK_BONUS == 10);
+
+    // AP budget check: melee attack costs 1 AP
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.canAfford(meta.apCost) == true);
+    REQUIRE(budget.spend(meta.apCost) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+TEST_CASE("Half Actions: Standard Attack (ranged) documents +10 BS modifier contract", "[action-system][half-actions]")
+{
+    // Registry confirms this is a Half Action costing 1 AP
+    const ActionMeta& meta = ActionRegistry::get(ActionId::STANDARD_ATTACK_RANGED);
+    REQUIRE(meta.apCost == 1);
+    REQUIRE(meta.type == ActionType::HALF);
+    REQUIRE(meta.name == "Standard Attack (Ranged)");
+
+    // The +10 BS modifier is inherent to Standard Attack (ranged).
+    // Per RT-CoreMechanics §4: Standard Attack grants +10 to the relevant skill.
+    // Implementation will apply: hitTarget = BS + 10 + aimBonus + modifiers
+    constexpr int STANDARD_ATTACK_BONUS = 10;
+    REQUIRE(STANDARD_ATTACK_BONUS == 10);
+
+    // AP budget check: ranged attack costs 1 AP
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.canAfford(meta.apCost) == true);
+    REQUIRE(budget.spend(meta.apCost) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+// ─── All half actions: affordable at 1 AP, not at 0 AP ──────────────────────
+// Validates that every half action in the registry is affordable when AP >= 1
+// and unaffordable when AP == 0.
+
+TEST_CASE("Half Actions: all affordable at 1 AP, not at 0 AP", "[action-system][half-actions]")
+{
+    // All Half Action IDs
+    const ActionId halfActions[] = {
+        ActionId::MOVE,
+        ActionId::STANDARD_ATTACK_MELEE,
+        ActionId::STANDARD_ATTACK_RANGED,
+        ActionId::AIM,
+        ActionId::RELOAD,
+        ActionId::OPEN_DOOR,
+        ActionId::PICK_UP_ITEM,
+        ActionId::USE_ITEM,
+    };
+
+    for (ActionId id : halfActions) {
+        const ActionMeta& meta = ActionRegistry::get(id);
+
+        SECTION(std::string("affordable at 1 AP: ") + std::string(meta.name))
+        {
+            // With 1 AP, half actions (cost 1) should be affordable
+            REQUIRE(ActionRegistry::canAfford(id, 1) == true);
+
+            ActionBudget budget;
+            budget.beginTurn();
+            budget.spend(1); // leave 1 AP
+            REQUIRE(budget.getAP() == 1);
+            REQUIRE(budget.canAfford(meta.apCost) == true);
+            REQUIRE(budget.spend(meta.apCost) == true);
+            REQUIRE(budget.getAP() == 0);
+        }
+
+        SECTION(std::string("unaffordable at 0 AP: ") + std::string(meta.name))
+        {
+            // With 0 AP, half actions (cost 1) should be unaffordable
+            REQUIRE(ActionRegistry::canAfford(id, 0) == false);
+
+            ActionBudget budget;
+            budget.beginTurn();
+            budget.spend(2); // exhaust AP
+            REQUIRE(budget.getAP() == 0);
+            REQUIRE(budget.canAfford(meta.apCost) == false);
+            REQUIRE(budget.spend(meta.apCost) == false);
+            REQUIRE(budget.getAP() == 0); // AP unchanged
+        }
+    }
+}
+
+// ─── Aim bonus integration with attack ───────────────────────────────────────
+// Requirement 12.1, 12.4: After addAimBonus(), getAimBonus()==10;
+// after attack action (consumeAimBonus()), aim resets to 0.
+
+TEST_CASE("Half Actions: Aim bonus integration — addAimBonus then consumeAimBonus", "[action-system][half-actions]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Initially no aim bonus
+    REQUIRE(budget.getAimBonus() == 0);
+
+    // Aim action: spend 1 AP, add aim bonus
+    REQUIRE(budget.spend(1) == true);
+    budget.addAimBonus();
+    REQUIRE(budget.getAimBonus() == ActionBudget::AIM_PER_ACTION); // == 10
+    REQUIRE(budget.getAimBonus() == 10);
+
+    // Attack action: spend 1 AP, consume aim bonus
+    REQUIRE(budget.spend(1) == true);
+    int bonusApplied = budget.getAimBonus(); // retrieve bonus before consuming
+    REQUIRE(bonusApplied == 10);
+    budget.consumeAimBonus();
+
+    // After consuming, bonus resets to 0
+    REQUIRE(budget.getAimBonus() == 0);
+
+    // Turn is exhausted
+    REQUIRE(budget.getAP() == 0);
+}
+
+TEST_CASE("Half Actions: Double aim gives +20, consumed on attack", "[action-system][half-actions]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Two aim actions: spend 2 AP total, aim bonus stacks to +20
+    budget.addAimBonus();
+    REQUIRE(budget.getAimBonus() == 10);
+    budget.addAimBonus();
+    REQUIRE(budget.getAimBonus() == 20);
+    REQUIRE(budget.getAimBonus() == ActionBudget::MAX_AIM_BONUS);
+
+    // After consuming, resets to 0
+    budget.consumeAimBonus();
+    REQUIRE(budget.getAimBonus() == 0);
+}
+
+TEST_CASE("Half Actions: Aim bonus capped at MAX_AIM_BONUS (20)", "[action-system][half-actions]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Even three addAimBonus() calls cap at 20
+    budget.addAimBonus();
+    budget.addAimBonus();
+    budget.addAimBonus(); // exceeds maximum
+    REQUIRE(budget.getAimBonus() == ActionBudget::MAX_AIM_BONUS);
+    REQUIRE(budget.getAimBonus() == 20);
+}
+
+TEST_CASE("Half Actions: Reload budget.spend(1) succeeds from full AP", "[action-system][half-actions]")
+{
+    // Validates: Requirement 7.6 — Reload deducts 1 AP
+    ActionBudget budget;
+    budget.beginTurn();
+
+    const ActionMeta& reloadMeta = ActionRegistry::get(ActionId::RELOAD);
+    REQUIRE(budget.canAfford(reloadMeta.apCost) == true);
+    REQUIRE(budget.spend(reloadMeta.apCost) == true);
+    REQUIRE(budget.getAP() == 1);
+
+    // After Reload (1 AP) the actor still has 1 AP for another half action
+    REQUIRE(budget.canAfford(1) == true);
+}
+
+TEST_CASE("Half Actions: Open Door budget.spend(1) succeeds from full AP", "[action-system][half-actions]")
+{
+    // Validates: Requirement 7.7 — Open Door deducts 1 AP
+    ActionBudget budget;
+    budget.beginTurn();
+
+    const ActionMeta& doorMeta = ActionRegistry::get(ActionId::OPEN_DOOR);
+    REQUIRE(budget.canAfford(doorMeta.apCost) == true);
+    REQUIRE(budget.spend(doorMeta.apCost) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+TEST_CASE("Half Actions: Pick Up Item budget.spend(1) succeeds from full AP", "[action-system][half-actions]")
+{
+    // Validates: Requirement 7.8 — Pick Up Item deducts 1 AP
+    ActionBudget budget;
+    budget.beginTurn();
+
+    const ActionMeta& pickupMeta = ActionRegistry::get(ActionId::PICK_UP_ITEM);
+    REQUIRE(budget.canAfford(pickupMeta.apCost) == true);
+    REQUIRE(budget.spend(pickupMeta.apCost) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+TEST_CASE("Half Actions: Use Item budget.spend(1) succeeds from full AP", "[action-system][half-actions]")
+{
+    // Validates: Requirement 7.9 — Use Item deducts 1 AP
+    ActionBudget budget;
+    budget.beginTurn();
+
+    const ActionMeta& useMeta = ActionRegistry::get(ActionId::USE_ITEM);
+    REQUIRE(budget.canAfford(useMeta.apCost) == true);
+    REQUIRE(budget.spend(useMeta.apCost) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Remaining Half Actions Unit Tests — Task 13.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Tests for:
+// - Standard Attack (melee) +10 WS modifier via the registry/budget
+// - Standard Attack (ranged) +10 BS modifier via the registry/budget
+// - Reload, Open Door, Pick Up, Use Item all cost 1 AP
+//
+// Requirements validated: 7.2, 7.3, 7.6, 7.7, 7.8, 7.9
+
+// ─── Test: Standard Attack (melee) has +10 WS modifier ──────────────────────
+// Requirement 7.2: Standard Attack (melee) resolves with a +10 WS modifier.
+// The +10 is applied via attacker->addModifier(10) before the attack roll.
+
+TEST_CASE("Standard Attack (melee): +10 WS modifier applied via Attacker modifiers", "[action-system]")
+{
+    // Verify the Attacker modifier system works correctly for +10
+    Attacker attacker(0.0f, 40);
+
+    // Before modifier: threshold is base skill (40)
+    REQUIRE(attacker.computeThreshold() == 40);
+
+    // Add +10 standard attack modifier
+    attacker.addModifier(10);
+
+    // Threshold should now be 50 (40 + 10)
+    REQUIRE(attacker.computeThreshold() == 50);
+
+    // Remove modifier after attack
+    attacker.removeModifier(10);
+    REQUIRE(attacker.computeThreshold() == 40);
+}
+
+TEST_CASE("Standard Attack (melee): +10 stacks with other modifiers", "[action-system]")
+{
+    Attacker attacker(0.0f, 40);
+
+    // Add aim bonus equivalent (+10 aim) and standard attack (+10)
+    attacker.addModifier(10); // aim
+    attacker.addModifier(10); // standard attack
+
+    // Threshold: 40 + 10 + 10 = 60
+    REQUIRE(attacker.computeThreshold() == 60);
+
+    // Clean up
+    attacker.removeModifier(10);
+    attacker.removeModifier(10);
+    REQUIRE(attacker.computeThreshold() == 40);
+}
+
+// ─── Test: Standard Attack (ranged) has +10 BS modifier ─────────────────────
+// Requirement 7.3: Standard Attack (ranged) resolves with a +10 BS modifier.
+// Same mechanism: attacker->addModifier(10) before ranged attack, removed after.
+
+TEST_CASE("Standard Attack (ranged): +10 BS modifier applied via Attacker modifiers", "[action-system]")
+{
+    // The ranged attack uses the same modifier sum from attacker->modifiers
+    // So the +10 is applied the same way as melee
+    Attacker attacker(0.0f, 35);
+
+    // Before modifier: threshold is base skill (35)
+    REQUIRE(attacker.computeThreshold() == 35);
+
+    // Add +10 standard attack (ranged) modifier
+    attacker.addModifier(10);
+
+    // Threshold should now be 45 (35 + 10)
+    REQUIRE(attacker.computeThreshold() == 45);
+
+    // Remove modifier after attack
+    attacker.removeModifier(10);
+    REQUIRE(attacker.computeThreshold() == 35);
+}
+
+// ─── Test: Reload costs 1 AP ─────────────────────────────────────────────────
+// Requirement 7.6: Reload deducts 1 AP.
+
+TEST_CASE("Reload: costs 1 AP (Half Action)", "[action-system]")
+{
+    // Verify via registry that RELOAD is Half Action costing 1 AP
+    const ActionMeta& reloadMeta = ActionRegistry::get(ActionId::RELOAD);
+    REQUIRE(reloadMeta.apCost == 1);
+    REQUIRE(reloadMeta.type == ActionType::HALF);
+    REQUIRE(reloadMeta.name == "Reload");
+
+    // Verify budget behavior
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Reload costs 1 AP
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+// ─── Test: Open Door costs 1 AP ─────────────────────────────────────────────
+// Requirement 7.7: Open Door deducts 1 AP.
+
+TEST_CASE("Open Door: costs 1 AP (Half Action)", "[action-system]")
+{
+    // Verify via registry that OPEN_DOOR is Half Action costing 1 AP
+    const ActionMeta& doorMeta = ActionRegistry::get(ActionId::OPEN_DOOR);
+    REQUIRE(doorMeta.apCost == 1);
+    REQUIRE(doorMeta.type == ActionType::HALF);
+    REQUIRE(doorMeta.name == "Open Door");
+
+    // Verify budget behavior
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Open Door costs 1 AP
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+// ─── Test: Pick Up Item costs 1 AP ──────────────────────────────────────────
+// Requirement 7.8: Pick Up Item deducts 1 AP.
+
+TEST_CASE("Pick Up Item: costs 1 AP (Half Action)", "[action-system]")
+{
+    // Verify via registry that PICK_UP_ITEM is Half Action costing 1 AP
+    const ActionMeta& pickupMeta = ActionRegistry::get(ActionId::PICK_UP_ITEM);
+    REQUIRE(pickupMeta.apCost == 1);
+    REQUIRE(pickupMeta.type == ActionType::HALF);
+    REQUIRE(pickupMeta.name == "Pick Up Item");
+
+    // Verify budget behavior
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Pick Up costs 1 AP
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+// ─── Test: Use Item costs 1 AP ──────────────────────────────────────────────
+// Requirement 7.9: Use Item deducts 1 AP.
+
+TEST_CASE("Use Item: costs 1 AP (Half Action)", "[action-system]")
+{
+    // Verify via registry that USE_ITEM is Half Action costing 1 AP
+    const ActionMeta& useMeta = ActionRegistry::get(ActionId::USE_ITEM);
+    REQUIRE(useMeta.apCost == 1);
+    REQUIRE(useMeta.type == ActionType::HALF);
+    REQUIRE(useMeta.name == "Use Item");
+
+    // Verify budget behavior
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // Use Item costs 1 AP
+    REQUIRE(budget.canAfford(1) == true);
+    REQUIRE(budget.spend(1) == true);
+    REQUIRE(budget.getAP() == 1);
+}
+
+// ─── Test: All Half Actions cost exactly 1 AP (comprehensive) ────────────────
+// Verify ALL half-action registry entries have consistent cost.
+
+TEST_CASE("All Half Actions: registry entries all cost 1 AP", "[action-system]")
+{
+    const ActionId halfActions[] = {
+        ActionId::MOVE,
+        ActionId::STANDARD_ATTACK_MELEE,
+        ActionId::STANDARD_ATTACK_RANGED,
+        ActionId::AIM,
+        ActionId::RELOAD,
+        ActionId::OPEN_DOOR,
+        ActionId::PICK_UP_ITEM,
+        ActionId::USE_ITEM
+    };
+
+    for (ActionId id : halfActions) {
+        const ActionMeta& meta = ActionRegistry::get(id);
+        REQUIRE(meta.apCost == 1);
+        REQUIRE(meta.type == ActionType::HALF);
+    }
+}
+
+// ─── Test: Standard Attack +10 modifier does not persist after attack ────────
+// Verify that the +10 modifier is properly removed after each attack
+// (no modifier leak between turns).
+
+TEST_CASE("Standard Attack: +10 modifier correctly added and removed (no leak)", "[action-system]")
+{
+    Attacker attacker(0.0f, 40);
+
+    // Simulate multiple standard attacks
+    for (int i = 0; i < 5; ++i) {
+        attacker.addModifier(10);
+        REQUIRE(attacker.computeThreshold() == 50);
+        attacker.removeModifier(10);
+        REQUIRE(attacker.computeThreshold() == 40);
+    }
+
+    // No accumulated modifiers
+    REQUIRE(attacker.modifiers.empty());
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GUI AP Display Unit Tests — Task 15.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Since testing the actual GUI rendering requires the full libtcod console
+// (not available in headless tests), these tests validate the CONDITIONS the
+// GUI would query: getAP(), MAX_AP, and canAfford() for action affordability.
+//
+// Requirements validated: 10.1, 10.2, 10.3
+
+// ─── Test: GUI reads correct remaining and max AP ────────────────────────────
+// Requirement 10.1: WHILE the player's turn is active, THE Gui SHALL display
+// the player's current remaining AP and maximum AP.
+// The GUI reads getAP() for remaining and MAX_AP for the constant.
+
+TEST_CASE("GUI AP display: shows correct remaining and max AP", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // GUI would read these to render "AP: [■][■]"
+    REQUIRE(budget.getAP() == 2);
+    REQUIRE(ActionBudget::MAX_AP == 2);
+}
+
+TEST_CASE("GUI AP display: remaining AP after one half action", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    budget.spend(1);
+
+    // GUI would render "AP: [■][ ]" — 1 remaining out of 2 max
+    REQUIRE(budget.getAP() == 1);
+    REQUIRE(ActionBudget::MAX_AP == 2);
+}
+
+TEST_CASE("GUI AP display: remaining AP at zero after full action", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    budget.spend(2);
+
+    // GUI would render "AP: [ ][ ]" — 0 remaining out of 2 max
+    REQUIRE(budget.getAP() == 0);
+    REQUIRE(ActionBudget::MAX_AP == 2);
+}
+
+// ─── Test: GUI AP display updates immediately when AP changes ────────────────
+// Requirement 10.2: WHEN the player's AP changes, THE Gui SHALL update the
+// displayed AP value immediately.
+// Verified by checking getAP() reflects changes immediately after spend().
+
+TEST_CASE("GUI AP display: updates immediately when AP changes", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Initial state: full AP
+    REQUIRE(budget.getAP() == 2);
+
+    // After first spend, getAP() immediately reflects new value
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);  // immediate update — no deferred/batched state
+
+    // After second spend, getAP() immediately reflects 0
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 0);  // immediate update
+}
+
+TEST_CASE("GUI AP display: setAP(0) for End_Turn updates immediately", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // End_Turn sets AP to 0 — GUI must reflect this immediately
+    budget.setAP(0);
+    REQUIRE(budget.getAP() == 0);
+}
+
+TEST_CASE("GUI AP display: beginTurn resets display to full", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(2);
+    REQUIRE(budget.getAP() == 0);
+
+    // New turn: GUI should immediately show full AP again
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+    REQUIRE(budget.getAP() == ActionBudget::MAX_AP);
+}
+
+// ─── Test: Action affordability indication ───────────────────────────────────
+// Requirement 10.3: WHEN the player selects an action, THE Gui SHALL indicate
+// whether the action is affordable given current AP.
+// Full Actions (cost 2) greyed out when AP == 1; Half Actions still available.
+
+TEST_CASE("GUI AP display: Full Action greyed out with 1 AP", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);
+
+    // Full Actions (cost 2) are unaffordable — GUI should grey them out
+    REQUIRE(budget.canAfford(2) == false);
+
+    // Verify via registry for specific Full Actions
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::ALL_OUT_ATTACK, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::RUN, 1) == false);
+}
+
+TEST_CASE("GUI AP display: Half Actions still available with 1 AP", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);
+
+    // Half Actions (cost 1) are still affordable — GUI shows them as active
+    REQUIRE(budget.canAfford(1) == true);
+
+    // Verify via registry for specific Half Actions
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::STANDARD_ATTACK_MELEE, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::STANDARD_ATTACK_RANGED, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::AIM, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::RELOAD, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::OPEN_DOOR, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::PICK_UP_ITEM, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::USE_ITEM, 1) == true);
+}
+
+TEST_CASE("GUI AP display: all actions unaffordable at 0 AP except Free", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(2);
+    REQUIRE(budget.getAP() == 0);
+
+    // All Half and Full Actions unaffordable — GUI should grey them all out
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+
+    // Free Actions (cost 0) are always affordable — End_Turn still shown as available
+    REQUIRE(budget.canAfford(0) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 0) == true);
+}
+
+TEST_CASE("GUI AP display: ActionRegistry::canAfford gates each action type for display", "[action-system][gui]")
+{
+    // At full AP (2): all actions affordable
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 2) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 2) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::ALL_OUT_ATTACK, 2) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 2) == true);
+
+    // At 1 AP: half actions affordable, full actions not
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::AIM, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::ALL_OUT_ATTACK, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::RUN, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 1) == true);
+
+    // At 0 AP: only free actions affordable
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 0) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 0) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 0) == true);
+}

@@ -63,6 +63,10 @@ public:
 	bool waitingForDoorDirection = false;
 	std::vector<Actor*> pendingDoors; // doors found during 'o' key; awaiting direction
 
+	// Run direction selection state
+	bool pendingRun = false;
+	int pendingRunDistance = 0; // max tiles to run (AgB × 6)
+
 protected:
 	// Moves to (targetX, targetY) or attacks the living actor there.
 	// Returns true if the player actually moved (FOV needs recomputing).
@@ -77,8 +81,17 @@ public:
 	void load(TCODZip& zip) override;
 
 protected:
+	// AP-based action selection: attack if adjacent, move toward player otherwise.
+	// Returns false if no valid action is available.
+	bool selectAndExecuteAction(Actor* owner);
+
+	// Moves toward (targetX, targetY) using FOV line-of-sight or scent tracking.
+	// Handles door opening along the path.
+	void moveToward(Actor* owner, int targetX, int targetY);
+
 	// Attacks if adjacent; moves toward (targetX, targetY) using FOV line-of-sight
 	// or scent tracking when the player is out of sight.
+	// Kept for backward compatibility (ConfusedMonsterAi, legacy path).
 	void moveOrAttack(Actor* owner, int targetX, int targetY);
 };
 

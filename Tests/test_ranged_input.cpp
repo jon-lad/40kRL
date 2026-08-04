@@ -21,6 +21,8 @@ static std::unique_ptr<Actor> makePlayerWithEquipment() {
     actor->ai = std::make_shared<PlayerAi>();
     actor->attacker = std::make_shared<Attacker>(3.0f);
     actor->destructible = std::make_shared<PlayerDestructible>(30.0f, 1.0f, "your cadaver", 0);
+    actor->actionBudget = std::make_shared<ActionBudget>();
+    actor->actionBudget->beginTurn();
     return actor;
 }
 
@@ -280,8 +282,8 @@ TEST_CASE("Reload input: 'r' with partial ammo reloads to full and advances turn
     CHECK(equipped->equippable->currentAmmo == equipped->equippable->rangedStats->clipSize);
     CHECK(equipped->equippable->currentAmmo == 30);
 
-    // Assert: turn advances (gameStatus == NEW_TURN)
-    CHECK(engine.gameStatus == Engine::NEW_TURN);
+    // Assert: AP spent (1 AP deducted, from 2 to 1)
+    CHECK(owner->actionBudget->getAP() == 1);
 
     // Cleanup
     engine.gameStatus = Engine::IDLE;
@@ -312,8 +314,8 @@ TEST_CASE("Reload input: 'r' with zero ammo reloads to full and advances turn", 
     // Assert: ammo restored to clipSize
     CHECK(equipped->equippable->currentAmmo == 6);
 
-    // Assert: turn advances
-    CHECK(engine.gameStatus == Engine::NEW_TURN);
+    // Assert: AP spent (1 AP deducted, from 2 to 1)
+    CHECK(owner->actionBudget->getAP() == 1);
 
     // Cleanup
     engine.gameStatus = Engine::IDLE;

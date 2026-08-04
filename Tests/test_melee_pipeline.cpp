@@ -63,16 +63,11 @@ TEST_CASE("Pipeline: hit + dodge fail + parry fail = damage dealt", "[melee-pipe
     target->equipment = std::make_unique<Equipment>();
     target->equipment->equip(weapon.get(), nullptr, nullptr);
 
-    // Roll sequence: hit(10), dodge(99), parry(99)
+    // Roll sequence: hit(10); no reaction attempted (target has no ActionBudget)
     int rollIdx = 0;
     owner->attacker->rollD100 = [&rollIdx]() {
         ++rollIdx;
-        switch (rollIdx) {
-            case 1: return 10;  // hit roll: 10 <= WS 50, success
-            case 2: return 99;  // dodge roll: 99 > Ag 30, fail
-            case 3: return 99;  // parry roll: 99 > WS 40, fail
-            default: return 99;
-        }
+        return 10;  // hit roll: 10 <= WS 50, success
     };
     // Weapon die always returns 5 (unarmed: 1d5)
     owner->attacker->rollDie = [](int sides) { return 5; };
@@ -109,16 +104,16 @@ TEST_CASE("Pipeline: dodge success negates hit, HP unchanged", "[melee-pipeline]
     auto owner = makeCharacter("Attacker", 50, 40, 30, 30, 20.0f);
     auto target = makeCharacter("Target", 40, 30, 60, 30, 20.0f); // Ag=60
 
-    int rollIdx = 0;
-    owner->attacker->rollD100 = [&rollIdx]() {
-        ++rollIdx;
-        switch (rollIdx) {
-            case 1: return 10;  // hit roll: success
-            case 2: return 20;  // dodge roll: 20 <= Ag 60, success
-            default: return 99;
-        }
-    };
+    // Give target an ActionBudget with a reaction available
+    target->actionBudget = std::make_shared<ActionBudget>();
+    target->actionBudget->beginTurn();
+
+    // Hit roll on owner's RNG: success
+    owner->attacker->rollD100 = []() { return 10; }; // 10 <= WS 50, hit
     owner->attacker->rollDie = [](int sides) { return 5; };
+
+    // Reaction roll on target's RNG: dodge success (20 <= Ag 60)
+    target->attacker->rollD100 = []() { return 20; };
 
     const float hpBefore = target->destructible->hp;
     owner->attacker->attack(owner.get(), target.get());
@@ -137,17 +132,17 @@ TEST_CASE("Pipeline: parry success negates hit, HP unchanged", "[melee-pipeline]
     target->equipment = std::make_unique<Equipment>();
     target->equipment->equip(weapon.get(), nullptr, nullptr);
 
-    int rollIdx = 0;
-    owner->attacker->rollD100 = [&rollIdx]() {
-        ++rollIdx;
-        switch (rollIdx) {
-            case 1: return 10;  // hit roll: success (10 <= 50)
-            case 2: return 99;  // dodge roll: fail (99 > Ag 30)
-            case 3: return 20;  // parry roll: success (20 <= WS 60)
-            default: return 99;
-        }
-    };
+    // Give target an ActionBudget with a reaction available
+    target->actionBudget = std::make_shared<ActionBudget>();
+    target->actionBudget->beginTurn();
+
+    // Hit roll on owner's RNG: success
+    owner->attacker->rollD100 = []() { return 10; }; // 10 <= WS 50, hit
     owner->attacker->rollDie = [](int sides) { return 5; };
+
+    // Reaction roll on target's RNG: parry success (20 <= WS 60)
+    // AI picks parry when WS(60) >= Ag(30)
+    target->attacker->rollD100 = []() { return 20; };
 
     const float hpBefore = target->destructible->hp;
     owner->attacker->attack(owner.get(), target.get());
@@ -155,29 +150,25 @@ TEST_CASE("Pipeline: parry success negates hit, HP unchanged", "[melee-pipeline]
     REQUIRE(target->destructible->hp == Catch::Approx(hpBefore));
 }
 
-// ─── Test: No parry when unarmed (parry skipped) ─────────────────────────────
+// ─── Test: Reaction skipped when target has no ActionBudget ──────────────────
 TEST_CASE("Pipeline: parry skipped when target has no melee weapon", "[melee-pipeline]")
 {
     auto owner = makeCharacter("Attacker", 50, 40, 30, 30, 20.0f);
     auto target = makeCharacter("Target", 99, 30, 30, 30, 20.0f); // WS=99 but no weapon
 
-    // No equipment on target → parry should be skipped
-    // Only 2 d100 rolls consumed: hit + dodge (no parry)
+    // No ActionBudget on target → reaction is skipped entirely
+    // Only 1 d100 roll consumed: the hit roll from owner
     int rollCount = 0;
     owner->attacker->rollD100 = [&rollCount]() {
         ++rollCount;
-        switch (rollCount) {
-            case 1: return 10;  // hit roll: success
-            case 2: return 99;  // dodge roll: fail (99 > Ag 30)
-            default: return 1;  // should NOT be reached (parry skipped)
-        }
+        return 10; // hit roll: success
     };
     owner->attacker->rollDie = [](int sides) { return 5; };
 
     owner->attacker->attack(owner.get(), target.get());
 
-    // Only 2 d100 rolls should have been consumed (hit + dodge, no parry)
-    REQUIRE(rollCount == 2);
+    // Only 1 d100 roll consumed (hit roll only, no reaction attempted)
+    REQUIRE(rollCount == 1);
 }
 
 // ─── Test: Destructible auto-hit (no Characteristics on target) ──────────────

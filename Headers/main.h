@@ -8,6 +8,7 @@
 #include "InputHandler.h"
 class Actor;
 #include "Persistent.h"
+#include "ActionBudget.h"
 #include "Destructible.h"
 #include "Attacker.h"
 #include "Characteristics.h"
@@ -27,4 +28,5 @@ class Actor;
 #include "SkillBarEntry.h"
 #include "Gui.h"
 #include "Engine.h"
+#include "ReactionResolver.h"
 #include "RangedCombat.h"

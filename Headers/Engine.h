@@ -96,7 +96,9 @@ public:
 	enum GameStatus {
 		STARTUP,   // FOV needs recomputing; no AI updates yet
 		IDLE,      // waiting for player input; no AI updates
-		NEW_TURN,  // player acted; all actors update this frame
+		PLAYER_TURN,    // NEW: player has AP remaining, accepting input
+		ENEMY_TURN,     // NEW: processing enemy AI turns sequentially
+		NEW_TURN,  // retained for internal compatibility
 		VICTORY,
 		DEFEAT,
 		TARGETING,  // tile selection in progress
@@ -258,6 +260,9 @@ public:
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);
+
+	// Runs all enemy turns: resets their AP, calls update() on each.
+	void runEnemyTurns();
 
 	// Selects a random equipment template matching the given slot, using tier-weighted
 	// random selection. Normalizes the tier weights to sum to 1.0, rolls a tier, then

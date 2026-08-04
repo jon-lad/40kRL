@@ -47,6 +47,13 @@ namespace Colors {
     constexpr TCODColor doorClosed{150, 100, 50};    // closed door (brown/wood tone)
     constexpr TCODColor doorOpen{100, 65, 30};       // open door (darker brown)
 
+    // ─── Action system ─────────────────────────────────────────────────
+    constexpr TCODColor playerAction{180, 220, 255};  // player action log (light blue)
+    constexpr TCODColor enemyAction{255, 180, 100};   // enemy action log (orange)
+    constexpr TCODColor reactionEvent{200, 255, 200}; // reaction log (light green)
+    constexpr TCODColor apFull{100, 255, 100};        // AP pip filled (bright green)
+    constexpr TCODColor apEmpty{80, 80, 80};          // AP pip empty (dark grey)
+
     // ─── Legacy aliases (for incremental migration; remove once all
     //     call sites use game-themed names above) ────────────────────────
     constexpr TCODColor desaturatedGreen = orkSkin;

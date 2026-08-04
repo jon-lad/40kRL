@@ -7,6 +7,7 @@
 #include "main.h"
 #include "CriticalEffects.h"
 #include "DiceRoller.h"
+#include "ReactionResolver.h"
 
 Attacker::Attacker(float power, int skillValue)
 	: power{ power }
@@ -56,8 +57,12 @@ void Attacker::attack(Actor* owner, Actor* target)
 			resolveDestructibleAttack(owner, target);
 		}
 	} else {
-		engine.gui->message(Colors::uiText, "# attacks # in vain.",
-			owner->name, target->name);
+		const bool isPlayer = (owner == engine.player);
+		const bool visibleToPlayer = isPlayer || engine.map->isInFOV(owner->getX(), owner->getY());
+		if (visibleToPlayer) {
+			engine.gui->message(Colors::uiText, "# attacks # in vain.",
+				owner->name, target->name);
+		}
 	}
 }
 
@@ -94,13 +99,23 @@ void Attacker::load(TCODZip& zip) {
 }
 
 void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
-	// ── Attack declaration ──
-	engine.gui->message(Colors::uiText, "# swings at #.",
-		owner->name, target->name);
+	// ── Determine if this attack should generate visible messages ──
+	const bool isPlayer = (owner == engine.player);
+	const bool visibleToPlayer = isPlayer || engine.map->isInFOV(owner->getX(), owner->getY());
+	const TCODColor actionColor = isPlayer ? Colors::playerAction : Colors::enemyAction;
+
+	// ── Attack declaration (suppress if attacker is outside FOV) ──
+	if (visibleToPlayer) {
+		engine.gui->message(actionColor, "# swings at #.",
+			owner->name, target->name);
+	}
 
 	// ── Compute effective WS ──
 	const int baseWS = owner->characteristics->get(CharId::WS);
 	const int modSum = std::accumulate(modifiers.begin(), modifiers.end(), 0);
+
+	// ── Aim bonus (from ActionBudget) ──
+	const int aimBonus = owner->actionBudget ? owner->actionBudget->getAimBonus() : 0;
 
 	// ── Proficiency penalty (weapon types) ──
 	int profPenalty = 0;
@@ -110,16 +125,23 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 			profPenalty = proficiencyModifier(owner, *weaponItem->equippable->weaponGroup);
 		}
 	}
-	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty));
+	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty + aimBonus));
 
 	// ── Roll d100 ──
 	const int roll = rollD100();
 
+	// ── Consume aim bonus (whether hit or miss, it's spent on this attack) ──
+	if (owner->actionBudget) {
+		owner->actionBudget->consumeAimBonus();
+	}
+
 	// ── Classify hit/miss ──
 	if (roll > effectiveWS) {
 		// Miss
-		engine.gui->message(Colors::uiText, "# misses #.",
-			owner->name, target->name);
+		if (visibleToPlayer) {
+			engine.gui->message(actionColor, "# misses #.",
+				owner->name, target->name);
+		}
 		return;
 	}
 
@@ -130,42 +152,16 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 	const HitLocation loc = HitLocationTable::resolve(roll);
 
 	// ── Log hit ──
-	engine.gui->message(Colors::damage, "Hit! (# DoS) — #.",
-		dos, HitLocationTable::name(loc));
-
-	// ── Dodge Test ──
-	{
-		const int targetAg = target->characteristics->get(CharId::Ag);
-		const int dodgeRoll = rollD100();
-		if (dodgeRoll <= targetAg) {
-			const int dodgeDoS = std::max(0, (targetAg - dodgeRoll) / 10);
-			const int hitsNegated = 1 + dodgeDoS;
-			engine.gui->message(Colors::uiText, "# dodges # hit(s).",
-				target->name, hitsNegated);
-			return; // single-hit melee attack fully negated
-		}
+	if (visibleToPlayer) {
+		engine.gui->message(Colors::damage, "Hit! (# DoS) — #.",
+			dos, HitLocationTable::name(loc));
 	}
 
-	// ── Parry Test (only if target has melee weapon equipped) ──
-	{
-		bool hasMeleeWeapon = false;
-		if (target->equipment) {
-			Actor* targetWeapon = target->equipment->getSlot(EquipmentSlot::WEAPON);
-			if (targetWeapon && targetWeapon->equippable && targetWeapon->equippable->meleeStats) {
-				hasMeleeWeapon = true;
-			}
-		}
-
-		if (hasMeleeWeapon) {
-			const int targetWS = target->characteristics->get(CharId::WS);
-			const int parryRoll = rollD100();
-			if (parryRoll <= targetWS) {
-				const int parryDoS = std::max(0, (targetWS - parryRoll) / 10);
-				const int hitsNegated = 1 + parryDoS;
-				engine.gui->message(Colors::uiText, "# parries # hit(s).",
-					target->name, hitsNegated);
-				return; // single-hit melee attack fully negated
-			}
+	// ── Reaction check: offer Dodge/Parry before applying damage ──
+	if (target->actionBudget && target->actionBudget->hasReaction()) {
+		ReactionResult result = resolveReaction(target, owner, true); // true = melee
+		if (result == ReactionResult::NEGATED) {
+			return; // hit negated, skip damage
 		}
 	}
 
@@ -200,7 +196,9 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 
 	// If no effective damage, log and return
 	if (finalDamage <= 0) {
-		engine.gui->message(Colors::uiText, "...but it has no effect!");
+		if (visibleToPlayer) {
+			engine.gui->message(Colors::uiText, "...but it has no effect!");
+		}
 		return;
 	}
 
@@ -215,9 +213,11 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 		const int critMagnitude = finalDamage - static_cast<int>(currentHp);
 		const auto critEffect = CriticalEffects::resolve(loc, critMagnitude);
 
-		engine.gui->message(Colors::damage,
-			"Critical Hit on #! #",
-			HitLocationTable::name(loc), critEffect.description);
+		if (visibleToPlayer) {
+			engine.gui->message(Colors::damage,
+				"Critical Hit on #! #",
+				HitLocationTable::name(loc), critEffect.description);
+		}
 
 		if (!critEffect.fatal && critMagnitude <= 4) {
 			// Non-fatal critical hit: apply injury via cumulative magnitude system
@@ -228,16 +228,20 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 			if (!survived) {
 				// Cumulative magnitude reached fatal threshold (10)
 				auto fatalEffect = CriticalEffects::resolve(loc, 10);
-				engine.gui->message(Colors::damage, "Critical overload! #", fatalEffect.description);
+				if (visibleToPlayer) {
+					engine.gui->message(Colors::damage, "Critical overload! #", fatalEffect.description);
+				}
 				target->destructible->die(target);
 			} else {
 				// Injury applied; target survives at HP=1 for low-magnitude crits
 				if (critMagnitude < 3) {
 					target->destructible->hp = 1;
 				}
-				engine.gui->message(Colors::damage,
-					"# suffers a critical injury to the #!",
-					target->name, HitLocationTable::name(loc));
+				if (visibleToPlayer) {
+					engine.gui->message(Colors::damage,
+						"# suffers a critical injury to the #!",
+						target->name, HitLocationTable::name(loc));
+				}
 			}
 		} else {
 			// Fatal crit (magnitude >= 5 or fatal effect) — kill target
@@ -245,12 +249,18 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 		}
 	} else {
 		// Normal damage — target survives
-		engine.gui->message(Colors::damage, "# deals # damage to #'s #.",
-			owner->name, finalDamage, target->name, HitLocationTable::name(loc));
+		if (visibleToPlayer) {
+			engine.gui->message(Colors::damage, "# deals # damage to #'s #.",
+				owner->name, finalDamage, target->name, HitLocationTable::name(loc));
+		}
 	}
 }
 
 void Attacker::resolveDestructibleAttack(Actor* owner, Actor* target) {
+	// ── Determine visibility for FOV-gated messaging ──
+	const bool isPlayer = (owner == engine.player);
+	const bool visibleToPlayer = isPlayer || engine.map->isInFOV(owner->getX(), owner->getY());
+
 	// ── Get weapon MeleeStats ──
 	MeleeStats weaponStats{ DiceSpec{1, 5}, 0, {} }; // default unarmed
 	if (owner->equipment) {
@@ -273,6 +283,8 @@ void Attacker::resolveDestructibleAttack(Actor* owner, Actor* target) {
 	target->destructible->takeDamage(target, static_cast<float>(damage));
 
 	// ── Log simplified message ──
-	engine.gui->message(Colors::damage, "# strikes # for # damage.",
-		owner->name, target->name, damage);
+	if (visibleToPlayer) {
+		engine.gui->message(Colors::damage, "# strikes # for # damage.",
+			owner->name, target->name, damage);
+	}
 }

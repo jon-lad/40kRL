@@ -1034,6 +1034,7 @@ void Map::addMonster(int x, int y)
 			monster->destructible = std::make_unique<MonsterDestructible>(hp, defense, corpse, xp);
 			monster->attacker     = std::make_unique<Attacker>(power, skill);
 			monster->ai           = std::make_unique<MonsterAi>();
+			monster->actionBudget = std::make_shared<ActionBudget>();
 
 			// ── Attach Characteristics component ──
 			auto chars = std::make_shared<Characteristics>(20);
@@ -1206,6 +1207,7 @@ void Map::addMonster(int x, int y)
 			ork->destructible = std::make_unique<MonsterDestructible>(10.0f, 0.0f, "dead Ork", 35);
 			ork->attacker     = std::make_unique<Attacker>(3.0f, 40);
 			ork->ai           = std::make_unique<MonsterAi>();
+			ork->actionBudget = std::make_shared<ActionBudget>();
 			ork->assignRenderLayer();
 			engine.actors.push_back(std::move(ork));
 		} else {
@@ -1213,6 +1215,7 @@ void Map::addMonster(int x, int y)
 			nob->destructible = std::make_unique<MonsterDestructible>(16.0f, 1.0f, "Nob carcass", 100);
 			nob->attacker     = std::make_unique<Attacker>(4.0f, 40);
 			nob->ai           = std::make_unique<MonsterAi>();
+			nob->actionBudget = std::make_shared<ActionBudget>();
 			nob->assignRenderLayer();
 			engine.actors.push_back(std::move(nob));
 		}
