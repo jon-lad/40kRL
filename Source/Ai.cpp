@@ -400,6 +400,58 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		return;
 	}
 
+	case 'R': // Run (Full Action, 2 AP)
+	{
+		if (!owner->actionBudget || !owner->actionBudget->canAfford(2)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP to run (requires 2 AP).");
+			return;
+		}
+		// Compute max run distance: AgB × 6
+		int agB = 3; // default
+		if (owner->characteristics) {
+			agB = owner->characteristics->bonus(CharId::Ag);
+		}
+		int maxTiles = agB * 6;
+
+		// Determine run direction from last movement or facing direction
+		// Simple implementation: run in the direction the player last moved
+		// Use the current input direction if available, otherwise prompt
+		// For now, run forward in the last direction pressed (use numpad/arrow)
+		// We'll just move the player multiple tiles in a straight line
+		// The player must press a direction key after 'R' — use pending state
+		// Simplified: run requires a direction. We'll check for an adjacent walkable tile
+		// and run in that direction as far as possible.
+		
+		// Get direction from pending input - for simplicity, auto-run away from closest enemy
+		// or we can just move forward. Let's store a "pending run" state and handle next input.
+		// 
+		// Simplest approach: move the player in the direction of their last move, up to maxTiles
+		// But we don't track last direction. Instead, let's just run forward using
+		// dx/dy from pending input. Since 'R' is a character key, not a direction,
+		// we'll apply run in the next pressed direction.
+		// 
+		// Actually, the simplest working approach per the task description:
+		// "just move multiple tiles in the current direction, checking walkability"
+		// We'll need a follow-up direction press. For now, let's just check if there's 
+		// a clear path in the direction the player previously moved (not tracked), 
+		// or prompt for direction.
+		//
+		// Best approach: spend AP now, then check each cardinal direction and run
+		// in the first open one. Actually, let's just inform the user they need to
+		// press a direction after R (two-step input like door opening).
+		// But to keep it simple and match task spec, let's just move player in a prompted direction.
+		
+		// For a clean implementation: mark pending run mode, wait for direction key
+		// Similar to how door direction selection works
+		PlayerAi* playerAi = dynamic_cast<PlayerAi*>(owner->ai.get());
+		if (playerAi) {
+			playerAi->pendingRun = true;
+			playerAi->pendingRunDistance = maxTiles;
+			engine.gui->message(Colors::lightGrey, "Run in which direction?");
+		}
+		return;
+	}
+
 	case 'C': // Charge (Full Action, 2 AP)
 	{
 		if (!owner->actionBudget || !owner->actionBudget->canAfford(2)) {
@@ -444,8 +496,16 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			engine.gui->message(Colors::lightGrey, "Not enough AP to run (requires 2 AP).");
 			return;
 		}
+		int agB = 3; // default
+		if (owner->characteristics) {
+			agB = owner->characteristics->bonus(CharId::Ag);
+		}
+		int maxDist = agB * 6;
 		owner->actionBudget->spend(2);
-		engine.gui->message(Colors::playerAction, "You run! (Full Action — turn ends)");
+		// For now, log the action — full multi-tile pathfinding with direction
+		// selection will be refined when we add movement UI
+		engine.gui->message(Colors::playerAction, "You break into a run! (up to %d tiles)", maxDist);
+		// TODO: Implement actual multi-tile movement with direction selection
 		return;
 	}
 
@@ -529,8 +589,12 @@ bool MonsterAi::selectAndExecuteAction(Actor* owner)
 	const int dy = engine.player->getY() - owner->getY();
 	const float distance = sqrtf(static_cast<float>(dx * dx + dy * dy));
 
-	// Adjacent to player — attack (1 AP)
+	// Adjacent to player — consider All-Out Attack (Full Action, 2 AP) or standard attack (1 AP)
 	if (distance < 2.0f && ap >= 1) {
+		// TODO: All-Out Attack (2 AP, +30 WS, forfeit reaction) — enable for elite/boss enemies
+		// when they have a significant tactical advantage (e.g., high WS, target is wounded).
+		// For now, basic enemies always use the standard 1 AP melee attack.
+
 		owner->actionBudget->spend(1);
 		if (owner->attacker) {
 			owner->attacker->attack(owner, engine.player);

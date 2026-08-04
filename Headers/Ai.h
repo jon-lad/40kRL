@@ -63,6 +63,10 @@ public:
 	bool waitingForDoorDirection = false;
 	std::vector<Actor*> pendingDoors; // doors found during 'o' key; awaiting direction
 
+	// Run direction selection state
+	bool pendingRun = false;
+	int pendingRunDistance = 0; // max tiles to run (AgB × 6)
+
 protected:
 	// Moves to (targetX, targetY) or attacks the living actor there.
 	// Returns true if the player actually moved (FOV needs recomputing).
