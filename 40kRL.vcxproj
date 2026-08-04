@@ -181,6 +181,7 @@
     <ClCompile Include="Source\ChargeResolver.cpp" />
     <ClCompile Include="Source\ReactionResolver.cpp" />
     <ClCompile Include="Source\HelpContent.cpp" />
+    <ClCompile Include="Source\ManualExporter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
