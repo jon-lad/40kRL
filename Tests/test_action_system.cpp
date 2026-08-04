@@ -2115,3 +2115,179 @@ TEST_CASE("Standard Attack: +10 modifier correctly added and removed (no leak)",
     // No accumulated modifiers
     REQUIRE(attacker.modifiers.empty());
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GUI AP Display Unit Tests — Task 15.1
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Since testing the actual GUI rendering requires the full libtcod console
+// (not available in headless tests), these tests validate the CONDITIONS the
+// GUI would query: getAP(), MAX_AP, and canAfford() for action affordability.
+//
+// Requirements validated: 10.1, 10.2, 10.3
+
+// ─── Test: GUI reads correct remaining and max AP ────────────────────────────
+// Requirement 10.1: WHILE the player's turn is active, THE Gui SHALL display
+// the player's current remaining AP and maximum AP.
+// The GUI reads getAP() for remaining and MAX_AP for the constant.
+
+TEST_CASE("GUI AP display: shows correct remaining and max AP", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // GUI would read these to render "AP: [■][■]"
+    REQUIRE(budget.getAP() == 2);
+    REQUIRE(ActionBudget::MAX_AP == 2);
+}
+
+TEST_CASE("GUI AP display: remaining AP after one half action", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    budget.spend(1);
+
+    // GUI would render "AP: [■][ ]" — 1 remaining out of 2 max
+    REQUIRE(budget.getAP() == 1);
+    REQUIRE(ActionBudget::MAX_AP == 2);
+}
+
+TEST_CASE("GUI AP display: remaining AP at zero after full action", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    budget.spend(2);
+
+    // GUI would render "AP: [ ][ ]" — 0 remaining out of 2 max
+    REQUIRE(budget.getAP() == 0);
+    REQUIRE(ActionBudget::MAX_AP == 2);
+}
+
+// ─── Test: GUI AP display updates immediately when AP changes ────────────────
+// Requirement 10.2: WHEN the player's AP changes, THE Gui SHALL update the
+// displayed AP value immediately.
+// Verified by checking getAP() reflects changes immediately after spend().
+
+TEST_CASE("GUI AP display: updates immediately when AP changes", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+
+    // Initial state: full AP
+    REQUIRE(budget.getAP() == 2);
+
+    // After first spend, getAP() immediately reflects new value
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);  // immediate update — no deferred/batched state
+
+    // After second spend, getAP() immediately reflects 0
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 0);  // immediate update
+}
+
+TEST_CASE("GUI AP display: setAP(0) for End_Turn updates immediately", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+
+    // End_Turn sets AP to 0 — GUI must reflect this immediately
+    budget.setAP(0);
+    REQUIRE(budget.getAP() == 0);
+}
+
+TEST_CASE("GUI AP display: beginTurn resets display to full", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(2);
+    REQUIRE(budget.getAP() == 0);
+
+    // New turn: GUI should immediately show full AP again
+    budget.beginTurn();
+    REQUIRE(budget.getAP() == 2);
+    REQUIRE(budget.getAP() == ActionBudget::MAX_AP);
+}
+
+// ─── Test: Action affordability indication ───────────────────────────────────
+// Requirement 10.3: WHEN the player selects an action, THE Gui SHALL indicate
+// whether the action is affordable given current AP.
+// Full Actions (cost 2) greyed out when AP == 1; Half Actions still available.
+
+TEST_CASE("GUI AP display: Full Action greyed out with 1 AP", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);
+
+    // Full Actions (cost 2) are unaffordable — GUI should grey them out
+    REQUIRE(budget.canAfford(2) == false);
+
+    // Verify via registry for specific Full Actions
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::ALL_OUT_ATTACK, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::RUN, 1) == false);
+}
+
+TEST_CASE("GUI AP display: Half Actions still available with 1 AP", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(1);
+    REQUIRE(budget.getAP() == 1);
+
+    // Half Actions (cost 1) are still affordable — GUI shows them as active
+    REQUIRE(budget.canAfford(1) == true);
+
+    // Verify via registry for specific Half Actions
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::STANDARD_ATTACK_MELEE, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::STANDARD_ATTACK_RANGED, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::AIM, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::RELOAD, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::OPEN_DOOR, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::PICK_UP_ITEM, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::USE_ITEM, 1) == true);
+}
+
+TEST_CASE("GUI AP display: all actions unaffordable at 0 AP except Free", "[action-system][gui]")
+{
+    ActionBudget budget;
+    budget.beginTurn();
+    budget.spend(2);
+    REQUIRE(budget.getAP() == 0);
+
+    // All Half and Full Actions unaffordable — GUI should grey them all out
+    REQUIRE(budget.canAfford(1) == false);
+    REQUIRE(budget.canAfford(2) == false);
+
+    // Free Actions (cost 0) are always affordable — End_Turn still shown as available
+    REQUIRE(budget.canAfford(0) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 0) == true);
+}
+
+TEST_CASE("GUI AP display: ActionRegistry::canAfford gates each action type for display", "[action-system][gui]")
+{
+    // At full AP (2): all actions affordable
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 2) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 2) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::ALL_OUT_ATTACK, 2) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 2) == true);
+
+    // At 1 AP: half actions affordable, full actions not
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::AIM, 1) == true);
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::ALL_OUT_ATTACK, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::RUN, 1) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 1) == true);
+
+    // At 0 AP: only free actions affordable
+    REQUIRE(ActionRegistry::canAfford(ActionId::MOVE, 0) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::CHARGE, 0) == false);
+    REQUIRE(ActionRegistry::canAfford(ActionId::END_TURN, 0) == true);
+}
