@@ -261,6 +261,9 @@ public:
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);
 
+	// Runs all enemy turns: resets their AP, calls update() on each.
+	void runEnemyTurns();
+
 	// Selects a random equipment template matching the given slot, using tier-weighted
 	// random selection. Normalizes the tier weights to sum to 1.0, rolls a tier, then
 	// picks a random template matching that tier and slot. Returns nullptr if no

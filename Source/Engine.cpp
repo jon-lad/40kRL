@@ -43,19 +43,10 @@ void Engine::update()
 	// Handle targeting state — skip all normal game logic.
 	if (gameStatus == TARGETING) {
 		updateTargeting();
-		// If targeting resolved (set NEW_TURN), skip player update and run enemy turns directly.
+		// If targeting resolved (set NEW_TURN), run enemy turns via helper.
 		if (gameStatus == NEW_TURN) {
-			map->currentScentValue++;
-			for (auto i = actors.begin(); i != actors.end(); ) {
-				if (i->get() == nullptr) {
-					i = actors.erase(i);
-				} else if (i->get() != player) {
-					i->get()->update();
-					++i;
-				} else {
-					++i;
-				}
-			}
+			runEnemyTurns();
+			gameStatus = IDLE;
 		}
 		return;
 	}
@@ -102,26 +93,60 @@ void Engine::update()
 		return;
 	}
 
-	gameStatus = IDLE;
+	// ── PLAYER_TURN: player has AP, keep accepting input ──
+	if (gameStatus == PLAYER_TURN) {
+		player->update();  // PlayerAi reads input, executes action, deducts AP
 
-	if (inputState.key.key == SDLK_ESCAPE) {
-		save();
-		load();
+		if (player->actionBudget && player->actionBudget->getAP() <= 0) {
+			// Player turn over → run enemy turns
+			runEnemyTurns();
+			gameStatus = IDLE;
+		}
+		return;
 	}
 
-	player->update();
-
+	// ── Legacy NEW_TURN: old code paths (targeting, inventory) still set NEW_TURN ──
 	if (gameStatus == NEW_TURN) {
-		map->currentScentValue++;
-		for (auto i = actors.begin(); i != actors.end(); ) {
-			if (i->get() == nullptr) {
-				i = actors.erase(i);
-			} else if (i->get() != player) {
-				i->get()->update();
-				++i;
-			} else {
-				++i;
+		runEnemyTurns();
+		gameStatus = IDLE;
+		return;
+	}
+
+	// ── IDLE: waiting for first input to start player turn ──
+	if (gameStatus == IDLE) {
+		if (inputState.key.key == SDLK_ESCAPE) {
+			save();
+			load();
+			return;
+		}
+
+		// Begin player turn: reset AP and transition
+		if (player->actionBudget) {
+			player->actionBudget->beginTurn();
+		}
+		gameStatus = PLAYER_TURN;
+		player->update();
+
+		if (player->actionBudget && player->actionBudget->getAP() <= 0) {
+			runEnemyTurns();
+			gameStatus = IDLE;
+		}
+	}
+}
+
+void Engine::runEnemyTurns() {
+	map->currentScentValue++;
+	for (auto i = actors.begin(); i != actors.end(); ) {
+		if (i->get() == nullptr) {
+			i = actors.erase(i);
+		} else if (i->get() != player) {
+			if (i->get()->ai && i->get()->actionBudget) {
+				i->get()->actionBudget->beginTurn();
 			}
+			i->get()->update();
+			++i;
+		} else {
+			++i;
 		}
 	}
 }
@@ -3082,6 +3107,7 @@ void Engine::init()
 	newPlayer->container    = std::make_unique<Container>(26);
 	newPlayer->equipment    = std::make_unique<Equipment>();
 	newPlayer->characteristics = std::make_shared<Characteristics>(25);
+	newPlayer->actionBudget = std::make_shared<ActionBudget>();
 	newPlayer->assignRenderLayer();
 	actors.emplace_front(std::move(newPlayer));
 
