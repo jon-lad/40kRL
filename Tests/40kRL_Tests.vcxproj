@@ -186,6 +186,7 @@
     <ClCompile Include="..\Source\ActionBudget.cpp" />
     <ClCompile Include="..\Source\ActionRegistry.cpp" />
     <ClCompile Include="..\Source\ChargeResolver.cpp" />
+    <ClCompile Include="..\Source\ReactionResolver.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -217,6 +218,7 @@
     <ClInclude Include="..\Headers\SkillBarEntry.h" />
     <ClInclude Include="..\Headers\WeaponTypes.h" />
     <ClInclude Include="..\Headers\ActionBudget.h" />
+    <ClInclude Include="..\Headers\ReactionResolver.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />

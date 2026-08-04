@@ -7,6 +7,7 @@
 #include "main.h"
 #include "CriticalEffects.h"
 #include "DiceRoller.h"
+#include "ReactionResolver.h"
 
 Attacker::Attacker(float power, int skillValue)
 	: power{ power }
@@ -141,39 +142,11 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 	engine.gui->message(Colors::damage, "Hit! (# DoS) — #.",
 		dos, HitLocationTable::name(loc));
 
-	// ── Dodge Test ──
-	{
-		const int targetAg = target->characteristics->get(CharId::Ag);
-		const int dodgeRoll = rollD100();
-		if (dodgeRoll <= targetAg) {
-			const int dodgeDoS = std::max(0, (targetAg - dodgeRoll) / 10);
-			const int hitsNegated = 1 + dodgeDoS;
-			engine.gui->message(Colors::uiText, "# dodges # hit(s).",
-				target->name, hitsNegated);
-			return; // single-hit melee attack fully negated
-		}
-	}
-
-	// ── Parry Test (only if target has melee weapon equipped) ──
-	{
-		bool hasMeleeWeapon = false;
-		if (target->equipment) {
-			Actor* targetWeapon = target->equipment->getSlot(EquipmentSlot::WEAPON);
-			if (targetWeapon && targetWeapon->equippable && targetWeapon->equippable->meleeStats) {
-				hasMeleeWeapon = true;
-			}
-		}
-
-		if (hasMeleeWeapon) {
-			const int targetWS = target->characteristics->get(CharId::WS);
-			const int parryRoll = rollD100();
-			if (parryRoll <= targetWS) {
-				const int parryDoS = std::max(0, (targetWS - parryRoll) / 10);
-				const int hitsNegated = 1 + parryDoS;
-				engine.gui->message(Colors::uiText, "# parries # hit(s).",
-					target->name, hitsNegated);
-				return; // single-hit melee attack fully negated
-			}
+	// ── Reaction check: offer Dodge/Parry before applying damage ──
+	if (target->actionBudget && target->actionBudget->hasReaction()) {
+		ReactionResult result = resolveReaction(target, owner, true); // true = melee
+		if (result == ReactionResult::NEGATED) {
+			return; // hit negated, skip damage
 		}
 	}
 

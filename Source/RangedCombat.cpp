@@ -7,6 +7,7 @@
 #include "CriticalEffects.h"
 #include "DiceRoller.h"
 #include "WeaponTypes.h"
+#include "ReactionResolver.h"
 
 namespace {
 	int defaultRollD100() {
@@ -67,19 +68,15 @@ RangedResult resolveCharacterAttack(const RangedContext& ctx) {
 	// ── Determine hit location via digit reversal ──
 	result.location = HitLocationTable::resolve(roll);
 
-	// ── Dodge Test (stub for task 2.3 — full implementation later) ──
-	{
-		const int targetAg = ctx.target->characteristics->get(CharId::Ag);
-		const int dodgeRoll = roll100();
-		if (dodgeRoll <= targetAg) {
-			const int dodgeDoS = std::max(0, (targetAg - dodgeRoll) / 10);
-			const int hitsNegated = 1 + dodgeDoS;
-			(void)hitsNegated; // used for multi-hit; single shot always negated
+	// ── Reaction check: offer Dodge before applying damage (ranged) ──
+	if (ctx.target->actionBudget && ctx.target->actionBudget->hasReaction()) {
+		ReactionResult reaction = resolveReaction(ctx.target, ctx.shooter, false); // false = ranged
+		if (reaction == ReactionResult::NEGATED) {
 			result.dodged = true;
 			return result;
 		}
 	}
-	// NOTE: No Parry test against ranged attacks (Requirement 5.5)
+	// NOTE: No Parry test against ranged attacks (Requirement 6.5)
 
 	// ── Damage Calculation (stub for task 2.4 — full implementation later) ──
 	{

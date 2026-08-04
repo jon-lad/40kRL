@@ -2,6 +2,7 @@
 #include <memory>
 #include <list>
 #include "main.h"
+#include "ChargeResolver.h"
 
 // ─── PlayerAi ────────────────────────────────────────────────────────────────
 
@@ -365,6 +366,44 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		return;
 	}
 
+	case 'C': // Charge (Full Action, 2 AP)
+	{
+		if (!owner->actionBudget || !owner->actionBudget->canAfford(2)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP to charge (requires 2 AP).");
+			return;
+		}
+		// For now, charge toward the closest visible enemy
+		Actor* target = engine.getClosestMonster(owner->getX(), owner->getY(), 0.0f);
+		if (!target) {
+			engine.gui->message(Colors::lightGrey, "No target to charge.");
+			return;
+		}
+		int agB = 3;
+		if (owner->characteristics) {
+			agB = owner->characteristics->bonus(CharId::Ag);
+		}
+		ChargeResult charge = ChargeResolver::compute(
+			owner->getX(), owner->getY(),
+			target->getX(), target->getY(),
+			agB, *engine.map);
+		if (!charge.valid) {
+			engine.gui->message(Colors::lightGrey, "Charge path is blocked or target is out of range.");
+			return;
+		}
+		owner->actionBudget->spend(2);
+		owner->setX(charge.endX);
+		owner->setY(charge.endY);
+		engine.map->computeFOV();
+		if (owner->attacker) {
+			owner->attacker->addModifier(20);
+			owner->attacker->attack(owner, target);
+			owner->attacker->removeModifier(20);
+		}
+		engine.gui->message(Colors::playerAction, "You charge!");
+		engine.camera->update(owner, engine.map->getLevelType() == LevelType::OUTDOOR);
+		return;
+	}
+
 	case 'e': // open equipment menu
 	{
 		static constexpr int EQUIP_WIDTH = 50;
@@ -452,6 +491,30 @@ bool MonsterAi::selectAndExecuteAction(Actor* owner)
 			owner->attacker->attack(owner, engine.player);
 		}
 		return true;
+	}
+
+	// Consider Charge (Full Action, 2 AP) when far enough to benefit
+	if (ap >= 2 && distance >= 2.0f) {
+		int agB = 3; // default AgB if no characteristics
+		if (owner->characteristics) {
+			agB = owner->characteristics->bonus(CharId::Ag);
+		}
+		ChargeResult charge = ChargeResolver::compute(
+			owner->getX(), owner->getY(),
+			engine.player->getX(), engine.player->getY(),
+			agB, *engine.map);
+		if (charge.valid) {
+			owner->actionBudget->spend(2);
+			owner->setX(charge.endX);
+			owner->setY(charge.endY);
+			// Resolve melee attack with +20 WS modifier
+			if (owner->attacker) {
+				owner->attacker->addModifier(20);
+				owner->attacker->attack(owner, engine.player);
+				owner->attacker->removeModifier(20);
+			}
+			return true;
+		}
 	}
 
 	// Move toward player (1 AP)

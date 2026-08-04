@@ -28,4 +28,5 @@ class Actor;
 #include "SkillBarEntry.h"
 #include "Gui.h"
 #include "Engine.h"
+#include "ReactionResolver.h"
 #include "RangedCombat.h"
