@@ -89,12 +89,12 @@ ReactionResult resolveReaction(Actor* target, Actor* attacker, bool isMelee) {
 		int targetAg = target->characteristics->get(CharId::Ag);
 		if (roll <= targetAg) {
 			// 6. Log success
-			engine.gui->message(Colors::uiText, "# dodges the attack!", target->name);
+			engine.gui->message(Colors::reactionEvent, "# dodges the attack!", target->name);
 			// 7. Return NEGATED
 			return ReactionResult::NEGATED;
 		} else {
 			// 6. Log failure
-			engine.gui->message(Colors::uiText, "# fails to dodge.", target->name);
+			engine.gui->message(Colors::reactionEvent, "# fails to dodge.", target->name);
 			return ReactionResult::FAILED;
 		}
 	}
@@ -103,12 +103,12 @@ ReactionResult resolveReaction(Actor* target, Actor* attacker, bool isMelee) {
 		int targetWS = target->characteristics->get(CharId::WS);
 		if (roll <= targetWS) {
 			// 6. Log success
-			engine.gui->message(Colors::uiText, "# parries the attack!", target->name);
+			engine.gui->message(Colors::reactionEvent, "# parries the attack!", target->name);
 			// 7. Return NEGATED
 			return ReactionResult::NEGATED;
 		} else {
 			// 6. Log failure
-			engine.gui->message(Colors::uiText, "# fails to parry.", target->name);
+			engine.gui->message(Colors::reactionEvent, "# fails to parry.", target->name);
 			return ReactionResult::FAILED;
 		}
 	}

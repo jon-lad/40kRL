@@ -238,6 +238,22 @@ void Gui::renderRightSidebar()
 		return;
 	}
 
+	// ─── Action Points Section ───────────────────────────────────────────
+	if (engine.player->actionBudget) {
+		int ap = engine.player->actionBudget->getAP();
+		int maxAp = ActionBudget::MAX_AP;
+
+		rightSidebarConsole->setDefaultForeground(Colors::uiText);
+		rightSidebarConsole->printf(1, row, "AP:");
+
+		for (int i = 0; i < maxAp; ++i) {
+			TCODColor pipColor = (i < ap) ? Colors::apFull : Colors::apEmpty;
+			rightSidebarConsole->setDefaultForeground(pipColor);
+			rightSidebarConsole->printf(5 + i * 3, row, "[%c]", i < ap ? 0xFE : ' ');
+		}
+		row += 2;
+	}
+
 	// ─── Equipment Section ───────────────────────────────────────────────
 	rightSidebarConsole->setDefaultForeground(Colors::white);
 	rightSidebarConsole->printf(1, row, "-- Equipment --");
@@ -334,6 +350,43 @@ void Gui::renderRightSidebar()
 	} else {
 		rightSidebarConsole->setDefaultForeground(Colors::uiText);
 		rightSidebarConsole->printf(1, row, "No characteristics");
+		row++;
+	}
+
+	row++;
+
+	// ─── Action Points Section ───────────────────────────────────────────
+	if (engine.player->actionBudget) {
+		rightSidebarConsole->setDefaultForeground(Colors::white);
+		rightSidebarConsole->printf(1, row, "-- Action Points --");
+		row += 2;
+
+		int ap = engine.player->actionBudget->getAP();
+		int maxAp = ActionBudget::MAX_AP;
+
+		// Render AP pips: "AP: [*][*]" or "AP: [*][ ]" or "AP: [ ][ ]"
+		rightSidebarConsole->setDefaultForeground(Colors::uiText);
+		rightSidebarConsole->printf(1, row, "AP:");
+		for (int i = 0; i < maxAp; ++i) {
+			if (i < ap) {
+				rightSidebarConsole->setDefaultForeground(Colors::apFull);
+				rightSidebarConsole->printf(5 + i * 4, row, "[%c]", 0xFE);
+			} else {
+				rightSidebarConsole->setDefaultForeground(Colors::apEmpty);
+				rightSidebarConsole->printf(5 + i * 4, row, "[ ]");
+			}
+		}
+		row += 2;
+
+		// Show reaction availability
+		rightSidebarConsole->setDefaultForeground(Colors::uiText);
+		if (engine.player->actionBudget->hasReaction()) {
+			rightSidebarConsole->setDefaultForeground(Colors::apFull);
+			rightSidebarConsole->printf(1, row, "Reaction: Ready");
+		} else {
+			rightSidebarConsole->setDefaultForeground(Colors::apEmpty);
+			rightSidebarConsole->printf(1, row, "Reaction: Used");
+		}
 		row++;
 	}
 

@@ -642,6 +642,10 @@ bool MonsterAi::selectAndExecuteAction(Actor* owner)
 			owner->actionBudget->spend(2);
 			owner->setX(charge.endX);
 			owner->setY(charge.endY);
+			// Log charge if visible to player
+			if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+				engine.gui->message(Colors::enemyAction, "The # charges!", owner->name);
+			}
 			// Resolve melee attack with +20 WS modifier
 			if (owner->attacker) {
 				owner->attacker->addModifier(20);
@@ -679,7 +683,9 @@ void MonsterAi::moveToward(Actor* owner, int targetX, int targetY)
 		if (actorPtr->openable && !actorPtr->openable->isOpen()
 			&& actorPtr->getX() == nextX && actorPtr->getY() == nextY) {
 			actorPtr->openable->open(actorPtr.get());
-			engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+			if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+				engine.gui->message(Colors::enemyAction, "The # opens the door.", owner->name);
+			}
 			return;
 		}
 	}
@@ -722,7 +728,9 @@ void MonsterAi::moveToward(Actor* owner, int targetX, int targetY)
 			if (actorPtr->openable && !actorPtr->openable->isOpen()
 				&& actorPtr->getX() == scentNextX && actorPtr->getY() == scentNextY) {
 				actorPtr->openable->open(actorPtr.get());
-				engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+				if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+					engine.gui->message(Colors::enemyAction, "The # opens the door.", owner->name);
+				}
 				return;
 			}
 		}
@@ -740,6 +748,7 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 
 	if (distance < 2.0f) {
 		// Adjacent — standard attack with +10 WS modifier.
+		// Only attack if visible to player (FOV-gated logging handled in Attacker)
 		if (owner->attacker) {
 			owner->attacker->addModifier(10);
 			owner->attacker->attack(owner, engine.player);
@@ -759,7 +768,9 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 		if (actorPtr->openable && !actorPtr->openable->isOpen()
 			&& actorPtr->getX() == nextX && actorPtr->getY() == nextY) {
 			actorPtr->openable->open(actorPtr.get());
-			engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+			if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+				engine.gui->message(Colors::enemyAction, "The # opens the door.", owner->name);
+			}
 			return; // turn consumed
 		}
 	}
@@ -802,7 +813,9 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 			if (actorPtr->openable && !actorPtr->openable->isOpen()
 				&& actorPtr->getX() == scentNextX && actorPtr->getY() == scentNextY) {
 				actorPtr->openable->open(actorPtr.get());
-				engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+				if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+					engine.gui->message(Colors::enemyAction, "The # opens the door.", owner->name);
+				}
 				return; // turn consumed
 			}
 		}
@@ -875,7 +888,9 @@ void RangedAi::reload(Actor* owner)
 	Actor* weaponItem = owner->equipment ? owner->equipment->getSlot(EquipmentSlot::WEAPON) : nullptr;
 	if (weaponItem && weaponItem->equippable && weaponItem->equippable->rangedStats) {
 		weaponItem->equippable->currentAmmo = weaponItem->equippable->rangedStats->clipSize;
-		engine.gui->message(Colors::uiText, "# reloads #.", owner->name, weaponItem->name);
+		if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+			engine.gui->message(Colors::enemyAction, "# reloads #.", owner->name, weaponItem->name);
+		}
 	}
 }
 

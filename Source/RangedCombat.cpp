@@ -122,8 +122,12 @@ void resolve(Actor* shooter, Actor* target,
 
 	// ── Validate target is alive ──
 	if (!target->destructible || target->destructible->isDead()) {
-		engine.gui->message(Colors::uiText, "# fires at # in vain.",
-			shooter->name, target->name);
+		const bool earlyVis = (shooter == engine.player) || engine.map->isInFOV(shooter->getX(), shooter->getY());
+		if (earlyVis) {
+			const TCODColor earlyColor = (shooter == engine.player) ? Colors::playerAction : Colors::enemyAction;
+			engine.gui->message(earlyColor, "# fires at # in vain.",
+				shooter->name, target->name);
+		}
 		return;
 	}
 
@@ -149,15 +153,22 @@ void resolve(Actor* shooter, Actor* target,
 		int range = weaponStats.range;
 		auto modeCheck = checkCombatMode(*weaponEquippable->sizeClass, distance, range);
 		if (!modeCheck.allowed) {
-			engine.gui->message(Colors::uiText, modeCheck.message);
+			const bool modeVis = (shooter == engine.player) || engine.map->isInFOV(shooter->getX(), shooter->getY());
+			if (modeVis) {
+				engine.gui->message(Colors::uiText, modeCheck.message);
+			}
 			return;
 		}
 	}
 
 	// ── Check ammo ──
 	if (currentAmmo <= 0) {
-		engine.gui->message(Colors::uiText, "#'s weapon clicks empty.",
-			shooter->name);
+		const bool ammoVis = (shooter == engine.player) || engine.map->isInFOV(shooter->getX(), shooter->getY());
+		if (ammoVis) {
+			const TCODColor ammoColor = (shooter == engine.player) ? Colors::playerAction : Colors::enemyAction;
+			engine.gui->message(ammoColor, "#'s weapon clicks empty.",
+				shooter->name);
+		}
 		return;
 	}
 
@@ -170,9 +181,16 @@ void resolve(Actor* shooter, Actor* target,
 	ctx.rollD100 = rollD100;
 	ctx.rollDie = rollDie;
 
-	// ── Log attack initiation ──
-	engine.gui->message(Colors::uiText, "# fires at #.",
-		shooter->name, target->name);
+	// ── Determine visibility for FOV-gated messaging ──
+	const bool isPlayer = (shooter == engine.player);
+	const bool visibleToPlayer = isPlayer || engine.map->isInFOV(shooter->getX(), shooter->getY());
+	const TCODColor actionColor = isPlayer ? Colors::playerAction : Colors::enemyAction;
+
+	// ── Log attack initiation (suppress if attacker is outside FOV) ──
+	if (visibleToPlayer) {
+		engine.gui->message(actionColor, "# fires at #.",
+			shooter->name, target->name);
+	}
 
 	// ── Dispatch based on target type ──
 	RangedResult result;
@@ -193,19 +211,27 @@ void resolve(Actor* shooter, Actor* target,
 	if (target->characteristics) {
 		// Character attack path
 		if (!result.hit) {
-			engine.gui->message(Colors::uiText, "# misses #.",
-				shooter->name, target->name);
+			if (visibleToPlayer) {
+				engine.gui->message(actionColor, "# misses #.",
+					shooter->name, target->name);
+			}
 		} else if (result.dodged) {
-			engine.gui->message(Colors::uiText, "Hit! (# DoS) — #.",
-				result.doS, HitLocationTable::name(result.location));
-			engine.gui->message(Colors::uiText, "# dodges 1 hit(s).",
-				target->name);
+			if (visibleToPlayer) {
+				engine.gui->message(Colors::damage, "Hit! (# DoS) — #.",
+					result.doS, HitLocationTable::name(result.location));
+				engine.gui->message(Colors::reactionEvent, "# dodges 1 hit(s).",
+					target->name);
+			}
 		} else {
-			engine.gui->message(Colors::damage, "Hit! (# DoS) — #.",
-				result.doS, HitLocationTable::name(result.location));
+			if (visibleToPlayer) {
+				engine.gui->message(Colors::damage, "Hit! (# DoS) — #.",
+					result.doS, HitLocationTable::name(result.location));
+			}
 
 			if (result.finalDamage <= 0) {
-				engine.gui->message(Colors::uiText, "...but it has no effect!");
+				if (visibleToPlayer) {
+					engine.gui->message(Colors::uiText, "...but it has no effect!");
+				}
 			} else {
 				// Apply wound
 				const float currentHp = target->destructible->hp;
@@ -216,9 +242,11 @@ void resolve(Actor* shooter, Actor* target,
 					const int critMagnitude = result.finalDamage - static_cast<int>(currentHp);
 					const auto critEffect = CriticalEffects::resolve(result.location, critMagnitude);
 
-					engine.gui->message(Colors::damage,
-						"Critical Hit on #! #",
-						HitLocationTable::name(result.location), critEffect.description);
+					if (visibleToPlayer) {
+						engine.gui->message(Colors::damage,
+							"Critical Hit on #! #",
+							HitLocationTable::name(result.location), critEffect.description);
+					}
 
 					if (!critEffect.fatal && critMagnitude < 3) {
 						target->destructible->hp = 1;
@@ -227,9 +255,11 @@ void resolve(Actor* shooter, Actor* target,
 						result.targetKilled = true;
 					}
 				} else {
-					engine.gui->message(Colors::damage, "# deals # damage to #'s #.",
-						shooter->name, result.finalDamage, target->name,
-						HitLocationTable::name(result.location));
+					if (visibleToPlayer) {
+						engine.gui->message(Colors::damage, "# deals # damage to #'s #.",
+							shooter->name, result.finalDamage, target->name,
+							HitLocationTable::name(result.location));
+					}
 				}
 			}
 		}
@@ -237,8 +267,10 @@ void resolve(Actor* shooter, Actor* target,
 		// Destructible attack path
 		if (result.finalDamage > 0) {
 			target->destructible->takeDamage(target, static_cast<float>(result.finalDamage));
-			engine.gui->message(Colors::damage, "# shoots # for # damage.",
-				shooter->name, target->name, result.finalDamage);
+			if (visibleToPlayer) {
+				engine.gui->message(Colors::damage, "# shoots # for # damage.",
+					shooter->name, target->name, result.finalDamage);
+			}
 
 			if (target->destructible->isDead()) {
 				result.targetKilled = true;
