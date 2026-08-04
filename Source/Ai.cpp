@@ -10,6 +10,7 @@ PlayerAi::PlayerAi() {}
 void PlayerAi::update(Actor* owner)
 {
 	if (owner->destructible && owner->destructible->isDead()) { return; }
+	if (!owner->actionBudget) return;
 
 	// Handle pending door direction selection
 	if (waitingForDoorDirection) {
@@ -19,6 +20,14 @@ void PlayerAi::update(Actor* owner)
 			case SDLK_DOWN:  dy =  1; break;
 			case SDLK_LEFT:  dx = -1; break;
 			case SDLK_RIGHT: dx =  1; break;
+			case SDLK_KP_7:  dx = -1; dy = -1; break;
+			case SDLK_KP_8:  dy = -1; break;
+			case SDLK_KP_9:  dx =  1; dy = -1; break;
+			case SDLK_KP_4:  dx = -1; break;
+			case SDLK_KP_6:  dx =  1; break;
+			case SDLK_KP_1:  dx = -1; dy =  1; break;
+			case SDLK_KP_2:  dy =  1; break;
+			case SDLK_KP_3:  dx =  1; dy =  1; break;
 			case SDLK_ESCAPE:
 				// Cancel door direction selection
 				waitingForDoorDirection = false;
@@ -33,8 +42,14 @@ void PlayerAi::update(Actor* owner)
 			// Find a door at the chosen direction
 			for (Actor* door : pendingDoors) {
 				if (door->getX() == targetX && door->getY() == targetY) {
+					if (!owner->actionBudget->canAfford(1)) {
+						engine.gui->message(Colors::lightGrey, "Not enough AP.");
+						waitingForDoorDirection = false;
+						pendingDoors.clear();
+						return;
+					}
+					owner->actionBudget->spend(1);
 					door->openable->open(door);
-					engine.gameStatus = Engine::NEW_TURN;
 					waitingForDoorDirection = false;
 					pendingDoors.clear();
 					return;
@@ -49,10 +64,28 @@ void PlayerAi::update(Actor* owner)
 
 	int dx = 0, dy = 0;
 	switch (engine.inputState.key.key) {
+		// Arrow keys
 		case SDLK_UP:    dy = -1; break;
 		case SDLK_DOWN:  dy =  1; break;
 		case SDLK_LEFT:  dx = -1; break;
 		case SDLK_RIGHT: dx =  1; break;
+
+		// Numpad 8-directional movement
+		case SDLK_KP_7:  dx = -1; dy = -1; break;
+		case SDLK_KP_8:  dy = -1; break;
+		case SDLK_KP_9:  dx =  1; dy = -1; break;
+		case SDLK_KP_4:  dx = -1; break;
+		case SDLK_KP_6:  dx =  1; break;
+		case SDLK_KP_1:  dx = -1; dy =  1; break;
+		case SDLK_KP_2:  dy =  1; break;
+		case SDLK_KP_3:  dx =  1; dy =  1; break;
+
+		// Numpad 5 = End Turn (free action)
+		case SDLK_KP_5:
+			owner->actionBudget->setAP(0);
+			engine.gui->message(Colors::lightGrey, "You end your turn.");
+			return;
+
 		case SDLK_F12:
 			engine.debugMode = !engine.debugMode;
 			engine.gui->message(Colors::yellow,
@@ -78,7 +111,11 @@ void PlayerAi::update(Actor* owner)
 	}
 
 	if (dx != 0 || dy != 0) {
-		engine.gameStatus = Engine::NEW_TURN;
+		if (!owner->actionBudget->canAfford(1)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP.");
+			return;
+		}
+		owner->actionBudget->spend(1);
 		if (moveOrAttack(owner, owner->getX() + dx, owner->getY() + dy)) {
 			engine.map->computeFOV();
 		}
@@ -145,9 +182,12 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		if (pickableItems.empty()) {
 			// No items on tile.
 			engine.gui->message(Colors::uiText, "There is nothing here to pick up.");
-			engine.gameStatus = Engine::NEW_TURN;
 		} else if (pickableItems.size() == 1) {
-			// Single item — auto-pickup.
+			// Single item — check AP, then auto-pickup.
+			if (!owner->actionBudget->canAfford(1)) {
+				engine.gui->message(Colors::lightGrey, "Not enough AP.");
+				return;
+			}
 			Actor* item = pickableItems[0];
 			// Find the owning unique_ptr in the actors list.
 			for (auto it = engine.actors.begin(); it != engine.actors.end(); ++it) {
@@ -156,13 +196,13 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 						engine.gui->message(Colors::uiText, "You pick up the #.", item->name);
 						// Erase the now-null slot left by the move.
 						engine.actors.erase(it);
+						owner->actionBudget->spend(1);
 					} else {
 						engine.gui->message(Colors::damage, "Your inventory is full!");
 					}
 					break;
 				}
 			}
-			engine.gameStatus = Engine::NEW_TURN;
 		} else {
 			// Multiple items — open the pickup menu.
 			engine.beginPickupMenu(pickableItems);
@@ -259,10 +299,15 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			engine.gui->message(Colors::uiText, "Your weapon is already fully loaded.");
 			return;
 		}
-		// Perform reload: set currentAmmo to clipSize, display message, advance turn.
+		// Check AP before performing action.
+		if (!owner->actionBudget->canAfford(1)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP.");
+			return;
+		}
+		// Perform reload: set currentAmmo to clipSize, display message, spend AP.
 		weaponItem->equippable->currentAmmo = weaponItem->equippable->rangedStats->clipSize;
 		engine.gui->message(Colors::uiText, "# reloads #.", owner->name, weaponItem->name);
-		engine.gameStatus = Engine::NEW_TURN;
+		owner->actionBudget->spend(1);
 		return;
 	}
 
@@ -289,8 +334,12 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		if (closedDoors.empty()) {
 			engine.gui->message(Colors::lightGrey, "There is no door to open.");
 		} else if (closedDoors.size() == 1) {
+			if (!owner->actionBudget->canAfford(1)) {
+				engine.gui->message(Colors::lightGrey, "Not enough AP.");
+				return;
+			}
+			owner->actionBudget->spend(1);
 			closedDoors[0]->openable->open(closedDoors[0]);
-			engine.gameStatus = Engine::NEW_TURN;
 		} else {
 			// Multiple adjacent closed doors — prompt for direction.
 			PlayerAi* playerAi = dynamic_cast<PlayerAi*>(owner->ai.get());
@@ -301,6 +350,19 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			}
 		}
 		break;
+	}
+
+	case 'a': // aim action (Half Action, 1 AP)
+	{
+		if (!owner->actionBudget || !owner->actionBudget->canAfford(1)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP to aim.");
+			return;
+		}
+		owner->actionBudget->spend(1);
+		owner->actionBudget->addAimBonus();
+		engine.gui->message(Colors::playerAction, "You take aim. (+%d to next attack)",
+			owner->actionBudget->getAimBonus());
+		return;
 	}
 
 	case 'e': // open equipment menu
@@ -357,7 +419,115 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 void MonsterAi::update(Actor* owner)
 {
 	if (owner->destructible && owner->destructible->isDead()) { return; }
-	moveOrAttack(owner, engine.player->getX(), engine.player->getY());
+
+	// Legacy path: if no ActionBudget, use old 1-action behaviour
+	if (!owner->actionBudget) {
+		moveOrAttack(owner, engine.player->getX(), engine.player->getY());
+		return;
+	}
+
+	// AP-based action loop: spend full budget
+	while (owner->actionBudget->getAP() > 0) {
+		if (!selectAndExecuteAction(owner)) {
+			break; // no valid action available
+		}
+	}
+}
+
+bool MonsterAi::selectAndExecuteAction(Actor* owner)
+{
+	const int ap = owner->actionBudget->getAP();
+	const int dx = engine.player->getX() - owner->getX();
+	const int dy = engine.player->getY() - owner->getY();
+	const float distance = sqrtf(static_cast<float>(dx * dx + dy * dy));
+
+	// Adjacent to player — attack (1 AP)
+	if (distance < 2.0f && ap >= 1) {
+		owner->actionBudget->spend(1);
+		if (owner->attacker) {
+			owner->attacker->attack(owner, engine.player);
+		}
+		return true;
+	}
+
+	// Move toward player (1 AP)
+	if (ap >= 1) {
+		owner->actionBudget->spend(1);
+		moveToward(owner, engine.player->getX(), engine.player->getY());
+		return true;
+	}
+
+	return false;
+}
+
+void MonsterAi::moveToward(Actor* owner, int targetX, int targetY)
+{
+	const int dx = targetX - owner->getX();
+	const int dy = targetY - owner->getY();
+	const float distance = sqrtf(static_cast<float>(dx * dx + dy * dy));
+	if (distance < 1.0f) return;
+
+	const int stepX = static_cast<int>(std::round(dx / distance));
+	const int stepY = static_cast<int>(std::round(dy / distance));
+	const int nextX = owner->getX() + stepX;
+	const int nextY = owner->getY() + stepY;
+
+	// Check for closed doors — open them and consume the action
+	for (auto& actorPtr : engine.actors) {
+		if (actorPtr->openable && !actorPtr->openable->isOpen()
+			&& actorPtr->getX() == nextX && actorPtr->getY() == nextY) {
+			actorPtr->openable->open(actorPtr.get());
+			engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+			return;
+		}
+	}
+
+	if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+		// Player is visible — step directly toward them.
+		if (engine.map->canWalk(nextX, nextY)) {
+			owner->setX(nextX);
+			owner->setY(nextY);
+			return;
+		}
+	}
+
+	// Player not visible — follow the strongest scent trail in the 8 neighbours.
+	static constexpr int neighbourDX[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
+	static constexpr int neighbourDY[8] = { -1,-1,-1,  0, 0,  1, 1, 1 };
+
+	unsigned int bestScent     = 0;
+	int          bestNeighbour = -1;
+
+	for (int i = 0; i < 8; ++i) {
+		const int cellX = owner->getX() + neighbourDX[i];
+		const int cellY = owner->getY() + neighbourDY[i];
+		if (engine.map->canWalk(cellX, cellY)) {
+			const unsigned int cellScent = engine.map->getScent(cellX, cellY);
+			const bool scentIsFresh = cellScent > engine.map->currentScentValue - SCENT_THRESHOLD;
+			if (scentIsFresh && cellScent > bestScent) {
+				bestScent     = cellScent;
+				bestNeighbour = i;
+			}
+		}
+	}
+
+	if (bestNeighbour != -1) {
+		const int scentNextX = owner->getX() + neighbourDX[bestNeighbour];
+		const int scentNextY = owner->getY() + neighbourDY[bestNeighbour];
+
+		// Check if there's a closed door at the scent target — open it and consume the action.
+		for (auto& actorPtr : engine.actors) {
+			if (actorPtr->openable && !actorPtr->openable->isOpen()
+				&& actorPtr->getX() == scentNextX && actorPtr->getY() == scentNextY) {
+				actorPtr->openable->open(actorPtr.get());
+				engine.gui->message(Colors::lightGrey, "The # opens the door.", owner->name);
+				return;
+			}
+		}
+
+		owner->setX(scentNextX);
+		owner->setY(scentNextY);
+	}
 }
 
 void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)

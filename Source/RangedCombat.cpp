@@ -40,10 +40,17 @@ RangedResult resolveCharacterAttack(const RangedContext& ctx) {
 			ctx.shooter->attacker->modifiers.begin(),
 			ctx.shooter->attacker->modifiers.end(), 0);
 	}
-	const int effectiveBS = std::max(1, std::min(99, baseBS + modSum));
+	// Aim bonus (from ActionBudget)
+	const int aimBonus = ctx.shooter->actionBudget ? ctx.shooter->actionBudget->getAimBonus() : 0;
+	const int effectiveBS = std::max(1, std::min(99, baseBS + modSum + aimBonus));
 
 	// ── Roll d100 ──
 	const int roll = roll100();
+
+	// ── Consume aim bonus (whether hit or miss, it's spent on this attack) ──
+	if (ctx.shooter->actionBudget) {
+		ctx.shooter->actionBudget->consumeAimBonus();
+	}
 
 	// ── Classify hit/miss ──
 	if (roll > effectiveBS) {

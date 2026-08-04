@@ -102,6 +102,9 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 	const int baseWS = owner->characteristics->get(CharId::WS);
 	const int modSum = std::accumulate(modifiers.begin(), modifiers.end(), 0);
 
+	// ── Aim bonus (from ActionBudget) ──
+	const int aimBonus = owner->actionBudget ? owner->actionBudget->getAimBonus() : 0;
+
 	// ── Proficiency penalty (weapon types) ──
 	int profPenalty = 0;
 	if (owner->equipment) {
@@ -110,10 +113,15 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 			profPenalty = proficiencyModifier(owner, *weaponItem->equippable->weaponGroup);
 		}
 	}
-	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty));
+	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty + aimBonus));
 
 	// ── Roll d100 ──
 	const int roll = rollD100();
+
+	// ── Consume aim bonus (whether hit or miss, it's spent on this attack) ──
+	if (owner->actionBudget) {
+		owner->actionBudget->consumeAimBonus();
+	}
 
 	// ── Classify hit/miss ──
 	if (roll > effectiveWS) {
