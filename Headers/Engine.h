@@ -92,6 +92,7 @@ struct AdvancesState {
 struct HelpState {
 	int scrollOffset = 0;       // first visible line index
 	bool returnToMenu = false;  // true when opened from Menu context
+	int priorState = 0;         // GameStatus to restore on close (stored as int to avoid forward-decl issues)
 };
 
 // Global game state machine. Owns the actor list, map, camera, and GUI.

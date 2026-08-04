@@ -300,6 +300,10 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		engine.beginAdvances();
 		return;
 
+	case '?': // open help overlay
+		engine.beginHelp();
+		return;
+
 	case '<': // ascend stairs
 		if (engine.stairsUp
 			&& engine.stairsUp->getX() == owner->getX()
