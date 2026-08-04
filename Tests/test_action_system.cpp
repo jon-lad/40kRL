@@ -1385,3 +1385,14 @@ TEST_CASE("PBT: Property 7 — Charge range with random positions (Chebyshev dis
         }
     });
 }
+
+// ─── Unit Test: Charge registry entry verification ───────────────────────────
+// Validates that Charge is correctly registered as a Full Action costing 2 AP.
+// **Validates: Requirements 8.1, 8.2**
+
+TEST_CASE("PBT: Charge action is Full Action costing 2 AP", "[property][action-system]")
+{
+    const ActionMeta& chargeMeta = ActionRegistry::get(ActionId::CHARGE);
+    REQUIRE(chargeMeta.apCost == 2);
+    REQUIRE(chargeMeta.type == ActionType::FULL);
+}

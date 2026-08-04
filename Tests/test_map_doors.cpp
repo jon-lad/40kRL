@@ -397,6 +397,8 @@ TEST_CASE("Player moves into closed door — movement blocked, message displayed
     playerActor->ai = std::make_shared<PlayerAi>();
     playerActor->attacker = std::make_shared<Attacker>(5.0f);
     playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+    playerActor->actionBudget = std::make_shared<ActionBudget>();
+    playerActor->actionBudget->beginTurn();
     engine.player = playerActor.get();
 
     // Clear actors
@@ -453,6 +455,8 @@ TEST_CASE("Player moves into open door — movement succeeds", "[map-doors]")
     playerActor->ai = std::make_shared<PlayerAi>();
     playerActor->attacker = std::make_shared<Attacker>(5.0f);
     playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+    playerActor->actionBudget = std::make_shared<ActionBudget>();
+    playerActor->actionBudget->beginTurn();
     engine.player = playerActor.get();
 
     // Clear actors

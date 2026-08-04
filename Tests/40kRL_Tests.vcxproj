@@ -185,6 +185,7 @@
     <ClCompile Include="..\Source\WeaponTypes.cpp" />
     <ClCompile Include="..\Source\ActionBudget.cpp" />
     <ClCompile Include="..\Source\ActionRegistry.cpp" />
+    <ClCompile Include="..\Source\ChargeResolver.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />

@@ -178,6 +178,7 @@
     <ClCompile Include="Source\WeaponTypes.cpp" />
     <ClCompile Include="Source\ActionBudget.cpp" />
     <ClCompile Include="Source\ActionRegistry.cpp" />
+    <ClCompile Include="Source\ChargeResolver.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -219,6 +220,7 @@
     <ClInclude Include="Headers\WeaponTypes.h" />
     <ClInclude Include="Headers\ActionBudget.h" />
     <ClInclude Include="Headers\ActionRegistry.h" />
+    <ClInclude Include="Headers\ChargeResolver.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
