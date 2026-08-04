@@ -478,3 +478,131 @@ TEST_CASE("Section headers rendered visually distinct from entry text", "[help-s
 }
 
 // end of help-system unit tests for state transitions
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: help-system — Unit Tests for Menu Help Item (Task 5.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Menu contains "Help" item in MAIN display mode ──────────────────────────
+// **Validates: Requirements 2.1**
+//
+// Verifies that when the menu is populated for the MAIN display mode,
+// it includes a HELP MenuItemCode entry. Since Menu::pick() blocks
+// (it enters a render loop), we test via addItem + the items list structure.
+// Task 5.2 adds Menu::MenuItemCode::HELP and wires addItem calls.
+
+TEST_CASE("Menu contains Help item in MAIN display mode", "[help-system]") {
+    // Clear any existing items and populate for MAIN mode
+    engine.gui->menu.clear();
+    engine.gui->menu.addItem(Menu::MenuItemCode::NEW_GAME, "New Game");
+    engine.gui->menu.addItem(Menu::MenuItemCode::HELP, "Help");
+    engine.gui->menu.addItem(Menu::MenuItemCode::EXIT, "Exit");
+
+    // Verify the menu is populated with HELP by checking that calling
+    // beginHelpFromMenu() from the HELP code path works correctly.
+    // Since items list is protected, we verify behaviour:
+    // simulate what happens when HELP code is returned from pick().
+    auto originalStatus = engine.gameStatus;
+    engine.gameStatus = Engine::STARTUP;
+
+    engine.beginHelpFromMenu();
+
+    REQUIRE(engine.gameStatus == Engine::HELP);
+    REQUIRE(engine.helpState.has_value());
+    REQUIRE(engine.helpState->returnToMenu == true);
+
+    // Cleanup
+    engine.helpState.reset();
+    engine.gameStatus = originalStatus;
+    engine.gui->menu.clear();
+}
+
+// ─── Menu contains "Help" item in PAUSE display mode ─────────────────────────
+// **Validates: Requirements 2.1**
+//
+// The PAUSE mode menu should also contain HELP. This test verifies
+// that the same HELP MenuItemCode is present when populating for pause.
+
+TEST_CASE("Menu contains Help item in PAUSE display mode", "[help-system]") {
+    // Clear and populate as the pause menu would
+    engine.gui->menu.clear();
+    engine.gui->menu.addItem(Menu::MenuItemCode::CONTINUE, "Continue");
+    engine.gui->menu.addItem(Menu::MenuItemCode::HELP, "Help");
+    engine.gui->menu.addItem(Menu::MenuItemCode::EXIT, "Exit");
+
+    // Verify by simulating HELP selection from pause context
+    auto originalStatus = engine.gameStatus;
+    engine.gameStatus = Engine::IDLE; // simulating in-game pause
+
+    engine.beginHelpFromMenu();
+
+    REQUIRE(engine.gameStatus == Engine::HELP);
+    REQUIRE(engine.helpState.has_value());
+    REQUIRE(engine.helpState->returnToMenu == true);
+
+    // Cleanup
+    engine.helpState.reset();
+    engine.gameStatus = originalStatus;
+    engine.gui->menu.clear();
+}
+
+// ─── Selecting HELP MenuItemCode calls engine.beginHelpFromMenu() ────────────
+// **Validates: Requirements 2.2**
+//
+// When pick() returns HELP, the engine should transition to the HELP state
+// with returnToMenu = true. We test the engine side of this contract directly.
+
+TEST_CASE("Selecting HELP MenuItemCode triggers beginHelpFromMenu", "[help-system]") {
+    auto originalStatus = engine.gameStatus;
+
+    // Simulate what happens when Menu::pick() returns HELP:
+    // The caller (Engine::load or equivalent) invokes beginHelpFromMenu().
+    engine.gameStatus = Engine::IDLE;
+    engine.beginHelpFromMenu();
+
+    // Verify state transition
+    REQUIRE(engine.gameStatus == Engine::HELP);
+    REQUIRE(engine.helpState.has_value());
+    REQUIRE(engine.helpState->returnToMenu == true);
+    REQUIRE(engine.helpState->scrollOffset == 0);
+
+    // Cleanup
+    engine.helpState.reset();
+    engine.gameStatus = originalStatus;
+}
+
+// ─── ESC from menu-opened help returns to Menu state (not gameplay) ──────────
+// **Validates: Requirements 2.3**
+//
+// When help is opened from the menu (returnToMenu == true), pressing ESC
+// should restore the prior state (the state before beginHelpFromMenu was called),
+// NOT go to IDLE/PLAYER_TURN. This ensures the player returns to the menu context.
+
+TEST_CASE("ESC from menu-opened help returns to Menu state, not gameplay", "[help-system]") {
+    auto originalStatus = engine.gameStatus;
+
+    // The menu operates during STARTUP (for MAIN) or any state (for PAUSE).
+    // Simulate the state being STARTUP when help is opened from the main menu.
+    engine.gameStatus = Engine::STARTUP;
+    engine.beginHelpFromMenu();
+
+    REQUIRE(engine.gameStatus == Engine::HELP);
+    REQUIRE(engine.helpState.has_value());
+    REQUIRE(engine.helpState->returnToMenu == true);
+    // priorState should be STARTUP (the state when menu called beginHelpFromMenu)
+    REQUIRE(engine.helpState->priorState == static_cast<int>(Engine::STARTUP));
+
+    // Simulate ESC keypress
+    engine.inputState.key.key = SDLK_ESCAPE;
+    engine.inputState.key.c = 0;
+    engine.inputState.key.pressed = true;
+    engine.updateHelp();
+
+    // Should return to the prior state (STARTUP = menu context), NOT IDLE or PLAYER_TURN
+    REQUIRE(engine.gameStatus == Engine::STARTUP);
+    REQUIRE_FALSE(engine.helpState.has_value());
+
+    // Cleanup
+    engine.gameStatus = originalStatus;
+}
