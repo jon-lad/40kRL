@@ -96,7 +96,9 @@ public:
 	enum GameStatus {
 		STARTUP,   // FOV needs recomputing; no AI updates yet
 		IDLE,      // waiting for player input; no AI updates
-		NEW_TURN,  // player acted; all actors update this frame
+		PLAYER_TURN,    // NEW: player has AP remaining, accepting input
+		ENEMY_TURN,     // NEW: processing enemy AI turns sequentially
+		NEW_TURN,  // retained for internal compatibility
 		VICTORY,
 		DEFEAT,
 		TARGETING,  // tile selection in progress

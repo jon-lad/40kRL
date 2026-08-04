@@ -2,6 +2,7 @@
 
 #include <memory>
 
+class ActionBudget;
 class Equippable;
 class Equipment;
 class InjuryTracker;
@@ -38,6 +39,8 @@ public:
 	std::shared_ptr<CharacterSheet> characterSheet; // non-null for player; owns characteristics + career
 	std::unique_ptr<Equipment>   equipment;  // non-null on any actor with equipment
 	std::unique_ptr<InjuryTracker> injuryTracker; // non-null when actor has critical injuries
+
+	std::shared_ptr<ActionBudget> actionBudget;  // non-null for actors that take turns
 
 	// Parsed equipment config from Lua (used during spawn to resolve equipment in task 2.2).
 	// Null for actors without equipment configuration. Consumed and cleared after equipment is attached.
