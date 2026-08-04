@@ -248,8 +248,11 @@ void Gui::renderRightSidebar()
 
 		for (int i = 0; i < maxAp; ++i) {
 			TCODColor pipColor = (i < ap) ? Colors::apFull : Colors::apEmpty;
-			rightSidebarConsole->setDefaultForeground(pipColor);
-			rightSidebarConsole->printf(5 + i * 3, row, "[%c]", i < ap ? 0xFE : ' ');
+			TCOD_ColorRGB pipRgb = { static_cast<uint8_t>(pipColor.r), static_cast<uint8_t>(pipColor.g), static_cast<uint8_t>(pipColor.b) };
+			int xOff = 5 + i * 3;
+			renderPutChar(rightSidebarConsole->get_data(), xOff, row, '[', pipRgb);
+			renderPutChar(rightSidebarConsole->get_data(), xOff + 1, row, i < ap ? 0xFE : ' ', pipRgb);
+			renderPutChar(rightSidebarConsole->get_data(), xOff + 2, row, ']', pipRgb);
 		}
 		row += 2;
 	}
@@ -368,13 +371,12 @@ void Gui::renderRightSidebar()
 		rightSidebarConsole->setDefaultForeground(Colors::uiText);
 		rightSidebarConsole->printf(1, row, "AP:");
 		for (int i = 0; i < maxAp; ++i) {
-			if (i < ap) {
-				rightSidebarConsole->setDefaultForeground(Colors::apFull);
-				rightSidebarConsole->printf(5 + i * 4, row, "[%c]", 0xFE);
-			} else {
-				rightSidebarConsole->setDefaultForeground(Colors::apEmpty);
-				rightSidebarConsole->printf(5 + i * 4, row, "[ ]");
-			}
+			TCODColor pipColor = (i < ap) ? Colors::apFull : Colors::apEmpty;
+			TCOD_ColorRGB pipRgb = { static_cast<uint8_t>(pipColor.r), static_cast<uint8_t>(pipColor.g), static_cast<uint8_t>(pipColor.b) };
+			int xOff = 5 + i * 4;
+			renderPutChar(rightSidebarConsole->get_data(), xOff, row, '[', pipRgb);
+			renderPutChar(rightSidebarConsole->get_data(), xOff + 1, row, i < ap ? 0xFE : ' ', pipRgb);
+			renderPutChar(rightSidebarConsole->get_data(), xOff + 2, row, ']', pipRgb);
 		}
 		row += 2;
 
