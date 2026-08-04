@@ -404,9 +404,13 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 			int slotIndex = key.c - 'a';
 			EquipmentSlot slot = static_cast<EquipmentSlot>(slotIndex);
 			if (owner->equipment->getSlot(slot)) {
+				if (!owner->actionBudget->canAfford(1)) {
+					engine.gui->message(Colors::lightGrey, "Not enough AP.");
+					return;
+				}
 				owner->equipment->unequip(slot, *owner->container, owner->attacker.get());
 				engine.gui->message(Colors::uiText, "Item unequipped.");
-				engine.gameStatus = Engine::NEW_TURN;
+				owner->actionBudget->spend(1);
 			}
 		}
 		break;

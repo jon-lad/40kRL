@@ -197,11 +197,11 @@ TEST_CASE("PBT: Property 4 — Serialization round trip", "[property][map-doors]
 //
 // For any player position and exactly one closed door at a cardinal neighbour,
 // when the player presses 'o', the door's Openable state SHALL transition to
-// open, and gameStatus SHALL advance to NEW_TURN.
+// open, and AP SHALL be spent (1 AP deducted).
 
 TEST_CASE("PBT: Property 5 — Player opens exactly the single adjacent closed door", "[property][map-doors]")
 {
-    rc::prop("pressing 'o' with one adjacent closed door opens it and sets NEW_TURN", []() {
+    rc::prop("pressing 'o' with one adjacent closed door opens it and spends 1 AP", []() {
         // Generate a player position away from map edges to leave room for cardinal neighbours
         const int mapW = 20;
         const int mapH = 20;
@@ -235,6 +235,8 @@ TEST_CASE("PBT: Property 5 — Player opens exactly the single adjacent closed d
         playerActor->ai = std::make_shared<PlayerAi>();
         playerActor->attacker = std::make_shared<Attacker>(5.0f);
         playerActor->destructible = std::make_shared<PlayerDestructible>(30.0f, 2.0f, "your corpse", 0);
+        playerActor->actionBudget = std::make_shared<ActionBudget>();
+        playerActor->actionBudget->beginTurn();
         engine.player = playerActor.get();
 
         // Clear existing actors and set up fresh
@@ -265,8 +267,8 @@ TEST_CASE("PBT: Property 5 — Player opens exactly the single adjacent closed d
         RC_ASSERT(doorPtr->openable != nullptr);
         RC_ASSERT(doorPtr->openable->isOpen() == true);
 
-        // Verify: gameStatus should be NEW_TURN
-        RC_ASSERT(engine.gameStatus == Engine::NEW_TURN);
+        // Verify: 1 AP should have been spent (from 2 to 1)
+        RC_ASSERT(engine.player->actionBudget->getAP() == 1);
     });
 }
 
