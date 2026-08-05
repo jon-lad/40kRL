@@ -69,8 +69,8 @@ public:
 
 protected:
 	// Moves to (targetX, targetY) or attacks the living actor there.
-	// Returns true if the player actually moved (FOV needs recomputing).
-	bool moveOrAttack(Actor* owner, int targetX, int targetY);
+	// Returns: 0 = blocked, 1 = moved, 2 = attacked.
+	int moveOrAttack(Actor* owner, int targetX, int targetY);
 };
 
 class MonsterAi : public Ai {

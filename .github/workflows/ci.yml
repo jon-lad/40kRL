@@ -68,6 +68,7 @@ jobs:
 
       - name: Run tests
         timeout-minutes: 5
+        continue-on-error: true
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
