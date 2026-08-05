@@ -109,6 +109,13 @@ void Engine::update()
 
 	// ── PLAYER_TURN: player has AP, keep accepting input ──
 	if (gameStatus == PLAYER_TURN) {
+		// ESC during player turn: save and return to menu
+		if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+			save();
+			load();
+			return;
+		}
+
 		player->update();  // PlayerAi reads input, executes action, deducts AP
 
 		if (player->actionBudget && player->actionBudget->getAP() <= 0) {
@@ -168,6 +175,13 @@ void Engine::runEnemyTurns() {
 void Engine::render()
 {
 	TCODConsole::root->clear();
+
+	// Help overlay can be active from the menu before map/player exist.
+	if (gameStatus == HELP) {
+		renderHelp();
+		return;
+	}
+
 	map->render();
 
 	// Sort actors by render layer for correct draw order (lower layers drawn first).
@@ -1898,8 +1912,10 @@ void Engine::updateCharGen()
 			// Clear chargen state.
 			charGenState.reset();
 
-			// Transition to normal gameplay.
-			gameStatus = STARTUP;
+			// Transition to normal gameplay — compute FOV immediately so the map
+			// renders on this frame (don't wait for next update cycle).
+			map->computeFOV();
+			gameStatus = IDLE;
 			break;
 		}
 	}
@@ -3225,9 +3241,14 @@ void Engine::updateHelp()
 
 	// --- Exit: ESC key or '?' key ---
 	if (inputState.key.key == SDLK_ESCAPE || inputState.key.c == '?') {
+		bool wasFromMenu = helpState->returnToMenu;
 		GameStatus restored = static_cast<GameStatus>(helpState->priorState);
 		helpState = std::nullopt;
-		gameStatus = restored;
+		if (wasFromMenu) {
+			load(); // re-show the main menu
+		} else {
+			gameStatus = restored;
+		}
 		return;
 	}
 
