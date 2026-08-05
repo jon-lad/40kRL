@@ -112,6 +112,13 @@ void Engine::update()
 
 	// ── PLAYER_TURN: player has AP, keep accepting input ──
 	if (gameStatus == PLAYER_TURN) {
+		// ESC during player turn: save and return to menu
+		if (inputState.key.key == SDLK_ESCAPE && inputState.key.pressed) {
+			save();
+			load();
+			return;
+		}
+
 		player->update();  // PlayerAi reads input, executes action, deducts AP
 
 		if (player->actionBudget && player->actionBudget->getAP() <= 0) {
