@@ -177,8 +177,8 @@ void PlayerAi::update(Actor* owner)
 			engine.gui->message(Colors::lightGrey, "Not enough AP.");
 			return;
 		}
-		owner->actionBudget->spend(1);
 		if (moveOrAttack(owner, owner->getX() + dx, owner->getY() + dy)) {
+			owner->actionBudget->spend(1);
 			engine.map->computeFOV();
 		}
 	}
@@ -198,6 +198,17 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 			}
 		}
 		return false;
+	}
+
+	// Check for blocking actors (closed doors with desynced TCODMap, or other blockers)
+	for (auto& actorPtr : engine.actors) {
+		Actor* actor = actorPtr.get();
+		if (actor->blocks && actor->getX() == targetX && actor->getY() == targetY) {
+			if (actor->openable && !actor->openable->isOpen()) {
+				engine.gui->message(Colors::lightGrey, "The door is closed.");
+			}
+			return false;
+		}
 	}
 
 	// Attack the first living actor on the target tile.

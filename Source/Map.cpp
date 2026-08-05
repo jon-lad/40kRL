@@ -58,11 +58,8 @@ private:
 	}
 
 	// After digging a corridor segment from (x1,y1) to (x2,y2), scan for entrance tiles.
-	// An entrance tile is the first or last tile of the corridor that is adjacent to
-	// (i.e., transitions into) a room that was already dug.
-	// We check BEFORE digging: tiles that were already floor indicate room boundaries.
-	// Strategy: We record which tiles were already floor before digging, then after digging
-	// we place doors at corridor tiles that border pre-existing floor tiles.
+	// A valid door position must be a bottleneck: walls on the perpendicular axis
+	// (i.e., a 1-wide passage). This prevents doors mid-corridor or at dead ends.
 	void placeDoors(int x1, int y1, int x2, int y2,
 	                const std::vector<bool>& wasFloorBefore) {
 		if (x2 < x1) std::swap(x1, x2);
@@ -76,7 +73,7 @@ private:
 				if (wasFloorBefore[idx]) continue;
 
 				// Check if this corridor tile is cardinally adjacent to a tile that was floor
-				// before digging. If so, it's an entrance tile.
+				// before digging. If so, it's a candidate entrance tile.
 				bool adjacentToRoom = false;
 				static constexpr int dx[4] = {0, 0, -1, 1};
 				static constexpr int dy[4] = {-1, 1, 0, 0};
@@ -91,7 +88,21 @@ private:
 					}
 				}
 
-				if (adjacentToRoom) {
+				if (!adjacentToRoom) continue;
+
+				// Bottleneck check: a valid door must have walls on the perpendicular axis.
+				// Horizontal passage: walls above and below (N/S are walls)
+				// Vertical passage: walls left and right (E/W are walls)
+				bool wallNorth = !inBounds(tx, ty - 1) || !map.map->isWalkable(tx, ty - 1);
+				bool wallSouth = !inBounds(tx, ty + 1) || !map.map->isWalkable(tx, ty + 1);
+				bool wallEast  = !inBounds(tx + 1, ty) || !map.map->isWalkable(tx + 1, ty);
+				bool wallWest  = !inBounds(tx - 1, ty) || !map.map->isWalkable(tx - 1, ty);
+
+				bool isHorizontalPassage = wallNorth && wallSouth;
+				bool isVerticalPassage   = wallEast && wallWest;
+
+				// Only place a door if it's a proper 1-wide bottleneck
+				if (isHorizontalPassage || isVerticalPassage) {
 					tryPlaceDoor(tx, ty);
 				}
 			}

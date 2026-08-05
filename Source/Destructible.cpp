@@ -54,6 +54,7 @@ void Destructible::die(Actor* owner)
 	owner->setColor(Colors::darkRed);
 	owner->name   = corpseName;
 	owner->blocks = false;
+	owner->fovOnly = false; // corpses remain visible once explored (like doors/stairs)
 	owner->renderLayer = RenderLayers::CORPSE;
 	engine.sendToBack(owner); // draw corpses beneath living actors
 }

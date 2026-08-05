@@ -232,16 +232,22 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 					engine.gui->message(Colors::damage, "Critical overload! #", fatalEffect.description);
 				}
 				target->destructible->die(target);
-			} else {
-				// Injury applied; target survives at HP=1 for low-magnitude crits
-				if (critMagnitude < 3) {
-					target->destructible->hp = 1;
-				}
+			} else if (target == engine.player) {
+				// Only the player survives at HP=1 on non-fatal crits
+				target->destructible->hp = 1;
 				if (visibleToPlayer) {
 					engine.gui->message(Colors::damage,
 						"# suffers a critical injury to the #!",
 						target->name, HitLocationTable::name(loc));
 				}
+			} else {
+				// Enemies die from any crit (HP was already <= 0)
+				if (visibleToPlayer) {
+					engine.gui->message(Colors::damage,
+						"# suffers a critical injury to the #!",
+						target->name, HitLocationTable::name(loc));
+				}
+				target->destructible->die(target);
 			}
 		} else {
 			// Fatal crit (magnitude >= 5 or fatal effect) — kill target
