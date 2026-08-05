@@ -68,6 +68,7 @@ Desktop.ini
 
 # ───── Build/test output files ─────
 /*.txt
+!MANUAL.txt
 
 # ───── Kiro internal ─────
 .kiro/specs/**/tasks.md
