@@ -51,8 +51,8 @@ void Gui::render()
 		hudConsole->clear();
 
 		renderBar(0, 0, constants::BAR_WIDTH, "HP",
-			engine.player->destructible->hp,
-			engine.player->destructible->maxHp,
+			engine.player->destructible->getWounds(),
+			engine.player->destructible->getMaxWounds(),
 			Colors::damageLight, Colors::damageDark);
 
 		// Blit just the HP bar row from hudConsole to root at the correct position

@@ -187,7 +187,7 @@ TEST_CASE("Miss skips damage: target HP unchanged when roll > threshold", "[hit-
 
     attacker.attack(&owner, &target);
 
-    REQUIRE(targetDest.hp == Catch::Approx(20.0f));
+    REQUIRE(targetDest.hp == Catch::Approx(targetDest.maxHp));
 }
 
 // ─── Task 8.2: Unit test — hit applies damage normally ───────────────────────

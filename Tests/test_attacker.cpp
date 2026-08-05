@@ -16,7 +16,7 @@ TEST_CASE("Damage formula: power - defence", "[attacker]")
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
 
         d.takeDamage(&dummy, 8.0f); // effective = 8 - 3 = 5
-        REQUIRE(d.hp == Catch::Approx(15.0f));
+        REQUIRE(d.hp == Catch::Approx(d.maxHp - 5.0f));
     }
 
     SECTION("blocked hit (power <= defence)")
@@ -26,7 +26,7 @@ TEST_CASE("Damage formula: power - defence", "[attacker]")
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
 
         d.takeDamage(&dummy, 3.0f); // effective = 3 - 5 = -2 → 0
-        REQUIRE(d.hp == Catch::Approx(20.0f));
+        REQUIRE(d.hp == Catch::Approx(d.maxHp));
     }
 }
 

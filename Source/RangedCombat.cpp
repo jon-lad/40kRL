@@ -234,12 +234,23 @@ void resolve(Actor* shooter, Actor* target,
 				}
 			} else {
 				// Apply wound
-				const float currentHp = target->destructible->hp;
 				target->destructible->hp -= static_cast<float>(result.finalDamage);
 
 				if (target->destructible->hp <= 0) {
-					// Critical hit
-					const int critMagnitude = result.finalDamage - static_cast<int>(currentHp);
+					// Dead outright
+					const int critMagnitude = 10;
+					const auto critEffect = CriticalEffects::resolve(result.location, critMagnitude);
+
+					if (visibleToPlayer) {
+						engine.gui->message(Colors::damage,
+							"Critical Hit on #! #",
+							HitLocationTable::name(result.location), critEffect.description);
+					}
+					target->destructible->die(target);
+					result.targetKilled = true;
+				} else if (target->destructible->hp <= 9.0f) {
+					// Crit territory: HP 1-9. Magnitude = 10 - hp.
+					const int critMagnitude = 10 - static_cast<int>(target->destructible->hp);
 					const auto critEffect = CriticalEffects::resolve(result.location, critMagnitude);
 
 					if (visibleToPlayer) {
@@ -248,11 +259,22 @@ void resolve(Actor* shooter, Actor* target,
 							HitLocationTable::name(result.location), critEffect.description);
 					}
 
-					if (!critEffect.fatal && critMagnitude < 3) {
-						target->destructible->hp = 1;
-					} else {
+					if (critEffect.fatal) {
 						target->destructible->die(target);
 						result.targetKilled = true;
+					} else {
+						if (!target->injuryTracker) {
+							target->injuryTracker = std::make_unique<InjuryTracker>();
+						}
+						bool survived = target->injuryTracker->applyCrit(target, result.location, critMagnitude);
+						if (!survived) {
+							target->destructible->die(target);
+							result.targetKilled = true;
+						} else if (visibleToPlayer) {
+							engine.gui->message(Colors::damage,
+								"# suffers a critical injury to the #!",
+								target->name, HitLocationTable::name(result.location));
+						}
 					}
 				} else {
 					if (visibleToPlayer) {

@@ -7,7 +7,7 @@ careers = {
     {
         name = "Rogue Trader",
         description = "A scion of a powerful dynasty, granted a Warrant of Trade by the God-Emperor himself. You command your vessel and crew through force of personality, cunning negotiation, and sheer audacity.",
-        hp = 28.0,
+        hp = 38.0,
         defense = 2.0,
         power = 4.0,
         invSize = 26,
@@ -68,7 +68,7 @@ careers = {
     {
         name = "Arch-Militant",
         description = "A warrior without peer, trained in every form of combat known to the Imperium. You are the first into the breach and the last to leave, a living weapon wielded by your Rogue Trader.",
-        hp = 32.0,
+        hp = 42.0,
         defense = 3.0,
         power = 6.0,
         invSize = 22,
@@ -131,7 +131,7 @@ careers = {
     {
         name = "Void-Master",
         description = "A pilot and navigator of exceptional skill, equally at home in the cockpit of a gun-cutter or at the helm of a voidship. Your reflexes and spatial awareness are unmatched among the crew.",
-        hp = 26.0,
+        hp = 36.0,
         defense = 2.0,
         power = 3.0,
         invSize = 24,
@@ -190,7 +190,7 @@ careers = {
     {
         name = "Explorator",
         description = "A Tech-Priest of the Adeptus Mechanicus, driven by an insatiable hunger for lost archeotech and forbidden knowledge. Your mechadendrites and augmetics make you as much machine as man.",
-        hp = 30.0,
+        hp = 40.0,
         defense = 4.0,
         power = 4.0,
         invSize = 20,
@@ -251,7 +251,7 @@ careers = {
     {
         name = "Missionary",
         description = "A firebrand preacher of the Imperial Creed, spreading the Emperor's word through inspiration and righteous violence in equal measure. Your faith is your shield, and your fury is your sword.",
-        hp = 28.0,
+        hp = 38.0,
         defense = 2.0,
         power = 4.0,
         invSize = 24,
@@ -310,7 +310,7 @@ careers = {
     {
         name = "Seneschal",
         description = "The eyes, ears, and coin-purse of the Rogue Trader dynasty. You deal in information, leverage, and discreet transactions. Where others use blades, you use words and well-placed bribes.",
-        hp = 24.0,
+        hp = 34.0,
         defense = 1.0,
         power = 3.0,
         invSize = 30,

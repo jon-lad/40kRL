@@ -3148,7 +3148,7 @@ void Engine::init()
 	// progression will be set during character generation completion.
 	auto newPlayer = std::make_unique<Actor>(0, 0, '@', "Player", Colors::white);
 	player = newPlayer.get();
-	newPlayer->destructible = std::make_unique<PlayerDestructible>(30.0f, 2.0f, "Your cadaver", 0);
+	newPlayer->destructible = std::make_unique<PlayerDestructible>(40.0f, 2.0f, "Your cadaver", 0);
 	newPlayer->attacker     = std::make_unique<Attacker>(5.0f, 40);
 	newPlayer->ai           = std::make_unique<PlayerAi>();
 	newPlayer->container    = std::make_unique<Container>(26);

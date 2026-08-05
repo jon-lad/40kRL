@@ -3,7 +3,7 @@
 #include "main.h"
 
 Destructible::Destructible(float maxHp, float defense, std::string_view corpseName, int xp)
-	: maxHp{ maxHp }, hp{ maxHp }, defense{ defense }, corpseName{ corpseName }, xp{ xp }
+	: maxHp{ maxHp + CRIT_BUFFER }, hp{ maxHp + CRIT_BUFFER }, defense{ defense }, corpseName{ corpseName }, xp{ xp }
 {}
 
 float Destructible::takeDamage(Actor* owner, float damage)
@@ -54,6 +54,7 @@ void Destructible::die(Actor* owner)
 	owner->setColor(Colors::darkRed);
 	owner->name   = corpseName;
 	owner->blocks = false;
+	owner->fovOnly = false; // corpses remain visible once explored (like doors/stairs)
 	owner->renderLayer = RenderLayers::CORPSE;
 	engine.sendToBack(owner); // draw corpses beneath living actors
 }
