@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <list>
 #include <memory>
 #include <sstream>
@@ -22,11 +23,15 @@ Engine::Engine(int screenWidth, int screenHeight)
 	, dungeonLevel{ 20 }
 	, debugMode{ false }
 {
-	TCODConsole::setCustomFont("terminal.png", TCOD_FONT_LAYOUT_ASCII_INROW, 16, 16);
-	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
-	SDL_Window* focusWindow = SDL_GetKeyboardFocus();
-	if (focusWindow) {
-		SDL_StartTextInput(focusWindow);
+	// In headless mode (CI), skip all SDL/libtcod window creation.
+	const char* headless = std::getenv("KIRO_HEADLESS");
+	if (!headless || std::string(headless) != "1") {
+		TCODConsole::setCustomFont("terminal.png", TCOD_FONT_LAYOUT_ASCII_INROW, 16, 16);
+		TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
+		SDL_Window* focusWindow = SDL_GetKeyboardFocus();
+		if (focusWindow) {
+			SDL_StartTextInput(focusWindow);
+		}
 	}
 	gui = std::make_unique<Gui>();
 }

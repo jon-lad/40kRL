@@ -581,7 +581,7 @@ TEST_CASE("Selecting HELP MenuItemCode triggers beginHelpFromMenu", "[help-syste
 // should restore the prior state (the state before beginHelpFromMenu was called),
 // NOT go to IDLE/PLAYER_TURN. This ensures the player returns to the menu context.
 
-TEST_CASE("ESC from menu-opened help returns to Menu state, not gameplay", "[help-system]") {
+TEST_CASE("ESC from menu-opened help returns to Menu state, not gameplay", "[help-system][integration]") {
     auto originalStatus = engine.gameStatus;
 
     // The menu operates during STARTUP (for MAIN) or any state (for PAUSE).

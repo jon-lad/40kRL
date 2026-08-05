@@ -68,10 +68,10 @@ jobs:
 
       - name: Run tests
         timeout-minutes: 5
-        continue-on-error: true
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
+          KIRO_HEADLESS: "1"
         run: |
           $testExe = "x64\${{ matrix.configuration }}\40kRL_Tests.exe"
           if (Test-Path $testExe) {
