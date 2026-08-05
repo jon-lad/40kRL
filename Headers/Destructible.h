@@ -9,9 +9,19 @@ public:
 	std::string corpseName; // name this actor gets after dying
 	int xp;              // XP awarded to the player for killing this actor (or the player's own XP pool)
 
+	// Internal crit buffer: added to hp/maxHp so that "0 wounds" = hp in [1..CRIT_BUFFER].
+	// Crit magnitude = CRIT_BUFFER - hp. Death at hp <= 0.
+	static constexpr float CRIT_BUFFER = 10.0f;
+
 	Destructible(float maxHp, float defense, std::string_view corpseName, int xp);
 
 	bool isDead() const { return hp <= 0; }
+
+	// Returns the visible "wounds" remaining (hp above the crit buffer). 0 = in crit territory.
+	float getWounds() const { return (hp > CRIT_BUFFER) ? (hp - CRIT_BUFFER) : 0.0f; }
+
+	// Returns the visible max wounds (maxHp minus the crit buffer).
+	float getMaxWounds() const { return maxHp - CRIT_BUFFER; }
 
 	// Applies damage after defence reduction. Calls die() if hp drops to zero or below.
 	// Returns the effective damage dealt (0 if blocked entirely).

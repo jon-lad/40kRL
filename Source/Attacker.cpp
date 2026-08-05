@@ -202,15 +202,29 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 		return;
 	}
 
-	// ── Critical Hit Logic (Task 7.5) ──
-	const float currentHp = target->destructible->hp;
-
-	// Apply damage directly to hp (bypass legacy defense reduction)
+	// ── Critical Hit Logic ──
+	// All actors have a crit buffer (Destructible::CRIT_BUFFER = 10 internal HP).
+	// Internal HP in (0, CRIT_BUFFER] = crit territory (displayed as 0 wounds).
+	// Crit magnitude = CRIT_BUFFER - current HP after damage.
+	// Internal HP <= 0 = dead outright.
 	target->destructible->hp -= static_cast<float>(finalDamage);
 
+	const float critBuffer = Destructible::CRIT_BUFFER;
+
 	if (target->destructible->hp <= 0) {
-		// Critical hit: damage exceeded remaining wounds
-		const int critMagnitude = finalDamage - static_cast<int>(currentHp);
+		// Dead outright — massive overkill or already in crit territory
+		const int critMagnitude = static_cast<int>(critBuffer); // maximum crit for death message
+		const auto critEffect = CriticalEffects::resolve(loc, critMagnitude);
+
+		if (visibleToPlayer) {
+			engine.gui->message(Colors::damage,
+				"Critical Hit on #! #",
+				HitLocationTable::name(loc), critEffect.description);
+		}
+		target->destructible->die(target);
+	} else if (target->destructible->hp <= critBuffer) {
+		// Crit territory: HP in (0, CRIT_BUFFER]. Magnitude = CRIT_BUFFER - hp.
+		const int critMagnitude = static_cast<int>(critBuffer) - static_cast<int>(target->destructible->hp);
 		const auto critEffect = CriticalEffects::resolve(loc, critMagnitude);
 
 		if (visibleToPlayer) {
@@ -219,8 +233,10 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 				HitLocationTable::name(loc), critEffect.description);
 		}
 
-		if (!critEffect.fatal && critMagnitude <= 4) {
-			// Non-fatal critical hit: apply injury via cumulative magnitude system
+		if (critEffect.fatal) {
+			target->destructible->die(target);
+		} else {
+			// Apply crit debuffs — creature stays alive in crit territory
 			if (!target->injuryTracker) {
 				target->injuryTracker = std::make_unique<InjuryTracker>();
 			}
@@ -232,26 +248,13 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 					engine.gui->message(Colors::damage, "Critical overload! #", fatalEffect.description);
 				}
 				target->destructible->die(target);
-			} else if (target == engine.player) {
-				// Only the player survives at HP=1 on non-fatal crits
-				target->destructible->hp = 1;
-				if (visibleToPlayer) {
-					engine.gui->message(Colors::damage,
-						"# suffers a critical injury to the #!",
-						target->name, HitLocationTable::name(loc));
-				}
 			} else {
-				// Enemies die from any crit (HP was already <= 0)
 				if (visibleToPlayer) {
 					engine.gui->message(Colors::damage,
 						"# suffers a critical injury to the #!",
 						target->name, HitLocationTable::name(loc));
 				}
-				target->destructible->die(target);
 			}
-		} else {
-			// Fatal crit (magnitude >= 5 or fatal effect) — kill target
-			target->destructible->die(target);
 		}
 	} else {
 		// Normal damage — target survives

@@ -11,8 +11,8 @@
 TEST_CASE("Destructible initialises with full HP", "[destructible]")
 {
     MonsterDestructible d(10.0f, 2.0f, "corpse", 5);
-    REQUIRE(d.hp    == 10.0f);
-    REQUIRE(d.maxHp == 10.0f);
+    REQUIRE(d.hp    == 10.0f + Destructible::CRIT_BUFFER);
+    REQUIRE(d.maxHp == 10.0f + Destructible::CRIT_BUFFER);
 }
 
 TEST_CASE("takeDamage reduces HP by damage minus defence", "[destructible]")
@@ -26,7 +26,7 @@ TEST_CASE("takeDamage reduces HP by damage minus defence", "[destructible]")
         Actor dummy(0, 0, 'x', "dummy", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
         d.takeDamage(&dummy, 5.0f);
-        REQUIRE(d.hp == Catch::Approx(7.0f));
+        REQUIRE(d.hp == Catch::Approx(10.0f + Destructible::CRIT_BUFFER - 3.0f));
     }
 
     SECTION("damage equal to defence deals zero HP loss")
@@ -34,7 +34,7 @@ TEST_CASE("takeDamage reduces HP by damage minus defence", "[destructible]")
         Actor dummy(0, 0, 'x', "dummy", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
         d.takeDamage(&dummy, 2.0f);
-        REQUIRE(d.hp == Catch::Approx(10.0f));
+        REQUIRE(d.hp == Catch::Approx(10.0f + Destructible::CRIT_BUFFER));
     }
 
     SECTION("damage less than defence deals zero HP loss")
@@ -42,34 +42,34 @@ TEST_CASE("takeDamage reduces HP by damage minus defence", "[destructible]")
         Actor dummy(0, 0, 'x', "dummy", Colors::white);
         dummy.destructible = std::shared_ptr<Destructible>(&d, [](Destructible*){});
         d.takeDamage(&dummy, 1.0f);
-        REQUIRE(d.hp == Catch::Approx(10.0f));
+        REQUIRE(d.hp == Catch::Approx(10.0f + Destructible::CRIT_BUFFER));
     }
 }
 
 TEST_CASE("heal caps at maxHp and returns actual amount healed", "[destructible]")
 {
     MonsterDestructible d(10.0f, 0.0f, "corpse", 0);
-    d.hp = 6.0f;
+    d.hp = d.maxHp - 4.0f; // 4 HP missing
 
     SECTION("heal within capacity")
     {
         const float healed = d.heal(3);
-        REQUIRE(d.hp    == Catch::Approx(9.0f));
+        REQUIRE(d.hp    == Catch::Approx(d.maxHp - 1.0f));
         REQUIRE(healed  == Catch::Approx(3.0f));
     }
 
     SECTION("heal exceeding maxHp is capped")
     {
         const float healed = d.heal(20);
-        REQUIRE(d.hp    == Catch::Approx(10.0f));
+        REQUIRE(d.hp    == Catch::Approx(d.maxHp));
         REQUIRE(healed  == Catch::Approx(4.0f)); // only 4 HP were missing
     }
 
     SECTION("heal when already at maxHp heals nothing")
     {
-        d.hp = 10.0f;
+        d.hp = d.maxHp;
         const float healed = d.heal(5);
-        REQUIRE(d.hp   == Catch::Approx(10.0f));
+        REQUIRE(d.hp   == Catch::Approx(d.maxHp));
         REQUIRE(healed == Catch::Approx(0.0f));
     }
 }
