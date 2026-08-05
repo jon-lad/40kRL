@@ -5,6 +5,7 @@
 #include <sstream>
 #include <sol/sol.hpp>
 #include "main.h"
+#include "HelpContent.h"
 
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
 static constexpr int MAP_WIDTH            = 160;
@@ -97,6 +98,12 @@ void Engine::update()
 	// Handle world map state — skip all normal game logic.
 	if (gameStatus == WORLD_MAP) {
 		updateWorldMap();
+		return;
+	}
+
+	// Handle help overlay state — skip all normal game logic.
+	if (gameStatus == HELP) {
+		updateHelp();
 		return;
 	}
 
@@ -234,6 +241,11 @@ void Engine::render()
 	// Render character generation overlay when in CHARACTER_GEN state.
 	if (gameStatus == CHARACTER_GEN) {
 		renderCharGen();
+	}
+
+	// Render help overlay when in HELP state.
+	if (gameStatus == HELP) {
+		renderHelp();
 	}
 }
 
@@ -3176,4 +3188,136 @@ void Engine::term()
 	actors.clear();
 	if (map) { map.reset(); }
 	gui->clear();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Help Overlay
+// ═══════════════════════════════════════════════════════════════════════════════
+
+void Engine::beginHelp()
+{
+	HelpState hs;
+	hs.scrollOffset = 0;
+	hs.returnToMenu = false;
+	hs.priorState = static_cast<int>(gameStatus);
+	helpState = hs;
+	gameStatus = HELP;
+}
+
+void Engine::beginHelpFromMenu()
+{
+	HelpState hs;
+	hs.scrollOffset = 0;
+	hs.returnToMenu = true;
+	hs.priorState = static_cast<int>(gameStatus);
+	helpState = hs;
+	gameStatus = HELP;
+}
+
+void Engine::updateHelp()
+{
+	if (!helpState) {
+		gameStatus = IDLE;
+		return;
+	}
+
+	if (!inputState.key.pressed) return;
+
+	// --- Exit: ESC key or '?' key ---
+	if (inputState.key.key == SDLK_ESCAPE || inputState.key.c == '?') {
+		GameStatus restored = static_cast<GameStatus>(helpState->priorState);
+		helpState = std::nullopt;
+		gameStatus = restored;
+		return;
+	}
+
+	// --- Scroll calculations ---
+	const int totalLines = HelpContent::totalLineCount();
+	const int visibleLines = screenHeight - 4; // leave room for title + bottom nav bar
+	const int maxOffset = std::max(0, totalLines - visibleLines);
+
+	// --- Scroll: Up arrow ---
+	if (inputState.key.key == SDLK_UP) {
+		helpState->scrollOffset -= 1;
+		if (helpState->scrollOffset < 0) helpState->scrollOffset = 0;
+	}
+	// --- Scroll: Down arrow ---
+	else if (inputState.key.key == SDLK_DOWN) {
+		helpState->scrollOffset += 1;
+		if (helpState->scrollOffset > maxOffset) helpState->scrollOffset = maxOffset;
+	}
+	// --- Scroll: Page Up ---
+	else if (inputState.key.key == SDLK_PAGEUP) {
+		helpState->scrollOffset -= visibleLines;
+		if (helpState->scrollOffset < 0) helpState->scrollOffset = 0;
+	}
+	// --- Scroll: Page Down ---
+	else if (inputState.key.key == SDLK_PAGEDOWN) {
+		helpState->scrollOffset += visibleLines;
+		if (helpState->scrollOffset > maxOffset) helpState->scrollOffset = maxOffset;
+	}
+}
+
+void Engine::renderHelp()
+{
+	if (!helpState) return;
+
+	// Full-screen overlay using a static console sized to the screen.
+	static TCODConsole helpConsole(screenWidth, screenHeight);
+	helpConsole.clear();
+
+	// Draw frame
+	helpConsole.setDefaultForeground(Colors::menuFrame);
+	helpConsole.printFrame(0, 0, screenWidth, screenHeight, true, TCOD_BKGND_DEFAULT, "-- Help --");
+
+	// Content area starts at row 2, col 2 (inside the frame)
+	const int contentX = 2;
+	const int contentStartY = 2;
+	const int contentEndY = screenHeight - 3; // leave 2 rows for bottom nav bar + frame
+	const int visibleLines = contentEndY - contentStartY;
+
+	// Build the line list from sections
+	// Each section: title line, entry lines, blank spacing line
+	auto sections = HelpContent::allSections();
+
+	int currentLine = 0; // logical line index in the full content
+	int drawY = contentStartY;
+
+	for (const auto& section : sections) {
+		// Section title line
+		if (currentLine >= helpState->scrollOffset && drawY < contentEndY) {
+			helpConsole.setDefaultForeground(Colors::uiHighlight);
+			helpConsole.printf(contentX, drawY, "%.*s",
+				static_cast<int>(section.title.size()), section.title.data());
+			drawY++;
+		}
+		currentLine++;
+
+		// Entry lines
+		for (const auto& entry : section.entries) {
+			if (currentLine >= helpState->scrollOffset && drawY < contentEndY) {
+				helpConsole.setDefaultForeground(Colors::uiText);
+				helpConsole.printf(contentX, drawY, "  %-12.*s %.*s",
+					static_cast<int>(entry.key.size()), entry.key.data(),
+					static_cast<int>(entry.description.size()), entry.description.data());
+				drawY++;
+			}
+			currentLine++;
+		}
+
+		// Spacing line after section
+		if (currentLine >= helpState->scrollOffset && drawY < contentEndY) {
+			drawY++; // blank line
+		}
+		currentLine++;
+	}
+
+	// Bottom navigation bar
+	helpConsole.setDefaultForeground(Colors::uiText);
+	helpConsole.printf(contentX, screenHeight - 2,
+		"ESC: close | Up/Down: scroll | PgUp/PgDn: page");
+
+	// Blit help console onto root
+	TCODConsole::blit(&helpConsole, 0, 0, screenWidth, screenHeight,
+		TCODConsole::root, 0, 0);
 }

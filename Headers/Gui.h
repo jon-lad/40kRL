@@ -14,7 +14,8 @@ public:
 		EXIT,
 		CONSTITUTION,
 		STRENGTH,
-		AGILITY
+		AGILITY,
+		HELP
 	};
 	enum class DisplayMode {
 		MAIN,

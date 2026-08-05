@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Sync MANUAL on README change",
+  "description": "When README.md is edited, remind the agent to check if MANUAL.md needs updating with any new controls or mechanics that were documented.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "README.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "README.md was just updated. Check if any new controls, keybindings, or game mechanics were added. If so, update MANUAL.md to include the same information in its appropriate section (Movement, Actions, Overlays, Navigation, or a new Mechanics section). If the README change is unrelated to gameplay controls or mechanics (e.g., build instructions, project description), do NOT modify MANUAL.md."
+  }
+}
