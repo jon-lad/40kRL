@@ -37,7 +37,10 @@ void Engine::update()
 		return;
 	}
 
-	if (gameStatus == STARTUP) { map->computeFOV(); gameStatus = IDLE; }
+	if (gameStatus == STARTUP) {
+		if (map) { map->computeFOV(); }
+		gameStatus = IDLE;
+	}
 
 	pollInput(inputState);
 
@@ -168,6 +171,14 @@ void Engine::runEnemyTurns() {
 void Engine::render()
 {
 	TCODConsole::root->clear();
+
+	// Help overlay can be active from the menu (before map/player exist).
+	// Render it directly and skip all game-world rendering.
+	if (gameStatus == HELP) {
+		renderHelp();
+		return;
+	}
+
 	map->render();
 
 	// Sort actors by render layer for correct draw order (lower layers drawn first).
@@ -241,11 +252,6 @@ void Engine::render()
 	// Render character generation overlay when in CHARACTER_GEN state.
 	if (gameStatus == CHARACTER_GEN) {
 		renderCharGen();
-	}
-
-	// Render help overlay when in HELP state.
-	if (gameStatus == HELP) {
-		renderHelp();
 	}
 }
 
@@ -3225,9 +3231,15 @@ void Engine::updateHelp()
 
 	// --- Exit: ESC key or '?' key ---
 	if (inputState.key.key == SDLK_ESCAPE || inputState.key.c == '?') {
+		bool wasFromMenu = helpState->returnToMenu;
 		GameStatus restored = static_cast<GameStatus>(helpState->priorState);
 		helpState = std::nullopt;
-		gameStatus = restored;
+		if (wasFromMenu) {
+			// Return to the main menu by re-entering the menu loop
+			load();
+		} else {
+			gameStatus = restored;
+		}
 		return;
 	}
 
