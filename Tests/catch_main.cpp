@@ -13,6 +13,9 @@ int main(int argc, char* argv[])
 {
     // Initialise the engine so tests that need player/stairs/map/gui can run.
     engine.init();
+    // Skip character generation for tests — set to IDLE with a basic player state.
+    engine.gameStatus = Engine::IDLE;
+    engine.charGenState = std::nullopt;
     int result = Catch::Session().run(argc, argv);
     engine.term();
     return result;
