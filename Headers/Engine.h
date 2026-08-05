@@ -88,6 +88,13 @@ struct AdvancesState {
 	std::string statusMessage;   // purchase feedback message
 };
 
+// Stores state for the help overlay.
+struct HelpState {
+	int scrollOffset = 0;       // first visible line index
+	bool returnToMenu = false;  // true when opened from Menu context
+	int priorState = 0;         // GameStatus to restore on close (stored as int to avoid forward-decl issues)
+};
+
 // Global game state machine. Owns the actor list, map, camera, and GUI.
 // There is one instance declared in main.cpp and exposed via extern.
 class Engine {
@@ -109,7 +116,8 @@ public:
 		ADVANCES,        // advance purchase overlay is open
 		TABBED_MENU,     // tabbed menu overlay (inventory/equipment/skills) is open
 		WORLD_MAP,      // world map overlay is open
-		CHARACTER_GEN   // character generation overlay is active
+		CHARACTER_GEN,  // character generation overlay is active
+		HELP            // help overlay is open
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -150,6 +158,7 @@ public:
 	std::optional<TabbedMenuState> tabbedMenu; // active only during TABBED_MENU state
 	std::optional<WorldMapState> worldMapState; // active only during WORLD_MAP state
 	std::optional<CharGenState> charGenState; // active only during CHARACTER_GEN state
+	std::optional<HelpState> helpState; // active only during HELP state
 
 	uint32_t worldSeed = 0; // deterministic seed for world map generation, set during init()
 
@@ -257,6 +266,18 @@ public:
 
 	// Renders world map overlay. Called from render() when WORLD_MAP.
 	void renderWorldMap();
+
+	// Enters help overlay mode from gameplay.
+	void beginHelp();
+
+	// Enters help overlay mode from menu context.
+	void beginHelpFromMenu();
+
+	// Processes one frame of help overlay input.
+	void updateHelp();
+
+	// Renders help overlay.
+	void renderHelp();
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);

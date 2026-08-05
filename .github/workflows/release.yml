@@ -133,6 +133,12 @@ jobs:
           if (Test-Path "C:\vcpkg\installed\x64-windows\share\libtcod\data") {
             Copy-Item "C:\vcpkg\installed\x64-windows\share\libtcod\data\*" release\ -Recurse -Force -ErrorAction SilentlyContinue
           }
+          # Copy MANUAL.txt if present
+          if (Test-Path "MANUAL.txt") {
+            Copy-Item "MANUAL.txt" release\
+          } else {
+            Write-Warning "MANUAL.txt not found - skipping manual inclusion"
+          }
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
