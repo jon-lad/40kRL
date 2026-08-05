@@ -177,14 +177,16 @@ void PlayerAi::update(Actor* owner)
 			engine.gui->message(Colors::lightGrey, "Not enough AP.");
 			return;
 		}
-		if (moveOrAttack(owner, owner->getX() + dx, owner->getY() + dy)) {
+		int result = moveOrAttack(owner, owner->getX() + dx, owner->getY() + dy);
+		if (result > 0) {
 			owner->actionBudget->spend(1);
-			engine.map->computeFOV();
+			if (result == 1) { engine.map->computeFOV(); }
 		}
 	}
 }
 
-bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
+// Returns: 0 = blocked (no AP cost), 1 = moved, 2 = attacked
+int PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 {
 	if (engine.map->isWall(targetX, targetY)) {
 		// Check if there's a closed door blocking the way
@@ -194,10 +196,10 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 				&& actor->getX() == targetX && actor->getY() == targetY)
 			{
 				engine.gui->message(Colors::lightGrey, "The door is closed.");
-				return false;
+				return 0;
 			}
 		}
-		return false;
+		return 0;
 	}
 
 	// Check for blocking actors (closed doors with desynced TCODMap, or other blockers)
@@ -207,7 +209,7 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 			if (actor->openable && !actor->openable->isOpen()) {
 				engine.gui->message(Colors::lightGrey, "The door is closed.");
 			}
-			return false;
+			return 0;
 		}
 	}
 
@@ -221,7 +223,7 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 			owner->attacker->addModifier(10);
 			owner->attacker->attack(owner, actor);
 			owner->attacker->removeModifier(10);
-			return false;
+			return 2; // attacked — costs AP
 		}
 	}
 
@@ -238,7 +240,7 @@ bool PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 	owner->setX(targetX);
 	owner->setY(targetY);
 	engine.camera->update(owner, engine.map->getLevelType() == LevelType::OUTDOOR);
-	return true;
+	return 1; // moved — costs AP and recomputes FOV
 }
 
 void PlayerAi::handleActionKey(Actor* owner, int ascii)

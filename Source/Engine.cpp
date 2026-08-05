@@ -24,7 +24,10 @@ Engine::Engine(int screenWidth, int screenHeight)
 {
 	TCODConsole::setCustomFont("terminal.png", TCOD_FONT_LAYOUT_ASCII_INROW, 16, 16);
 	TCODConsole::initRoot(screenWidth, screenHeight, "40kRL", false);
-	SDL_StartTextInput(SDL_GetKeyboardFocus());
+	SDL_Window* focusWindow = SDL_GetKeyboardFocus();
+	if (focusWindow) {
+		SDL_StartTextInput(focusWindow);
+	}
 	gui = std::make_unique<Gui>();
 }
 
@@ -1912,8 +1915,9 @@ void Engine::updateCharGen()
 			// Clear chargen state.
 			charGenState.reset();
 
-			// Transition to normal gameplay — compute FOV immediately so the map
-			// renders on this frame (don't wait for next update cycle).
+			// Transition to normal gameplay — compute FOV and center camera immediately
+			// so the map renders on this frame (don't wait for next update cycle).
+			camera->update(player, map->getLevelType() == LevelType::OUTDOOR);
 			map->computeFOV();
 			gameStatus = IDLE;
 			break;
