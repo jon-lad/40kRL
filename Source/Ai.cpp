@@ -203,9 +203,14 @@ int PlayerAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 	}
 
 	// Check for blocking actors (closed doors with desynced TCODMap, or other blockers)
+	// Skip living actors — they'll be handled by the attack check below.
 	for (auto& actorPtr : engine.actors) {
 		Actor* actor = actorPtr.get();
 		if (actor->blocks && actor->getX() == targetX && actor->getY() == targetY) {
+			// Living actors are handled by the attack logic, not blocked
+			if (actor->destructible && !actor->destructible->isDead()) {
+				continue;
+			}
 			if (actor->openable && !actor->openable->isOpen()) {
 				engine.gui->message(Colors::lightGrey, "The door is closed.");
 			}
