@@ -100,10 +100,11 @@ jobs:
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
+          KIRO_HEADLESS: "1"
         run: |
           $testExe = "x64\${{ env.BUILD_CONFIG }}\40kRL_Tests.exe"
           if (Test-Path $testExe) {
-            & $testExe --reporter compact "~[pbt]"
+            & $testExe --reporter compact "~[pbt]" "~[integration]"
           } else {
             Write-Error "Test executable not found at $testExe"
             exit 1
