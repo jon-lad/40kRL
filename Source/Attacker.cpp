@@ -8,6 +8,7 @@
 #include "CriticalEffects.h"
 #include "DiceRoller.h"
 #include "ReactionResolver.h"
+#include "StatusTrigger.h"
 
 Attacker::Attacker(float power, int skillValue)
 	: power{ power }
@@ -249,6 +250,16 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 				}
 				target->destructible->die(target);
 			} else {
+				// Trigger status effects from critical injury
+				DamageType dmgType = DamageType::I; // default Impact
+				if (owner->equipment) {
+					Actor* weaponItem = owner->equipment->getSlot(EquipmentSlot::WEAPON);
+					if (weaponItem && weaponItem->equippable && weaponItem->equippable->damageType) {
+						dmgType = *weaponItem->equippable->damageType;
+					}
+				}
+				StatusTrigger::fromCritical(target, dmgType, loc, critMagnitude);
+
 				if (visibleToPlayer) {
 					engine.gui->message(Colors::damage,
 						"# suffers a critical injury to the #!",
@@ -261,6 +272,16 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 		if (visibleToPlayer) {
 			engine.gui->message(Colors::damage, "# deals # damage to #'s #.",
 				owner->name, finalDamage, target->name, HitLocationTable::name(loc));
+		}
+	}
+
+	// Apply weapon quality status effects if target survived
+	if (!target->destructible->isDead()) {
+		if (owner->equipment) {
+			Actor* weaponItem = owner->equipment->getSlot(EquipmentSlot::WEAPON);
+			if (weaponItem && weaponItem->equippable && weaponItem->equippable->meleeStats) {
+				StatusTrigger::fromWeaponQualities(target, weaponItem->equippable->meleeStats->qualities);
+			}
 		}
 	}
 }
