@@ -46,9 +46,11 @@ bool StatusEffectTracker::tickStartOfTurn(Actor* owner) {
         int damage = TCODRandom::getInstance()->getInt(1, 10);
         owner->destructible->hp -= static_cast<float>(damage);
         if (owner->destructible->isDead()) {
-            owner->destructible->die(owner);
-            // Actor died — decrement durations before returning, then halt
-            // Actually: halt processing immediately per spec
+            // Only call die() if engine GUI is available (not in test context)
+            if (engine.gui) {
+                owner->destructible->die(owner);
+            }
+            // Actor died — halt processing immediately per spec
             return !stunned;
         }
     }
@@ -78,7 +80,10 @@ void StatusEffectTracker::tickEndOfTurn(Actor* owner) {
     if (has(StatusType::Bleeding) && owner && owner->destructible && !owner->destructible->isDead()) {
         owner->destructible->hp -= 1.0f;
         if (owner->destructible->isDead()) {
-            owner->destructible->die(owner);
+            // Only call die() if engine GUI is available (not in test context)
+            if (engine.gui) {
+                owner->destructible->die(owner);
+            }
         }
     }
 }

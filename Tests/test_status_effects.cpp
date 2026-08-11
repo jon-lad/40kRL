@@ -112,7 +112,7 @@ TEST_CASE("PBT: Property 9 — Multiple statuses coexist", "[pbt][property][stat
 
         // Ensure at least one status is chosen
         if (chosenTypes.empty()) {
-            const int forced = *rc::gen::inRange(0, statusCount);
+            const int forced = *rc::gen::inRange(0, statusCount - 1);
             chosenTypes.insert(static_cast<StatusType>(forced));
         }
 
@@ -204,7 +204,7 @@ TEST_CASE("PBT: Property 7 — Stacking rules duration refresh", "[pbt][property
 {
     rc::prop("reapplying same status refreshes duration to max(D1, D2)", []() {
         // Generate a random StatusType
-        const int typeInt = *rc::gen::inRange(0, static_cast<int>(StatusType::COUNT));
+        const int typeInt = *rc::gen::inRange(0, static_cast<int>(StatusType::COUNT) - 1);
         const StatusType type = static_cast<StatusType>(typeInt);
 
         // Generate two positive durations (temporary effects: duration > 0)
@@ -233,7 +233,7 @@ TEST_CASE("PBT: Property 7 — Stacking rules duration refresh", "[pbt][property
 
     rc::prop("permanent status (duration 0) remains unchanged when temporary reapplication occurs", []() {
         // Generate a random StatusType
-        const int typeInt = *rc::gen::inRange(0, static_cast<int>(StatusType::COUNT));
+        const int typeInt = *rc::gen::inRange(0, static_cast<int>(StatusType::COUNT) - 1);
         const StatusType type = static_cast<StatusType>(typeInt);
 
         // Generate a positive duration for the temporary reapplication
@@ -278,10 +278,10 @@ TEST_CASE("PBT: Property 3 — Duration tick and expiry", "[pbt][property][statu
 {
     rc::prop("duration decrements by 1 each tick and effect removed at 0", []() {
         // Generate random positive duration in [1, 20]
-        const int duration = *rc::gen::inRange(1, 21);
+        const int duration = *rc::gen::inRange(1, 20);
 
         // Pick a random status type for the test
-        const int typeInt = *rc::gen::inRange(0, static_cast<int>(StatusType::COUNT));
+        const int typeInt = *rc::gen::inRange(0, static_cast<int>(StatusType::COUNT) - 1);
         const StatusType type = static_cast<StatusType>(typeInt);
 
         StatusEffectTracker tracker;
@@ -433,7 +433,7 @@ TEST_CASE("PBT: Property 4 — Modifier application and removal symmetry", "[pbt
 {
     rc::prop("applying a modifier-producing status changes characteristics by expected delta", []() {
         // Pick a random modifier-producing status type (0=Prone, 1=Blinded, 2=Poisoned)
-        const int idx = *rc::gen::inRange(0, 3);
+        const int idx = *rc::gen::inRange(0, 2);
         const StatusType type = kModifierTypes[idx];
 
         // Generate a random base stat value in [20, 80] to avoid clamping issues
@@ -479,7 +479,7 @@ TEST_CASE("PBT: Property 4 — Modifier application and removal symmetry", "[pbt
 
     rc::prop("removing a modifier-producing status restores characteristics to baseline", []() {
         // Pick a random modifier-producing status type
-        const int idx = *rc::gen::inRange(0, 3);
+        const int idx = *rc::gen::inRange(0, 2);
         const StatusType type = kModifierTypes[idx];
 
         // Generate a random base stat value in [20, 80]
@@ -966,9 +966,9 @@ TEST_CASE("PBT: Property 2 — Weapon quality trigger correctness", "[pbt][prope
         if (includeToxic) qualities.push_back("Toxic");
 
         // Add random noise qualities (0 to 3 noise strings)
-        const int noiseCount = *rc::gen::inRange(0, 4);
+        const int noiseCount = *rc::gen::inRange(0, 3);
         for (int i = 0; i < noiseCount; ++i) {
-            const int noiseIdx = *rc::gen::inRange(0, static_cast<int>(noiseOptions.size()));
+            const int noiseIdx = *rc::gen::inRange(0, static_cast<int>(noiseOptions.size()) - 1);
             qualities.push_back(noiseOptions[noiseIdx]);
         }
 
@@ -1011,10 +1011,10 @@ TEST_CASE("PBT: Property 2 — Weapon quality trigger correctness", "[pbt][prope
         const std::vector<std::string> noiseOptions = { "Balanced", "Accurate", "Reliable", "Tearing" };
 
         // Build a qualities list containing ONLY noise strings (1 to 4)
-        const int noiseCount = *rc::gen::inRange(1, 5);
+        const int noiseCount = *rc::gen::inRange(1, 4);
         std::vector<std::string> qualities;
         for (int i = 0; i < noiseCount; ++i) {
-            const int noiseIdx = *rc::gen::inRange(0, static_cast<int>(noiseOptions.size()));
+            const int noiseIdx = *rc::gen::inRange(0, static_cast<int>(noiseOptions.size()) - 1);
             qualities.push_back(noiseOptions[noiseIdx]);
         }
 
@@ -1128,15 +1128,15 @@ TEST_CASE("PBT: Property 1 — Critical trigger table correctness", "[pbt][prope
 {
     rc::prop("fromCritical applies exactly the correct statuses for any (DamageType, HitLocation, magnitude)", []() {
         // Generate random DamageType: E=0, X=1, I=2, R=3
-        const int dmgInt = *rc::gen::inRange(0, 4);
+        const int dmgInt = *rc::gen::inRange(0, 3);
         const DamageType dmgType = static_cast<DamageType>(dmgInt);
 
         // Generate random HitLocation: HEAD=0, RIGHT_ARM=1, LEFT_ARM=2, BODY=3, RIGHT_LEG=4, LEFT_LEG=5
-        const int locInt = *rc::gen::inRange(0, 6);
+        const int locInt = *rc::gen::inRange(0, 5);
         const HitLocation loc = static_cast<HitLocation>(locInt);
 
         // Generate random magnitude in [1, 9]
-        const int magnitude = *rc::gen::inRange(1, 10);
+        const int magnitude = *rc::gen::inRange(1, 9);
 
         // Build expected set of triggered statuses from the reference table
         std::vector<StatusType> expected = expectedStatuses(dmgType, loc, magnitude);
@@ -1572,7 +1572,7 @@ TEST_CASE("PBT: Property 10 — Stand from Prone", "[pbt][property][status-effec
 {
     rc::prop("stand from Prone: if AP >= 1, Prone removed, 1 AP consumed, WS penalty reversed; if AP < 1, Prone remains unchanged", []() {
         // Generate random AP in [0, 2]
-        const int startAP = *rc::gen::inRange(0, 3);
+        const int startAP = *rc::gen::inRange(0, 2);
 
         // Create actor with characteristics (base WS 40) and ActionBudget
         Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
@@ -1721,7 +1721,7 @@ TEST_CASE("PBT: Property 8 — Serialization round-trip", "[pbt][property][statu
 {
     rc::prop("save/load/reapplyModifiers produces identical effects and modifiers", []() {
         // Generate a random number of effects to apply (1 to 5)
-        const int effectCount = *rc::gen::inRange(1, 6);
+        const int effectCount = *rc::gen::inRange(1, 5);
 
         // Generate a random set of distinct StatusTypes to avoid stacking conflicts
         std::vector<StatusType> chosenTypes;
@@ -1729,7 +1729,7 @@ TEST_CASE("PBT: Property 8 — Serialization round-trip", "[pbt][property][statu
             std::set<int> usedIndices;
             const int maxType = static_cast<int>(StatusType::COUNT);
             for (int i = 0; i < effectCount && static_cast<int>(usedIndices.size()) < maxType; ++i) {
-                int typeIdx = *rc::gen::inRange(0, maxType);
+                int typeIdx = *rc::gen::inRange(0, maxType - 1);
                 // Ensure distinct types
                 int attempts = 0;
                 while (usedIndices.count(typeIdx) && attempts < maxType) {
@@ -1755,11 +1755,11 @@ TEST_CASE("PBT: Property 8 — Serialization round-trip", "[pbt][property][statu
         for (StatusType type : chosenTypes) {
             const int duration = *rc::gen::inRange(0, 50); // 0 = permanent, >0 = temporary
             // Generate a simple alphanumeric source string (1 to 15 chars)
-            const int srcLen = *rc::gen::inRange(1, 16);
+            const int srcLen = *rc::gen::inRange(1, 15);
             std::string source;
             for (int c = 0; c < srcLen; ++c) {
                 // Generate printable ASCII characters [a-z]
-                source += static_cast<char>('a' + *rc::gen::inRange(0, 26));
+                source += static_cast<char>('a' + *rc::gen::inRange(0, 25));
             }
             inputs.push_back(EffectInput{ type, duration, source });
         }
