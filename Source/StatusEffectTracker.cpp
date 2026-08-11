@@ -216,16 +216,30 @@ void StatusEffectTracker::removeModifiers(Actor* owner, StatusType type) {
 }
 
 void StatusEffectTracker::save(TCODZip& zip) {
-    // Stub — will be implemented in task 11.3
-    (void)zip;
+    zip.putInt(static_cast<int>(effects_.size()));
+    for (const auto& effect : effects_) {
+        zip.putInt(static_cast<int>(effect.type));
+        zip.putInt(effect.duration);
+        zip.putString(effect.source.c_str());
+    }
 }
 
 void StatusEffectTracker::load(TCODZip& zip) {
-    // Stub — will be implemented in task 11.3
-    (void)zip;
+    effects_.clear();
+    const int count = zip.getInt();
+    for (int i = 0; i < count; ++i) {
+        StatusEffect effect;
+        effect.type = static_cast<StatusType>(zip.getInt());
+        effect.duration = zip.getInt();
+        const char* src = zip.getString();
+        effect.source = src ? src : "";
+        effects_.push_back(std::move(effect));
+    }
 }
 
 void StatusEffectTracker::reapplyModifiers(Actor* owner) {
-    // Stub — will be implemented in task 11.3
-    (void)owner;
+    if (!owner) return;
+    for (const auto& effect : effects_) {
+        applyModifiers(owner, effect.type);
+    }
 }

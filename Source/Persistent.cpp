@@ -614,6 +614,10 @@ void Actor::save(TCODZip& zip)
 	// ActionBudget presence flag — appended AFTER injuryTracker for backward compatibility
 	zip.putInt(actionBudget != nullptr);
 	if (actionBudget) actionBudget->save(zip);
+
+	// StatusEffectTracker presence flag — appended AFTER actionBudget for backward compatibility
+	zip.putInt(statusTracker != nullptr ? 1 : 0);
+	if (statusTracker) statusTracker->save(zip);
 }
 
 void Actor::load(TCODZip& zip)
@@ -723,6 +727,14 @@ void Actor::load(TCODZip& zip)
 	if (hasActionBudget) {
 		actionBudget = std::make_shared<ActionBudget>();
 		actionBudget->load(zip);
+	}
+
+	// StatusEffectTracker presence flag — appended AFTER actionBudget for backward compatibility
+	const int hasStatusTracker = zip.getInt();
+	if (hasStatusTracker) {
+		statusTracker = std::make_unique<StatusEffectTracker>();
+		statusTracker->load(zip);
+		statusTracker->reapplyModifiers(this);
 	}
 }
 

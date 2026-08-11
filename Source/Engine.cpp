@@ -153,6 +153,25 @@ void Engine::update()
 		if (player->actionBudget) {
 			player->actionBudget->beginTurn();
 		}
+
+		// Tick start-of-turn status effects for the player (Burning damage, duration decrement)
+		if (player->statusTracker) {
+			bool canAct = player->statusTracker->tickStartOfTurn(player);
+			// If player died from tick damage (e.g., Burning), handle death
+			if (player->destructible && player->destructible->isDead()) {
+				gameStatus = IDLE;
+				return;
+			}
+			// If stunned, skip the player's turn entirely
+			if (!canAct) {
+				if (player->actionBudget) player->actionBudget->setAP(0);
+				engine.gui->message(Colors::damage, "You are stunned and cannot act!");
+				runEnemyTurns();
+				gameStatus = IDLE;
+				return;
+			}
+		}
+
 		gameStatus = PLAYER_TURN;
 		player->update();
 
@@ -164,6 +183,11 @@ void Engine::update()
 }
 
 void Engine::runEnemyTurns() {
+	// Tick player end-of-turn status effects (Bleeding damage — Req 9.4)
+	if (player->statusTracker) {
+		player->statusTracker->tickEndOfTurn(player);
+	}
+
 	map->currentScentValue++;
 	for (auto i = actors.begin(); i != actors.end(); ) {
 		if (i->get() == nullptr) {
@@ -172,7 +196,32 @@ void Engine::runEnemyTurns() {
 			if (i->get()->ai && i->get()->actionBudget) {
 				i->get()->actionBudget->beginTurn();
 			}
-			i->get()->update();
+
+			// Tick start-of-turn status effects (Burning damage, duration decrement — Req 9.3)
+			Actor* actor = i->get();
+			bool canAct = true;
+			if (actor->statusTracker) {
+				canAct = actor->statusTracker->tickStartOfTurn(actor);
+			}
+
+			// If actor died from tick damage, skip their turn
+			if (actor->destructible && actor->destructible->isDead()) {
+				++i;
+				continue;
+			}
+
+			// Only let the AI act if not stunned (tickStartOfTurn returns false if stunned)
+			if (canAct) {
+				actor->update();
+			} else if (actor->actionBudget) {
+				actor->actionBudget->setAP(0);
+			}
+
+			// Tick end-of-turn status effects (Bleeding damage — Req 9.4)
+			if (actor->statusTracker && actor->destructible && !actor->destructible->isDead()) {
+				actor->statusTracker->tickEndOfTurn(actor);
+			}
+
 			++i;
 		} else {
 			++i;

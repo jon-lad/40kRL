@@ -554,6 +554,22 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 	}
 
 
+	case 'u': // stand up from prone
+	{
+		if (!owner->statusTracker || !owner->statusTracker->has(StatusType::Prone)) {
+			engine.gui->message(Colors::lightGrey, "You are not prone.");
+			return;
+		}
+		if (!owner->actionBudget->canAfford(1)) {
+			engine.gui->message(Colors::lightGrey, "Not enough AP to stand up.");
+			return;
+		}
+		owner->actionBudget->spend(1);
+		owner->statusTracker->remove(owner, StatusType::Prone);
+		engine.gui->message(Colors::playerAction, "You stand up.");
+		return;
+	}
+
 	case 'e': // open equipment menu
 	{
 		static constexpr int EQUIP_WIDTH = 50;
@@ -629,6 +645,27 @@ void MonsterAi::update(Actor* owner)
 
 bool MonsterAi::selectAndExecuteAction(Actor* owner)
 {
+	// Check if stunned — skip turn entirely (Req 9.1)
+	if (owner->statusTracker && !owner->statusTracker->canAct()) {
+		owner->actionBudget->setAP(0);
+		return false;
+	}
+
+	// Check if prone — spend 1 AP to stand before other actions (Req 9.2)
+	if (owner->statusTracker && owner->statusTracker->has(StatusType::Prone)) {
+		if (owner->actionBudget->canAfford(1)) {
+			owner->actionBudget->spend(1);
+			owner->statusTracker->remove(owner, StatusType::Prone);
+			if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+				engine.gui->message(Colors::enemyAction, "The # stands up.", owner->name);
+			}
+			// If no AP remains after standing, end turn
+			if (owner->actionBudget->getAP() <= 0) return false;
+		} else {
+			return false; // can't afford to stand
+		}
+	}
+
 	const int ap = owner->actionBudget->getAP();
 	const int dx = engine.player->getX() - owner->getX();
 	const int dy = engine.player->getY() - owner->getY();
@@ -678,9 +715,13 @@ bool MonsterAi::selectAndExecuteAction(Actor* owner)
 		}
 	}
 
-	// Move toward player (1 AP)
-	if (ap >= 1) {
-		owner->actionBudget->spend(1);
+	// Move toward player (1 AP, or 2 AP if movement halved by Missing_Leg — Req 9.5)
+	int moveCost = 1;
+	if (owner->statusTracker && owner->statusTracker->isMovementHalved()) {
+		moveCost = 2;
+	}
+	if (ap >= moveCost) {
+		owner->actionBudget->spend(moveCost);
 		moveToward(owner, engine.player->getX(), engine.player->getY());
 		return true;
 	}
@@ -852,6 +893,25 @@ void MonsterAi::moveOrAttack(Actor* owner, int targetX, int targetY)
 void RangedAi::update(Actor* owner)
 {
 	if (owner->destructible && owner->destructible->isDead()) { return; }
+
+	// Check if stunned — skip turn entirely (Req 9.1)
+	if (owner->statusTracker && !owner->statusTracker->canAct()) {
+		if (owner->actionBudget) owner->actionBudget->setAP(0);
+		return;
+	}
+
+	// Check if prone — spend 1 AP to stand before other actions (Req 9.2)
+	if (owner->statusTracker && owner->statusTracker->has(StatusType::Prone)) {
+		if (owner->actionBudget && owner->actionBudget->canAfford(1)) {
+			owner->actionBudget->spend(1);
+			owner->statusTracker->remove(owner, StatusType::Prone);
+			if (engine.map->isInFOV(owner->getX(), owner->getY())) {
+				engine.gui->message(Colors::enemyAction, "The # stands up.", owner->name);
+			}
+		} else {
+			return; // can't afford to stand
+		}
+	}
 
 	const int dx = engine.player->getX() - owner->getX();
 	const int dy = engine.player->getY() - owner->getY();
