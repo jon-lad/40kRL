@@ -58,12 +58,12 @@ bool StatusEffectTracker::tickStartOfTurn(Actor* owner) {
         if (!it->isPermanent()) {
             it->duration -= 1;
             if (it->duration <= 0) {
-                // Log expiry message before removing
                 StatusType expiredType = it->type;
-                logExpiry(owner, expiredType);
                 // Remove modifiers before erasing
                 removeModifiers(owner, expiredType);
                 it = effects_.erase(it);
+                // NOTE: logExpiry() is NOT called here — callers (Engine turn loop)
+                // are responsible for logging expiry when the GUI is initialized.
                 continue;
             }
         }
