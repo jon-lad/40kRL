@@ -45,3 +45,38 @@ TEST_CASE("PBT: Property 11 — StatusEffect data integrity", "[pbt][property][s
         }
     });
 }
+
+// ─── Property 12: Status Abbreviation Mapping ────────────────────────────────
+// **Validates: Requirements 8.1**
+//
+// For any valid StatusType enum value, calling statusAbbreviation() SHALL return
+// a non-empty string of at most 5 characters matching the expected abbreviation.
+
+TEST_CASE("PBT: Property 12 — Status abbreviation mapping", "[pbt][property][status-effects]")
+{
+    rc::prop("statusAbbreviation returns non-empty string <= 5 chars for all valid types", []() {
+        const int typeInt = *rc::gen::inRange(0, static_cast<int>(StatusType::COUNT) - 1);
+        const StatusType type = static_cast<StatusType>(typeInt);
+
+        const std::string abbr = statusAbbreviation(type);
+
+        // Must be non-empty
+        RC_ASSERT(!abbr.empty());
+        // Must be at most 5 characters
+        RC_ASSERT(abbr.size() <= 5);
+    });
+
+    // Verify exact expected abbreviations
+    SECTION("Expected abbreviations match") {
+        CHECK(statusAbbreviation(StatusType::Burning) == "BRN");
+        CHECK(statusAbbreviation(StatusType::Prone) == "PRN");
+        CHECK(statusAbbreviation(StatusType::Stunned) == "STN");
+        CHECK(statusAbbreviation(StatusType::Bleeding) == "BLD");
+        CHECK(statusAbbreviation(StatusType::Poisoned) == "PSN");
+        CHECK(statusAbbreviation(StatusType::Missing_Right_Arm) == "ARM-R");
+        CHECK(statusAbbreviation(StatusType::Missing_Left_Arm) == "ARM-L");
+        CHECK(statusAbbreviation(StatusType::Missing_Right_Leg) == "LEG-R");
+        CHECK(statusAbbreviation(StatusType::Missing_Left_Leg) == "LEG-L");
+        CHECK(statusAbbreviation(StatusType::Blinded) == "BLND");
+    }
+}

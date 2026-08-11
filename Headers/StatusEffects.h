@@ -1,6 +1,5 @@
 #pragma once
 // StatusEffects.h — Status effect data model
-// STUB: Minimal declarations for TDD. Implementation in task 1.3.
 
 #include <string>
 
@@ -25,3 +24,20 @@ struct StatusEffect {
 
     bool isPermanent() const { return duration == 0; }
 };
+
+// Returns a short (≤5 char) abbreviation for the given status type for UI display.
+inline std::string statusAbbreviation(StatusType type) {
+    switch (type) {
+        case StatusType::Burning:           return "BRN";
+        case StatusType::Prone:             return "PRN";
+        case StatusType::Stunned:           return "STN";
+        case StatusType::Bleeding:          return "BLD";
+        case StatusType::Poisoned:          return "PSN";
+        case StatusType::Missing_Right_Arm: return "ARM-R";
+        case StatusType::Missing_Left_Arm:  return "ARM-L";
+        case StatusType::Missing_Right_Leg: return "LEG-R";
+        case StatusType::Missing_Left_Leg:  return "LEG-L";
+        case StatusType::Blinded:           return "BLND";
+        default:                            return "";
+    }
+}
