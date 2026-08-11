@@ -31,6 +31,9 @@ void StatusEffectTracker::apply(Actor* owner, StatusType type, int duration, con
     if (owner) {
         applyModifiers(owner, type);
     }
+
+    // Log application message to the GUI
+    logApplication(owner, type);
 }
 
 bool StatusEffectTracker::tickStartOfTurn(Actor* owner) {
@@ -54,8 +57,11 @@ bool StatusEffectTracker::tickStartOfTurn(Actor* owner) {
         if (!it->isPermanent()) {
             it->duration -= 1;
             if (it->duration <= 0) {
+                // Log expiry message before removing
+                StatusType expiredType = it->type;
+                logExpiry(owner, expiredType);
                 // Remove modifiers before erasing
-                removeModifiers(owner, it->type);
+                removeModifiers(owner, expiredType);
                 it = effects_.erase(it);
                 continue;
             }
@@ -241,5 +247,73 @@ void StatusEffectTracker::reapplyModifiers(Actor* owner) {
     if (!owner) return;
     for (const auto& effect : effects_) {
         applyModifiers(owner, effect.type);
+    }
+}
+
+void StatusEffectTracker::logApplication(Actor* owner, StatusType type) {
+    if (!owner || !engine.gui) return;
+
+    bool isPlayer = (owner == engine.player);
+    if (isPlayer) {
+        switch (type) {
+            case StatusType::Burning:           engine.gui->message(Colors::damage, "You are on fire!"); break;
+            case StatusType::Stunned:           engine.gui->message(Colors::damage, "You are stunned."); break;
+            case StatusType::Prone:             engine.gui->message(Colors::damage, "You are knocked prone!"); break;
+            case StatusType::Bleeding:          engine.gui->message(Colors::damage, "You are bleeding!"); break;
+            case StatusType::Blinded:           engine.gui->message(Colors::damage, "You are blinded!"); break;
+            case StatusType::Poisoned:          engine.gui->message(Colors::damage, "You are poisoned!"); break;
+            case StatusType::Missing_Right_Arm: engine.gui->message(Colors::damage, "Your right arm is destroyed!"); break;
+            case StatusType::Missing_Left_Arm:  engine.gui->message(Colors::damage, "Your left arm is destroyed!"); break;
+            case StatusType::Missing_Right_Leg: engine.gui->message(Colors::damage, "Your right leg is destroyed!"); break;
+            case StatusType::Missing_Left_Leg:  engine.gui->message(Colors::damage, "Your left leg is destroyed!"); break;
+            default: break;
+        }
+    } else {
+        // Only log if the actor is visible to the player
+        bool visible = engine.map && engine.map->isInFOV(owner->getX(), owner->getY());
+        if (visible) {
+            switch (type) {
+                case StatusType::Burning:           engine.gui->message(Colors::damage, "The # is on fire!", owner->name); break;
+                case StatusType::Stunned:           engine.gui->message(Colors::damage, "The # is stunned.", owner->name); break;
+                case StatusType::Prone:             engine.gui->message(Colors::damage, "The # is knocked prone!", owner->name); break;
+                case StatusType::Bleeding:          engine.gui->message(Colors::damage, "The # is bleeding!", owner->name); break;
+                case StatusType::Blinded:           engine.gui->message(Colors::damage, "The # is blinded!", owner->name); break;
+                case StatusType::Poisoned:          engine.gui->message(Colors::damage, "The # is poisoned!", owner->name); break;
+                case StatusType::Missing_Right_Arm: engine.gui->message(Colors::damage, "The #'s right arm is destroyed!", owner->name); break;
+                case StatusType::Missing_Left_Arm:  engine.gui->message(Colors::damage, "The #'s left arm is destroyed!", owner->name); break;
+                case StatusType::Missing_Right_Leg: engine.gui->message(Colors::damage, "The #'s right leg is destroyed!", owner->name); break;
+                case StatusType::Missing_Left_Leg:  engine.gui->message(Colors::damage, "The #'s left leg is destroyed!", owner->name); break;
+                default: break;
+            }
+        }
+    }
+}
+
+void StatusEffectTracker::logExpiry(Actor* owner, StatusType type) {
+    if (!owner || !engine.gui) return;
+
+    bool isPlayer = (owner == engine.player);
+    if (isPlayer) {
+        switch (type) {
+            case StatusType::Burning:  engine.gui->message(Colors::uiText, "The flames die out."); break;
+            case StatusType::Stunned:  engine.gui->message(Colors::uiText, "You are no longer stunned."); break;
+            case StatusType::Blinded:  engine.gui->message(Colors::uiText, "Your vision clears."); break;
+            case StatusType::Poisoned: engine.gui->message(Colors::uiText, "The poison wears off."); break;
+            case StatusType::Bleeding: engine.gui->message(Colors::uiText, "The bleeding stops."); break;
+            default: break;
+        }
+    } else {
+        // Only log if the actor is visible to the player
+        bool visible = engine.map && engine.map->isInFOV(owner->getX(), owner->getY());
+        if (visible) {
+            switch (type) {
+                case StatusType::Burning:  engine.gui->message(Colors::uiText, "The flames on # die out.", owner->name); break;
+                case StatusType::Stunned:  engine.gui->message(Colors::uiText, "The # is no longer stunned.", owner->name); break;
+                case StatusType::Blinded:  engine.gui->message(Colors::uiText, "The #'s vision clears.", owner->name); break;
+                case StatusType::Poisoned: engine.gui->message(Colors::uiText, "The poison on # wears off.", owner->name); break;
+                case StatusType::Bleeding: engine.gui->message(Colors::uiText, "The # stops bleeding.", owner->name); break;
+                default: break;
+            }
+        }
     }
 }

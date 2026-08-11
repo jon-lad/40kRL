@@ -67,6 +67,10 @@ public:
     void applyModifiers(Actor* owner, StatusType type);
     void removeModifiers(Actor* owner, StatusType type);
 
+    // Logging — posts messages to the GUI message log on status apply/expire
+    void logApplication(Actor* owner, StatusType type);
+    void logExpiry(Actor* owner, StatusType type);
+
 private:
     std::vector<StatusEffect> effects_;
 };
