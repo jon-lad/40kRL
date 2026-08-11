@@ -29,6 +29,7 @@ A Warhammer 40,000 Rogue Trader roguelike built in C++17 with [libtcod](https://
 - Ascending/descending stairs between dungeon levels and the planet surface
 - World map overlay with Perlin-noise biomes and fast-travel to hive cities
 - WFC-generated hive city interiors with 10 distinct tile types and adjacency-based layouts
+- **Status effects** — Burning, Prone, Stunned, Bleeding, Blinded, Poisoned, and missing limbs triggered by critical injuries and weapon qualities (Flame, Shocking, Toxic), with duration ticking, characteristic modifiers, tick damage, and sidebar display
 
 ## Building
 
@@ -101,6 +102,7 @@ msbuild 40kRL.sln /p:Configuration=Debug /p:Platform=x64 /t:40kRL_Tests
 | `r` | Reload ranged weapon |
 | `o` | Open adjacent door |
 | `l` | Look mode (inspect tiles — arrows to move cursor, ESC to exit) |
+| `u` | Stand up from prone (costs 1 AP) |
 | `c` | Character sheet (view characteristics and bonuses) |
 | `m` | World map (view biomes, fast-travel to hive cities) |
 | `<` | Ascend stairs |
