@@ -807,3 +807,113 @@ TEST_CASE("Mechanical effects: Missing_Leg halves movement (2 AP/tile)", "[statu
         CHECK(tracker.isMovementHalved() == false);
     }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects, Property 5: Burning Tick Damage
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 5: Burning Tick Damage ─────────────────────────────────────────
+// **Validates: Requirements 5.1, 9.3**
+//
+// For any actor with an active Burning status, calling tickStartOfTurn SHALL
+// deal damage in the range [1, 10] (1d10 Energy, ignoring armour) to the
+// actor's HP.
+
+TEST_CASE("PBT: Property 5 — Burning tick damage", "[pbt][property][status-effects]")
+{
+    rc::prop("Burning tick deals damage in [1,10] ignoring armour", []() {
+        // Generate a random defense value in [0, 50] to verify armour is ignored
+        const float defense = static_cast<float>(*rc::gen::inRange(0, 51));
+
+        // Generate random maxHp high enough to survive one tick [50, 200]
+        const float maxHp = static_cast<float>(*rc::gen::inRange(50, 201));
+
+        // Create an actor with a destructible component
+        Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        actor.destructible = std::make_shared<MonsterDestructible>(maxHp, defense, "corpse", 0);
+
+        // Record HP before tick
+        const float hpBefore = actor.destructible->hp;
+
+        // Apply Burning status (duration 3 is typical)
+        StatusEffectTracker tracker;
+        tracker.apply(&actor, StatusType::Burning, 3, "test-burning");
+
+        // Tick start of turn — should deal burning damage
+        tracker.tickStartOfTurn(&actor);
+
+        // Calculate damage dealt
+        const float hpAfter = actor.destructible->hp;
+        const float damageTaken = hpBefore - hpAfter;
+
+        // Damage must be in [1, 10] (1d10 Energy)
+        RC_ASSERT(damageTaken >= 1.0f);
+        RC_ASSERT(damageTaken <= 10.0f);
+
+        // Damage must be a whole number (integer roll)
+        RC_ASSERT(damageTaken == static_cast<float>(static_cast<int>(damageTaken)));
+    });
+
+    rc::prop("Burning damage ignores armour — damage dealt regardless of defense value", []() {
+        // Use a very high defense value to prove damage bypasses it
+        const float highDefense = static_cast<float>(*rc::gen::inRange(20, 100));
+        const float maxHp = 100.0f;
+
+        Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        actor.destructible = std::make_shared<MonsterDestructible>(maxHp, highDefense, "corpse", 0);
+
+        const float hpBefore = actor.destructible->hp;
+
+        StatusEffectTracker tracker;
+        tracker.apply(&actor, StatusType::Burning, 3, "test-burning");
+
+        tracker.tickStartOfTurn(&actor);
+
+        const float hpAfter = actor.destructible->hp;
+        const float damageTaken = hpBefore - hpAfter;
+
+        // Even with high defense, damage MUST be dealt (>= 1)
+        // If armour were applied, high defense could reduce damage to 0
+        RC_ASSERT(damageTaken >= 1.0f);
+        RC_ASSERT(damageTaken <= 10.0f);
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects, Property 6: Bleeding Tick Damage
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 6: Bleeding Tick Damage ────────────────────────────────────────
+// **Validates: Requirements 5.5, 9.4**
+//
+// For any actor with an active Bleeding status, calling tickEndOfTurn SHALL deal
+// exactly 1 wound of damage to the actor's HP.
+
+TEST_CASE("PBT: Property 6 — Bleeding tick damage", "[pbt][property][status-effects]")
+{
+    rc::prop("tickEndOfTurn deals exactly 1 wound when Bleeding is active", []() {
+        // Generate random HP in range [2, 100] to ensure actor doesn't die from 1 wound
+        const int hpValue = *rc::gen::inRange(2, 101);
+        const float hp = static_cast<float>(hpValue);
+
+        // Create an Actor with a Destructible component
+        Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        actor.destructible = std::make_shared<MonsterDestructible>(hp, 0.0f, "corpse", 0);
+
+        // MonsterDestructible constructor adds CRIT_BUFFER to hp internally.
+        // Record actual internal HP before tick.
+        const float previousHp = actor.destructible->hp;
+
+        // Apply Bleeding (permanent, duration 0)
+        StatusEffectTracker tracker;
+        tracker.apply(&actor, StatusType::Bleeding, 0, "test-bleed");
+
+        // Call tickEndOfTurn — should deal exactly 1 wound
+        tracker.tickEndOfTurn(&actor);
+
+        // Verify HP decreased by exactly 1
+        RC_ASSERT(previousHp - actor.destructible->hp == 1.0f);
+    });
+}
