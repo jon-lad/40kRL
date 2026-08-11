@@ -1,7 +1,7 @@
 #include "main.h"
 #include "StatusEffectTracker.h"
 
-void StatusEffectTracker::apply(Actor* /*owner*/, StatusType type, int duration, const std::string& source) {
+void StatusEffectTracker::apply(Actor* owner, StatusType type, int duration, const std::string& source) {
     // Clamp negative durations to 0 (treat as permanent)
     if (duration < 0) {
         duration = 0;
@@ -26,14 +26,62 @@ void StatusEffectTracker::apply(Actor* /*owner*/, StatusType type, int duration,
 
     // Type is new: add to effects vector
     effects_.push_back(StatusEffect{ type, duration, source });
+
+    // Apply characteristic modifiers for the newly added effect
+    if (owner) {
+        applyModifiers(owner, type);
+    }
 }
 
-bool StatusEffectTracker::tickStartOfTurn(Actor* /*owner*/) {
-    // Stub - real implementation in task 3.3
-    return true;
+bool StatusEffectTracker::tickStartOfTurn(Actor* owner) {
+    // 1. Check if Stunned — actor cannot act this turn
+    const bool stunned = has(StatusType::Stunned);
+
+    // 2. Deal Burning tick damage (1d10 Energy, ignoring armour)
+    if (has(StatusType::Burning) && owner && owner->destructible && !owner->destructible->isDead()) {
+        int damage = TCODRandom::getInstance()->getInt(1, 10);
+        owner->destructible->hp -= static_cast<float>(damage);
+        if (owner->destructible->isDead()) {
+            owner->destructible->die(owner);
+            // Actor died — decrement durations before returning, then halt
+            // Actually: halt processing immediately per spec
+            return !stunned;
+        }
+    }
+
+    // 3. Decrement durations of all temporary effects and remove expired ones
+    for (auto it = effects_.begin(); it != effects_.end(); ) {
+        if (!it->isPermanent()) {
+            it->duration -= 1;
+            if (it->duration <= 0) {
+                // Remove modifiers before erasing
+                removeModifiers(owner, it->type);
+                it = effects_.erase(it);
+                continue;
+            }
+        }
+        ++it;
+    }
+
+    return !stunned;
 }
 
-void StatusEffectTracker::remove(Actor* /*owner*/, StatusType type) {
+void StatusEffectTracker::tickEndOfTurn(Actor* owner) {
+    // Deal Bleeding damage: 1 wound per turn
+    if (has(StatusType::Bleeding) && owner && owner->destructible && !owner->destructible->isDead()) {
+        owner->destructible->hp -= 1.0f;
+        if (owner->destructible->isDead()) {
+            owner->destructible->die(owner);
+        }
+    }
+}
+
+void StatusEffectTracker::remove(Actor* owner, StatusType type) {
+    // Reverse characteristic modifiers before removing the effect
+    if (owner && has(type)) {
+        removeModifiers(owner, type);
+    }
+
     effects_.erase(
         std::remove_if(effects_.begin(), effects_.end(),
             [type](const StatusEffect& e) { return e.type == type; }),

@@ -451,9 +451,9 @@ TEST_CASE("PBT: Property 4 — Modifier application and removal symmetry", "[pbt
         const int agModBefore = actor.characteristics->getModifier(CharId::Ag);
 
         // Apply the status (with a random duration > 0)
+        // apply() now automatically calls applyModifiers() internally
         const int duration = *rc::gen::inRange(1, 20);
         tracker.apply(&actor, type, duration, "test-modifier");
-        tracker.applyModifiers(&actor, type);
 
         // Verify the expected modifier delta was applied
         if (type == StatusType::Prone) {
@@ -496,13 +496,11 @@ TEST_CASE("PBT: Property 4 — Modifier application and removal symmetry", "[pbt
         const int tModBefore  = actor.characteristics->getModifier(CharId::T);
         const int agModBefore = actor.characteristics->getModifier(CharId::Ag);
 
-        // Apply the status
+        // Apply the status — apply() now calls applyModifiers() internally
         const int duration = *rc::gen::inRange(1, 20);
         tracker.apply(&actor, type, duration, "test-modifier");
-        tracker.applyModifiers(&actor, type);
 
-        // Now remove the status
-        tracker.removeModifiers(&actor, type);
+        // Now remove the status — remove() now calls removeModifiers() internally
         tracker.remove(&actor, type);
 
         // Verify ALL modifiers are restored to baseline
@@ -525,10 +523,9 @@ TEST_CASE("PBT: Property 4 — Modifier application and removal symmetry", "[pbt
         const int tModBefore  = actor.characteristics->getModifier(CharId::T);
         const int agModBefore = actor.characteristics->getModifier(CharId::Ag);
 
-        // Apply Stunned
+        // Apply Stunned — apply() now calls applyModifiers() internally
         const int duration = *rc::gen::inRange(1, 5);
         tracker.apply(&actor, StatusType::Stunned, duration, "test-stun");
-        tracker.applyModifiers(&actor, StatusType::Stunned);
 
         // Stunned should prevent action
         RC_ASSERT(!tracker.canAct());
@@ -540,8 +537,7 @@ TEST_CASE("PBT: Property 4 — Modifier application and removal symmetry", "[pbt
         RC_ASSERT(actor.characteristics->getModifier(CharId::T) == tModBefore);
         RC_ASSERT(actor.characteristics->getModifier(CharId::Ag) == agModBefore);
 
-        // After removal, canAct returns true
-        tracker.removeModifiers(&actor, StatusType::Stunned);
+        // After removal, canAct returns true — remove() now calls removeModifiers() internally
         tracker.remove(&actor, StatusType::Stunned);
         RC_ASSERT(tracker.canAct());
     });

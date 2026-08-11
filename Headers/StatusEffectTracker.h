@@ -28,6 +28,9 @@ public:
     // Returns true if actor can act this turn (false if Stunned).
     bool tickStartOfTurn(Actor* owner);
 
+    // Called at the end of the actor's turn. Deals Bleeding damage (1 wound).
+    void tickEndOfTurn(Actor* owner);
+
     // Query interface
     bool has(StatusType type) const;
     int getRemainingDuration(StatusType type) const;
