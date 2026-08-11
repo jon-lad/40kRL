@@ -182,6 +182,7 @@
     <ClCompile Include="Source\ReactionResolver.cpp" />
     <ClCompile Include="Source\HelpContent.cpp" />
     <ClCompile Include="Source\ManualExporter.cpp" />
+    <ClCompile Include="Source\StatusEffectTracker.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.h" />
@@ -226,6 +227,8 @@
     <ClInclude Include="Headers\ChargeResolver.h" />
     <ClInclude Include="Headers\ReactionResolver.h" />
     <ClInclude Include="Headers\HelpContent.h" />
+    <ClInclude Include="Headers\StatusEffects.h" />
+    <ClInclude Include="Headers\StatusEffectTracker.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />

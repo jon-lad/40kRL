@@ -191,6 +191,7 @@
     <ClCompile Include="..\Source\ReactionResolver.cpp" />
     <ClCompile Include="..\Source\HelpContent.cpp" />
     <ClCompile Include="..\Source\ManualExporter.cpp" />
+    <ClCompile Include="..\Source\StatusEffectTracker.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.h" />
@@ -225,6 +226,7 @@
     <ClInclude Include="..\Headers\ReactionResolver.h" />
     <ClInclude Include="..\Headers\HelpContent.h" />
     <ClInclude Include="..\Headers\StatusEffects.h" />
+    <ClInclude Include="..\Headers\StatusEffectTracker.h" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
