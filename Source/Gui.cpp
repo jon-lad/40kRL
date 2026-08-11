@@ -444,6 +444,28 @@ void Gui::renderRightSidebar()
 		}
 	}
 
+	row++;
+
+	// ─── Status Effects Section ──────────────────────────────────────────
+	if (engine.player->statusTracker && !engine.player->statusTracker->getActiveEffects().empty()) {
+		rightSidebarConsole->setDefaultForeground(Colors::white);
+		rightSidebarConsole->printf(1, row, "-- Status Effects --");
+		row += 2;
+
+		const auto& effects = engine.player->statusTracker->getActiveEffects();
+		for (const auto& effect : effects) {
+			if (row >= layout::SCREEN_HEIGHT - 1) break;
+			TCODColor color = effect.isPermanent() ? Colors::damage : Colors::lightGrey;
+			std::string label = statusAbbreviation(effect.type);
+			if (!effect.isPermanent()) {
+				label += " " + std::to_string(effect.duration);
+			}
+			rightSidebarConsole->setDefaultForeground(color);
+			rightSidebarConsole->printf(1, row, label.c_str());
+			row++;
+		}
+	}
+
 	// Blit sidebar to root console at (SCREEN_WIDTH - RIGHT_SIDEBAR_WIDTH, 0)
 	TCODConsole::blit(rightSidebarConsole.get(), 0, 0,
 		sidebarWidth, layout::SCREEN_HEIGHT,

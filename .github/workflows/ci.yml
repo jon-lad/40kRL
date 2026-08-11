@@ -49,6 +49,14 @@ jobs:
       - name: Integrate vcpkg
         run: C:\vcpkg\vcpkg.exe integrate install
 
+      - name: Cache MSBuild intermediate objects
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: x64/${{ matrix.configuration }}
+          key: msbuild-${{ matrix.configuration }}-${{ hashFiles('Headers/**', 'Source/**', 'Tests/**', '*.vcxproj', 'Tests/*.vcxproj') }}
+          restore-keys: |
+            msbuild-${{ matrix.configuration }}-
+
       - name: Build solution
         run: msbuild 40kRL.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=x64
 

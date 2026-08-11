@@ -6,6 +6,7 @@ class ActionBudget;
 class Equippable;
 class Equipment;
 class InjuryTracker;
+class StatusEffectTracker;
 class Openable;
 class CareerProgression;
 class CharacterSheet;
@@ -39,6 +40,7 @@ public:
 	std::shared_ptr<CharacterSheet> characterSheet; // non-null for player; owns characteristics + career
 	std::unique_ptr<Equipment>   equipment;  // non-null on any actor with equipment
 	std::unique_ptr<InjuryTracker> injuryTracker; // non-null when actor has critical injuries
+	std::unique_ptr<StatusEffectTracker> statusTracker; // non-null when actor has status effects
 
 	std::shared_ptr<ActionBudget> actionBudget;  // non-null for actors that take turns
 
