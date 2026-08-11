@@ -32,8 +32,9 @@ void StatusEffectTracker::apply(Actor* owner, StatusType type, int duration, con
         applyModifiers(owner, type);
     }
 
-    // Log application message to the GUI
-    logApplication(owner, type);
+    // NOTE: logApplication() is NOT called here — callers (Attacker, Engine)
+    // are responsible for invoking logApplication() when the engine/GUI is initialized.
+    // This keeps StatusEffectTracker unit-testable without engine dependencies.
 }
 
 bool StatusEffectTracker::tickStartOfTurn(Actor* owner) {
