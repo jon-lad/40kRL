@@ -1358,3 +1358,199 @@ TEST_CASE("Crit scenario: Explosive Body magnitude 4 applies Bleeding and Prone 
     CHECK(actor.statusTracker->has(StatusType::Bleeding));
     CHECK(actor.statusTracker->has(StatusType::Prone));
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects — Unit Tests: Attacker Integration
+// Task 9.1: Validates Requirements 2.1, 3.1
+//
+// These tests verify that the StatusTrigger functions (fromCritical and
+// fromWeaponQualities) correctly apply status effects to target actors when
+// called in the same sequence as the combat pipeline in
+// Attacker::resolveCharacterAttack. Since the actual pipeline requires a full
+// engine/gui/map setup, we test the integration points directly:
+//   1. fromCritical triggered by a crit event → target gains status
+//   2. fromWeaponQualities triggered by weapon qualities → target gains status
+//   3. Combined scenario simulating the full combat pipeline sequence
+// ═══════════════════════════════════════════════════════════════════════════════
+
+TEST_CASE("Attacker integration: crit triggers StatusTrigger::fromCritical and applies status to target", "[status-effects]")
+{
+    // Simulates what happens in Attacker::resolveCharacterAttack when a crit occurs.
+    // After InjuryTracker::applyCrit, the pipeline calls:
+    //   StatusTrigger::fromCritical(target, dmgType, loc, critMagnitude)
+    // The target should receive the appropriate status effects.
+
+    // Set up target actor — needs a statusTracker (auto-created by fromCritical if missing)
+    Actor target(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    target.destructible = std::make_shared<MonsterDestructible>(20.0f, 0.0f, "ork corpse", 10);
+    target.characteristics = std::make_shared<Characteristics>(30);
+
+    SECTION("Impact Head crit magnitude 1 applies Stunned to target") {
+        // This is the same call the Attacker pipeline makes after a crit is resolved
+        StatusTrigger::fromCritical(&target, DamageType::I, HitLocation::HEAD, 1);
+
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Stunned));
+        CHECK(target.statusTracker->getRemainingDuration(StatusType::Stunned) == 1);
+    }
+
+    SECTION("Energy Body crit magnitude 3 applies Burning to target") {
+        StatusTrigger::fromCritical(&target, DamageType::E, HitLocation::BODY, 3);
+
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Burning));
+        CHECK(target.statusTracker->getRemainingDuration(StatusType::Burning) == 3);
+    }
+
+    SECTION("Rending Body crit magnitude 4 applies both Bleeding and Prone to target") {
+        StatusTrigger::fromCritical(&target, DamageType::R, HitLocation::BODY, 4);
+
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Bleeding));
+        CHECK(target.statusTracker->has(StatusType::Prone));
+    }
+
+    SECTION("fromCritical auto-creates statusTracker on target if missing") {
+        // Target starts without a statusTracker
+        CHECK(target.statusTracker == nullptr);
+
+        StatusTrigger::fromCritical(&target, DamageType::I, HitLocation::HEAD, 1);
+
+        // After the call, statusTracker exists and has the effect
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Stunned));
+    }
+}
+
+TEST_CASE("Attacker integration: successful hit with weapon qualities triggers StatusTrigger::fromWeaponQualities", "[status-effects]")
+{
+    // Simulates the post-hit weapon quality processing in Attacker::resolveCharacterAttack.
+    // After any successful hit (whether crit or normal damage), the pipeline calls:
+    //   StatusTrigger::fromWeaponQualities(target, weaponItem->equippable->meleeStats->qualities)
+    // The target should receive status effects for each triggering quality.
+
+    Actor target(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    target.destructible = std::make_shared<MonsterDestructible>(20.0f, 0.0f, "ork corpse", 10);
+    target.characteristics = std::make_shared<Characteristics>(30);
+
+    SECTION("Flame quality applies Burning to target after hit") {
+        std::vector<std::string> qualities = { "Flame" };
+        StatusTrigger::fromWeaponQualities(&target, qualities);
+
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Burning));
+        CHECK(target.statusTracker->getRemainingDuration(StatusType::Burning) == 3);
+    }
+
+    SECTION("Shocking quality applies Stunned to target after hit") {
+        std::vector<std::string> qualities = { "Shocking" };
+        StatusTrigger::fromWeaponQualities(&target, qualities);
+
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Stunned));
+        CHECK(target.statusTracker->getRemainingDuration(StatusType::Stunned) == 1);
+    }
+
+    SECTION("Toxic quality applies Poisoned to target after hit") {
+        std::vector<std::string> qualities = { "Toxic" };
+        StatusTrigger::fromWeaponQualities(&target, qualities);
+
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Poisoned));
+        CHECK(target.statusTracker->getRemainingDuration(StatusType::Poisoned) == 5);
+    }
+
+    SECTION("Weapon with multiple triggering qualities applies all effects") {
+        std::vector<std::string> qualities = { "Flame", "Toxic", "Balanced" };
+        StatusTrigger::fromWeaponQualities(&target, qualities);
+
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Burning));
+        CHECK(target.statusTracker->has(StatusType::Poisoned));
+        // "Balanced" is not a trigger quality — no extra effects
+        CHECK_FALSE(target.statusTracker->has(StatusType::Stunned));
+    }
+
+    SECTION("fromWeaponQualities auto-creates statusTracker on target if missing") {
+        CHECK(target.statusTracker == nullptr);
+
+        std::vector<std::string> qualities = { "Shocking" };
+        StatusTrigger::fromWeaponQualities(&target, qualities);
+
+        REQUIRE(target.statusTracker != nullptr);
+        CHECK(target.statusTracker->has(StatusType::Stunned));
+    }
+}
+
+TEST_CASE("Attacker integration: combined crit + weapon qualities pipeline applies all statuses to target", "[status-effects]")
+{
+    // Simulates the FULL combat pipeline integration path:
+    // 1. Attacker hits target and deals a crit (magnitude 1 Impact to Head → Stunned)
+    // 2. Then weapon qualities are processed (Flame → Burning)
+    // Both statuses should coexist on the target after the pipeline completes.
+
+    // Set up target actor
+    Actor target(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    target.destructible = std::make_shared<MonsterDestructible>(20.0f, 0.0f, "ork corpse", 10);
+    target.characteristics = std::make_shared<Characteristics>(30);
+
+    // Step 1: Crit pipeline — Impact Head magnitude 1 triggers Stunned
+    StatusTrigger::fromCritical(&target, DamageType::I, HitLocation::HEAD, 1);
+
+    // Step 2: Weapon quality pipeline — Flame quality triggers Burning
+    std::vector<std::string> qualities = { "Flame" };
+    StatusTrigger::fromWeaponQualities(&target, qualities);
+
+    // Both statuses should be active simultaneously on the target
+    REQUIRE(target.statusTracker != nullptr);
+    CHECK(target.statusTracker->has(StatusType::Stunned));
+    CHECK(target.statusTracker->has(StatusType::Burning));
+
+    // Verify correct durations
+    CHECK(target.statusTracker->getRemainingDuration(StatusType::Stunned) == 1);
+    CHECK(target.statusTracker->getRemainingDuration(StatusType::Burning) == 3);
+
+    // Verify total effect count (exactly 2)
+    CHECK(target.statusTracker->getActiveEffects().size() == 2);
+}
+
+TEST_CASE("Attacker integration: status effects persist on target after combat resolution", "[status-effects]")
+{
+    // Verifies that after the combat pipeline applies status effects, they remain
+    // queryable on the target actor and affect subsequent turns (tick processing).
+
+    Actor target(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    target.destructible = std::make_shared<MonsterDestructible>(50.0f, 0.0f, "ork corpse", 10);
+    target.characteristics = std::make_shared<Characteristics>(40);
+
+    // Simulate crit pipeline: Energy Head magnitude 3 → Blinded (duration 1d5, random)
+    StatusTrigger::fromCritical(&target, DamageType::E, HitLocation::HEAD, 3);
+
+    REQUIRE(target.statusTracker != nullptr);
+    REQUIRE(target.statusTracker->has(StatusType::Blinded));
+
+    // The Blinded status should apply mechanical modifiers
+    // WS -30, BS -30 from Blinded
+    CHECK(target.statusTracker->getWSModifier() == -30);
+    CHECK(target.statusTracker->getBSModifier() == -30);
+
+    // Attackers get +30 against this blinded target
+    CHECK(target.statusTracker->getAttackerBonusAgainstMe() == 30);
+
+    // Status persists across tick (duration > 0, decrements by 1 per tick)
+    const int durationBefore = target.statusTracker->getRemainingDuration(StatusType::Blinded);
+    REQUIRE(durationBefore >= 1);
+    REQUIRE(durationBefore <= 5);
+
+    // Tick once — duration should decrement
+    target.statusTracker->tickStartOfTurn(&target);
+
+    if (durationBefore > 1) {
+        CHECK(target.statusTracker->has(StatusType::Blinded));
+        CHECK(target.statusTracker->getRemainingDuration(StatusType::Blinded) == durationBefore - 1);
+    } else {
+        // Duration was 1, so after tick it expires
+        CHECK_FALSE(target.statusTracker->has(StatusType::Blinded));
+    }
+}
