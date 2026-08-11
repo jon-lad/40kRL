@@ -1,9 +1,29 @@
 #include "StatusEffectTracker.h"
 
-// Stub implementations for TDD — real logic in task 2.3
-
 void StatusEffectTracker::apply(Actor* /*owner*/, StatusType type, int duration, const std::string& source) {
-    // Stub: just push for now (no stacking logic yet)
+    // Clamp negative durations to 0 (treat as permanent)
+    if (duration < 0) {
+        duration = 0;
+    }
+
+    // Check if this status type already exists
+    for (auto& effect : effects_) {
+        if (effect.type == type) {
+            // Existing is permanent (duration 0): keep it, ignore new
+            if (effect.isPermanent()) {
+                return;
+            }
+            // New duration is greater than existing: refresh to new duration
+            if (duration > effect.duration) {
+                effect.duration = duration;
+                effect.source = source;
+            }
+            // Otherwise existing >= new: no change
+            return;
+        }
+    }
+
+    // Type is new: add to effects vector
     effects_.push_back(StatusEffect{ type, duration, source });
 }
 
