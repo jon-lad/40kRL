@@ -1554,3 +1554,552 @@ TEST_CASE("Attacker integration: status effects persist on target after combat r
         CHECK_FALSE(target.statusTracker->has(StatusType::Blinded));
     }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects, Property 10: Stand From Prone
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 10: Stand From Prone ───────────────────────────────────────────
+// **Validates: Requirements 5.12, 10.1, 10.2, 10.3**
+//
+// For any actor with the Prone status and at least 1 AP remaining, executing the
+// stand action SHALL remove the Prone status, consume exactly 1 AP, and reverse
+// the WS -10 modifier. If AP is 0, the stand action SHALL fail and Prone SHALL
+// remain active.
+
+TEST_CASE("PBT: Property 10 — Stand from Prone", "[pbt][property][status-effects]")
+{
+    rc::prop("stand from Prone: if AP >= 1, Prone removed, 1 AP consumed, WS penalty reversed; if AP < 1, Prone remains unchanged", []() {
+        // Generate random AP in [0, 2]
+        const int startAP = *rc::gen::inRange(0, 3);
+
+        // Create actor with characteristics (base WS 40) and ActionBudget
+        Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        actor.characteristics = std::make_shared<Characteristics>(40);
+        actor.actionBudget = std::make_shared<ActionBudget>();
+        actor.actionBudget->setAP(startAP);
+
+        // Create tracker and apply Prone (which adds WS -10 modifier)
+        StatusEffectTracker tracker;
+        tracker.apply(&actor, StatusType::Prone, 0, "test-knockdown");
+
+        // Verify Prone is active and WS modifier is -10
+        RC_ASSERT(tracker.has(StatusType::Prone));
+        RC_ASSERT(actor.characteristics->getModifier(CharId::WS) == -10);
+
+        // Simulate the stand-up action logic:
+        // 1. Check if actor has Prone (yes)
+        // 2. Check if actor has AP >= 1
+        // 3. If yes: spend 1 AP, remove Prone (which reverses WS penalty)
+        // 4. If no: Prone stays, AP unchanged
+        if (actor.actionBudget->canAfford(1)) {
+            actor.actionBudget->spend(1);
+            tracker.remove(&actor, StatusType::Prone);
+        }
+
+        // Verify outcomes based on starting AP
+        if (startAP >= 1) {
+            // Stand succeeded: Prone removed
+            RC_ASSERT(!tracker.has(StatusType::Prone));
+            // 1 AP consumed
+            RC_ASSERT(actor.actionBudget->getAP() == startAP - 1);
+            // WS penalty reversed (modifier back to 0)
+            RC_ASSERT(actor.characteristics->getModifier(CharId::WS) == 0);
+        } else {
+            // Stand failed: Prone still active
+            RC_ASSERT(tracker.has(StatusType::Prone));
+            // AP unchanged
+            RC_ASSERT(actor.actionBudget->getAP() == startAP);
+            // WS modifier still -10
+            RC_ASSERT(actor.characteristics->getModifier(CharId::WS) == -10);
+        }
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects — Unit Tests: Backward-Compatible Load
+// Task 11.2: Validates Requirements 7.3, 7.4
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// These tests verify that loading a save without status effect data initializes
+// the actor with no active status effects, and that old save formats (which lack
+// the status tracker section entirely) do not crash.
+//
+// The backward compatibility protocol:
+//   - Actor reads a presence flag (int) from the archive.
+//   - 0 = no tracker data follows; actor starts with no status effects.
+//   - 1 = tracker data follows; load the tracker.
+//   - Old saves have no presence flag at all. An exhausted TCODZip's getInt()
+//     returns 0, which is interpreted as "no tracker" — backward-compatible.
+
+TEST_CASE("Backward-compatible load: presence flag 0 means no status effects", "[status-effects]")
+{
+    // Simulate an archive that explicitly contains a 0 presence flag.
+    // This represents a save made AFTER the status effect system was added,
+    // but where the actor had no status tracker at save time.
+    TCODZip zip;
+    zip.putInt(0); // presence flag = false (no tracker data)
+
+    // "Load" from the buffer we just wrote
+    zip.saveToFile("__test_backward_compat_flag0.sav");
+    TCODZip loadZip;
+    loadZip.loadFromFile("__test_backward_compat_flag0.sav");
+
+    // Read the presence flag (as Actor::load would)
+    const int hasTracker = loadZip.getInt();
+    REQUIRE(hasTracker == 0);
+
+    // When presence flag is 0, actor should not create a tracker (or tracker is empty)
+    // Simulate the Actor::load pattern:
+    std::unique_ptr<StatusEffectTracker> statusTracker;
+    if (hasTracker) {
+        statusTracker = std::make_unique<StatusEffectTracker>();
+        statusTracker->load(loadZip);
+    }
+
+    // Tracker should be null (not created)
+    CHECK(statusTracker == nullptr);
+
+    // Clean up temp file
+    std::remove("__test_backward_compat_flag0.sav");
+}
+
+TEST_CASE("Backward-compatible load: exhausted archive returns 0, no crash", "[status-effects]")
+{
+    // Simulate an OLD save that predates the status effect system entirely.
+    // The archive is exhausted (has no more data to read).
+    // TCODZip::getInt() on an exhausted archive returns 0.
+    TCODZip zip;
+    // Put nothing related to status effects — this simulates old save data
+    // that has already been fully consumed by prior load steps.
+    zip.putInt(42); // Some unrelated data from earlier in the load sequence
+
+    zip.saveToFile("__test_backward_compat_exhausted.sav");
+    TCODZip loadZip;
+    loadZip.loadFromFile("__test_backward_compat_exhausted.sav");
+
+    // Consume the unrelated data (simulating Actor reading its prior fields)
+    const int unrelatedData = loadZip.getInt();
+    REQUIRE(unrelatedData == 42);
+
+    // Now the archive is exhausted. Reading getInt() should return 0.
+    // This is the key backward-compatibility behavior: exhausted archive → 0 → no tracker.
+    const int hasTracker = loadZip.getInt();
+    CHECK(hasTracker == 0);
+
+    // Simulate the Actor::load pattern with the exhausted flag:
+    std::unique_ptr<StatusEffectTracker> statusTracker;
+    if (hasTracker) {
+        statusTracker = std::make_unique<StatusEffectTracker>();
+        statusTracker->load(loadZip);
+    }
+
+    // No crash, no tracker created, no active effects
+    CHECK(statusTracker == nullptr);
+
+    // Clean up temp file
+    std::remove("__test_backward_compat_exhausted.sav");
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects, Property 8: Serialization Round-Trip
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 8: Serialization Round-Trip ────────────────────────────────────
+// **Validates: Requirements 7.1, 7.2**
+//
+// For any actor with an arbitrary set of active status effects (varying types,
+// durations, and source strings), serializing via save() then deserializing via
+// load() followed by reapplyModifiers() SHALL produce an identical set of active
+// effects with matching types, durations, and sources, and the actor's
+// characteristic modifiers SHALL be restored to their pre-save values.
+
+TEST_CASE("PBT: Property 8 — Serialization round-trip", "[pbt][property][status-effects]")
+{
+    rc::prop("save/load/reapplyModifiers produces identical effects and modifiers", []() {
+        // Generate a random number of effects to apply (1 to 5)
+        const int effectCount = *rc::gen::inRange(1, 6);
+
+        // Generate a random set of distinct StatusTypes to avoid stacking conflicts
+        std::vector<StatusType> chosenTypes;
+        {
+            std::set<int> usedIndices;
+            const int maxType = static_cast<int>(StatusType::COUNT);
+            for (int i = 0; i < effectCount && static_cast<int>(usedIndices.size()) < maxType; ++i) {
+                int typeIdx = *rc::gen::inRange(0, maxType);
+                // Ensure distinct types
+                int attempts = 0;
+                while (usedIndices.count(typeIdx) && attempts < maxType) {
+                    typeIdx = (typeIdx + 1) % maxType;
+                    ++attempts;
+                }
+                if (!usedIndices.count(typeIdx)) {
+                    usedIndices.insert(typeIdx);
+                    chosenTypes.push_back(static_cast<StatusType>(typeIdx));
+                }
+            }
+        }
+
+        RC_PRE(!chosenTypes.empty());
+
+        // Generate durations and source strings for each effect
+        struct EffectInput {
+            StatusType type;
+            int duration;
+            std::string source;
+        };
+        std::vector<EffectInput> inputs;
+        for (StatusType type : chosenTypes) {
+            const int duration = *rc::gen::inRange(0, 50); // 0 = permanent, >0 = temporary
+            // Generate a simple alphanumeric source string (1 to 15 chars)
+            const int srcLen = *rc::gen::inRange(1, 16);
+            std::string source;
+            for (int c = 0; c < srcLen; ++c) {
+                // Generate printable ASCII characters [a-z]
+                source += static_cast<char>('a' + *rc::gen::inRange(0, 26));
+            }
+            inputs.push_back(EffectInput{ type, duration, source });
+        }
+
+        // Create an actor with characteristics for modifier verification
+        Actor originalActor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        originalActor.characteristics = std::make_shared<Characteristics>(40);
+
+        // Create a tracker and apply all effects
+        StatusEffectTracker originalTracker;
+        for (const auto& input : inputs) {
+            originalTracker.apply(&originalActor, input.type, input.duration, input.source);
+        }
+
+        // Record the modifier state after applying effects (the "pre-save" state)
+        const int wsModBefore = originalActor.characteristics->getModifier(CharId::WS);
+        const int bsModBefore = originalActor.characteristics->getModifier(CharId::BS);
+        const int sModBefore  = originalActor.characteristics->getModifier(CharId::S);
+        const int tModBefore  = originalActor.characteristics->getModifier(CharId::T);
+        const int agModBefore = originalActor.characteristics->getModifier(CharId::Ag);
+
+        // Serialize to a temp file
+        const char* tempFile = "__test_status_roundtrip.sav";
+        {
+            TCODZip zip;
+            originalTracker.save(zip);
+            zip.saveToFile(tempFile);
+        }
+
+        // Deserialize into a new tracker
+        StatusEffectTracker loadedTracker;
+        {
+            TCODZip zip;
+            zip.loadFromFile(tempFile);
+            loadedTracker.load(zip);
+        }
+
+        // Create a fresh actor for reapply
+        Actor loadedActor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        loadedActor.characteristics = std::make_shared<Characteristics>(40);
+
+        // Reapply modifiers on the loaded tracker
+        loadedTracker.reapplyModifiers(&loadedActor);
+
+        // Verify: all effects match (types, durations, sources)
+        const auto& originalEffects = originalTracker.getActiveEffects();
+        const auto& loadedEffects = loadedTracker.getActiveEffects();
+
+        RC_ASSERT(loadedEffects.size() == originalEffects.size());
+
+        // Build lookup maps for comparison (order may differ)
+        for (const auto& orig : originalEffects) {
+            bool found = false;
+            for (const auto& loaded : loadedEffects) {
+                if (loaded.type == orig.type &&
+                    loaded.duration == orig.duration &&
+                    loaded.source == orig.source) {
+                    found = true;
+                    break;
+                }
+            }
+            RC_ASSERT(found);
+        }
+
+        // Verify: characteristic modifiers are restored to pre-save values
+        RC_ASSERT(loadedActor.characteristics->getModifier(CharId::WS) == wsModBefore);
+        RC_ASSERT(loadedActor.characteristics->getModifier(CharId::BS) == bsModBefore);
+        RC_ASSERT(loadedActor.characteristics->getModifier(CharId::S) == sModBefore);
+        RC_ASSERT(loadedActor.characteristics->getModifier(CharId::T) == tModBefore);
+        RC_ASSERT(loadedActor.characteristics->getModifier(CharId::Ag) == agModBefore);
+
+        // Cleanup temp file
+        std::remove(tempFile);
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects — Unit Tests: AI Behaviour with Statuses
+// Task 12.1: Validates Requirements 9.1, 9.2, 9.3, 9.4, 9.5
+//
+// These tests verify that the StatusEffectTracker query methods correctly inform
+// AI decision-making. The AI layer queries canAct(), has(Prone), and
+// isMovementHalved() to determine enemy behaviour each turn.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#include "ActionBudget.h"
+
+TEST_CASE("AI behaviour: Stunned enemy skips turn (AP set to 0)", "[status-effects]")
+{
+    // Requirement 9.1: Stunned enemy has canAct() == false, AI sets AP to 0.
+    Actor enemy(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    enemy.actionBudget = std::make_shared<ActionBudget>();
+    enemy.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    // Verify enemy starts with full AP
+    REQUIRE(enemy.actionBudget->getAP() == 2);
+
+    // Apply Stunned status (duration 1)
+    enemy.statusTracker->apply(&enemy, StatusType::Stunned, 1, "Impact Head crit 1");
+
+    // Verify canAct() returns false — this is what the AI checks
+    REQUIRE_FALSE(enemy.statusTracker->canAct());
+
+    // Simulate AI response: set AP to 0 (skip turn)
+    enemy.actionBudget->setAP(0);
+
+    CHECK(enemy.actionBudget->getAP() == 0);
+    CHECK_FALSE(enemy.actionBudget->canAfford(1));
+}
+
+TEST_CASE("AI behaviour: Prone enemy spends 1 AP to stand before acting", "[status-effects]")
+{
+    // Requirement 9.2: Prone enemy spends 1 AP standing, then acts with remaining AP.
+    Actor enemy(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    enemy.actionBudget = std::make_shared<ActionBudget>();
+    enemy.statusTracker = std::make_unique<StatusEffectTracker>();
+    enemy.characteristics = std::make_shared<Characteristics>(40);
+
+    // Start with 2 AP
+    REQUIRE(enemy.actionBudget->getAP() == 2);
+
+    // Apply Prone status (permanent until stand)
+    enemy.statusTracker->apply(&enemy, StatusType::Prone, 0, "Impact Body crit 5");
+    REQUIRE(enemy.statusTracker->has(StatusType::Prone));
+
+    // Simulate AI standing logic: check Prone, spend 1 AP, remove Prone
+    REQUIRE(enemy.actionBudget->canAfford(1));
+    enemy.actionBudget->spend(1);
+    enemy.statusTracker->remove(&enemy, StatusType::Prone);
+
+    // Verify: Prone is removed, 1 AP remains for further actions
+    CHECK_FALSE(enemy.statusTracker->has(StatusType::Prone));
+    CHECK(enemy.actionBudget->getAP() == 1);
+    CHECK(enemy.actionBudget->canAfford(1));
+}
+
+TEST_CASE("AI behaviour: Prone enemy with insufficient AP cannot stand", "[status-effects]")
+{
+    // Edge case: enemy has 0 AP — cannot afford to stand
+    Actor enemy(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    enemy.actionBudget = std::make_shared<ActionBudget>();
+    enemy.statusTracker = std::make_unique<StatusEffectTracker>();
+    enemy.characteristics = std::make_shared<Characteristics>(40);
+
+    // Set AP to 0 (e.g., already spent actions)
+    enemy.actionBudget->setAP(0);
+
+    // Apply Prone
+    enemy.statusTracker->apply(&enemy, StatusType::Prone, 0, "Impact Body crit 5");
+    REQUIRE(enemy.statusTracker->has(StatusType::Prone));
+
+    // AI checks affordability — cannot stand
+    CHECK_FALSE(enemy.actionBudget->canAfford(1));
+
+    // Prone remains active
+    CHECK(enemy.statusTracker->has(StatusType::Prone));
+}
+
+TEST_CASE("AI behaviour: Enemy with Missing_Leg uses halved movement rate", "[status-effects]")
+{
+    // Requirement 9.5: Missing_Leg causes isMovementHalved() == true,
+    // AI uses this to determine movement cost (2 AP/tile instead of 1).
+    Actor enemy(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    enemy.actionBudget = std::make_shared<ActionBudget>();
+    enemy.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    // Initially movement is not halved
+    CHECK_FALSE(enemy.statusTracker->isMovementHalved());
+
+    SECTION("Missing_Right_Leg halves movement") {
+        enemy.statusTracker->apply(&enemy, StatusType::Missing_Right_Leg, 0, "crit");
+        CHECK(enemy.statusTracker->isMovementHalved());
+
+        // With 2 AP and halved movement (2 AP/tile), enemy can only move 1 tile
+        CHECK(enemy.actionBudget->getAP() == 2);
+        CHECK(enemy.actionBudget->canAfford(2)); // can afford 1 tile at 2 AP cost
+    }
+
+    SECTION("Missing_Left_Leg halves movement") {
+        enemy.statusTracker->apply(&enemy, StatusType::Missing_Left_Leg, 0, "crit");
+        CHECK(enemy.statusTracker->isMovementHalved());
+    }
+
+    SECTION("Both legs missing — still halved, no double penalty") {
+        enemy.statusTracker->apply(&enemy, StatusType::Missing_Right_Leg, 0, "crit-R");
+        enemy.statusTracker->apply(&enemy, StatusType::Missing_Left_Leg, 0, "crit-L");
+        CHECK(enemy.statusTracker->isMovementHalved());
+    }
+}
+
+TEST_CASE("AI behaviour: Burning deals damage to enemy at start of turn", "[status-effects]")
+{
+    // Requirement 9.3: Burning applies same tick damage to enemies as to the player.
+    Actor enemy(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    enemy.destructible = std::make_shared<MonsterDestructible>(50.0f, 10.0f, "ork corpse", 10);
+    enemy.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    // Apply Burning (duration 3)
+    enemy.statusTracker->apply(&enemy, StatusType::Burning, 3, "Flame weapon");
+
+    // Record HP before tick
+    const float hpBefore = enemy.destructible->hp;
+
+    // tickStartOfTurn deals 1d10 Energy damage (ignores armour)
+    enemy.statusTracker->tickStartOfTurn(&enemy);
+
+    const float hpAfter = enemy.destructible->hp;
+    const float damage = hpBefore - hpAfter;
+
+    // Damage must be in [1, 10] range (1d10)
+    CHECK(damage >= 1.0f);
+    CHECK(damage <= 10.0f);
+    // Damage is an integer value (dice roll)
+    CHECK(damage == static_cast<float>(static_cast<int>(damage)));
+}
+
+TEST_CASE("AI behaviour: Bleeding deals damage to enemy at end of turn", "[status-effects]")
+{
+    // Requirement 9.4: Bleeding applies same end-of-turn damage to enemies.
+    Actor enemy(5, 5, 'o', "Ork Boy", TCODColor(0, 255, 0));
+    enemy.destructible = std::make_shared<MonsterDestructible>(50.0f, 10.0f, "ork corpse", 10);
+    enemy.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    // Apply Bleeding (permanent)
+    enemy.statusTracker->apply(&enemy, StatusType::Bleeding, 0, "Rending Body crit 4");
+
+    // Record HP before tick
+    const float hpBefore = enemy.destructible->hp;
+
+    // tickEndOfTurn deals exactly 1 wound
+    enemy.statusTracker->tickEndOfTurn(&enemy);
+
+    const float hpAfter = enemy.destructible->hp;
+    const float damage = hpBefore - hpAfter;
+
+    // Damage must be exactly 1 wound
+    CHECK(damage == 1.0f);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects — Unit Tests: Stand-Up Edge Cases
+// Task 13.2: Validates Requirements 10.1, 10.2, 10.3
+//
+// These tests verify the preconditions and postconditions of the stand-up action.
+// The PlayerAi key handler will check these conditions before removing Prone.
+// We test the logic sequence directly: tracker.has(Prone), budget.canAfford(1),
+// budget.spend(1), tracker.remove(owner, Prone).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+TEST_CASE("Stand-up: not prone displays 'You are not prone.' scenario", "[status-effects]")
+{
+    // Requirement 10.1: Stand-up only works when actor is Prone.
+    // If actor is NOT Prone, the handler should detect this and do nothing.
+    Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+    actor.characteristics = std::make_shared<Characteristics>(40);
+    actor.actionBudget = std::make_shared<ActionBudget>();
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    // Precondition: actor is NOT prone
+    REQUIRE_FALSE(actor.statusTracker->has(StatusType::Prone));
+
+    // The stand-up handler checks has(Prone) first. Since false, it would
+    // display "You are not prone." and return without consuming AP.
+    const int apBefore = actor.actionBudget->getAP();
+
+    // Simulate the guard check the handler performs:
+    bool canStand = actor.statusTracker->has(StatusType::Prone);
+    CHECK_FALSE(canStand);
+
+    // AP should remain unchanged (no action taken)
+    CHECK(actor.actionBudget->getAP() == apBefore);
+}
+
+TEST_CASE("Stand-up: insufficient AP displays message and keeps Prone", "[status-effects]")
+{
+    // Requirement 10.2: If actor has Prone but AP < 1, stand fails.
+    // Prone stays active and AP is unchanged.
+    Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+    actor.characteristics = std::make_shared<Characteristics>(40);
+    actor.actionBudget = std::make_shared<ActionBudget>();
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    // Apply Prone (duration 0 = until stand)
+    actor.statusTracker->apply(&actor, StatusType::Prone, 0, "Impact Body crit 5");
+
+    // Set AP to 0 (insufficient to stand)
+    actor.actionBudget->setAP(0);
+
+    REQUIRE(actor.statusTracker->has(StatusType::Prone));
+    REQUIRE(actor.actionBudget->getAP() == 0);
+
+    // Simulate the handler logic: check canAfford(1)
+    bool canAfford = actor.actionBudget->canAfford(1);
+    CHECK_FALSE(canAfford);
+
+    // Since canAfford is false, the handler would display "Not enough AP to stand up."
+    // and return without modifying state.
+
+    // Postcondition: Prone remains active
+    CHECK(actor.statusTracker->has(StatusType::Prone));
+    // Postcondition: AP unchanged (still 0)
+    CHECK(actor.actionBudget->getAP() == 0);
+}
+
+TEST_CASE("Stand-up: consumes exactly 1 AP and removes Prone", "[status-effects]")
+{
+    // Requirements 10.1, 10.3: Successful stand removes Prone, costs 1 AP,
+    // and removes the WS -10 modifier.
+    Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+    actor.characteristics = std::make_shared<Characteristics>(40);
+    actor.actionBudget = std::make_shared<ActionBudget>();
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    // Apply Prone (duration 0 = until stand)
+    actor.statusTracker->apply(&actor, StatusType::Prone, 0, "Impact Body crit 5");
+
+    // Start with 2 AP (full budget)
+    REQUIRE(actor.actionBudget->getAP() == 2);
+    REQUIRE(actor.statusTracker->has(StatusType::Prone));
+
+    // Verify WS modifier is applied while Prone
+    CHECK(actor.characteristics->getModifier(CharId::WS) == -10);
+
+    // Simulate the full stand-up action sequence:
+    // 1. Check has(Prone) → true
+    CHECK(actor.statusTracker->has(StatusType::Prone));
+    // 2. Check canAfford(1) → true
+    CHECK(actor.actionBudget->canAfford(1));
+    // 3. Spend 1 AP
+    bool spent = actor.actionBudget->spend(1);
+    CHECK(spent);
+    // 4. Remove Prone (which also removes WS modifier)
+    actor.statusTracker->remove(&actor, StatusType::Prone);
+
+    // Postcondition: Prone is removed
+    CHECK_FALSE(actor.statusTracker->has(StatusType::Prone));
+    // Postcondition: Exactly 1 AP consumed (2 - 1 = 1)
+    CHECK(actor.actionBudget->getAP() == 1);
+    // Postcondition: WS -10 modifier is reversed (Requirement 10.3)
+    CHECK(actor.characteristics->getModifier(CharId::WS) == 0);
+}

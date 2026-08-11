@@ -214,3 +214,18 @@ void StatusEffectTracker::removeModifiers(Actor* owner, StatusType type) {
             break;
     }
 }
+
+void StatusEffectTracker::save(TCODZip& zip) {
+    // Stub — will be implemented in task 11.3
+    (void)zip;
+}
+
+void StatusEffectTracker::load(TCODZip& zip) {
+    // Stub — will be implemented in task 11.3
+    (void)zip;
+}
+
+void StatusEffectTracker::reapplyModifiers(Actor* owner) {
+    // Stub — will be implemented in task 11.3
+    (void)owner;
+}

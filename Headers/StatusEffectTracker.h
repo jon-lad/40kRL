@@ -56,6 +56,13 @@ public:
     // Returns true if the actor cannot equip two-handed weapons (any Missing_Arm)
     bool isTwoHandedBlocked() const;
 
+    // Serialization — saves/loads all active effects to/from a TCODZip archive.
+    void save(TCODZip& zip);
+    void load(TCODZip& zip);
+
+    // Reapply all characteristic modifiers after load (call after load + owner is available)
+    void reapplyModifiers(Actor* owner);
+
     // Modifier management — applies/removes characteristic overlays on owner
     void applyModifiers(Actor* owner, StatusType type);
     void removeModifiers(Actor* owner, StatusType type);
