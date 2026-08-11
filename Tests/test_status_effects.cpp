@@ -917,3 +917,444 @@ TEST_CASE("PBT: Property 6 — Bleeding tick damage", "[pbt][property][status-ef
         RC_ASSERT(previousHp - actor.destructible->hp == 1.0f);
     });
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects, Property 2: Weapon Quality Trigger Correctness
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 2: Weapon Quality Trigger Correctness ──────────────────────────
+// **Validates: Requirements 3.1, 3.2, 3.3**
+//
+// For any weapon qualities list containing a status-triggering quality string
+// ("Flame", "Shocking", or "Toxic"), calling StatusTrigger::fromWeaponQualities
+// SHALL apply the corresponding StatusType with the correct default duration to
+// the target actor. Non-triggering quality strings SHALL produce no status effects.
+
+#include "StatusTrigger.h"
+
+TEST_CASE("PBT: Property 2 — Weapon quality trigger correctness", "[pbt][property][status-effects]")
+{
+    // Known triggering qualities and their expected outcomes
+    // "Flame"    → Burning  (duration 3)
+    // "Shocking" → Stunned  (duration 1)
+    // "Toxic"    → Poisoned (duration 5)
+
+    // Known noise strings that should NOT trigger any status
+    const std::vector<std::string> noisePool = {
+        "Balanced", "Accurate", "Reliable", "Tearing"
+    };
+
+    const std::vector<std::string> triggerPool = {
+        "Flame", "Shocking", "Toxic"
+    };
+
+    rc::prop("triggering qualities apply correct statuses with correct durations", []() {
+        // Build a random qualities list mixing triggers and noise
+        const std::vector<std::string> triggerOptions = { "Flame", "Shocking", "Toxic" };
+        const std::vector<std::string> noiseOptions = { "Balanced", "Accurate", "Reliable", "Tearing" };
+
+        std::vector<std::string> qualities;
+
+        // Randomly include each trigger quality (0 or 1 times)
+        const bool includeFlame = *rc::gen::arbitrary_bool();
+        const bool includeShocking = *rc::gen::arbitrary_bool();
+        const bool includeToxic = *rc::gen::arbitrary_bool();
+
+        if (includeFlame) qualities.push_back("Flame");
+        if (includeShocking) qualities.push_back("Shocking");
+        if (includeToxic) qualities.push_back("Toxic");
+
+        // Add random noise qualities (0 to 3 noise strings)
+        const int noiseCount = *rc::gen::inRange(0, 4);
+        for (int i = 0; i < noiseCount; ++i) {
+            const int noiseIdx = *rc::gen::inRange(0, static_cast<int>(noiseOptions.size()));
+            qualities.push_back(noiseOptions[noiseIdx]);
+        }
+
+        // Create an actor with a status tracker
+        Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        StatusEffectTracker tracker;
+
+        // Call fromWeaponQualities — applies effects to the tracker via the actor
+        // The actor needs a statusTracker pointer for the function to use
+        actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+        StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+        // Verify: if "Flame" was in the list → actor has Burning with duration 3
+        if (includeFlame) {
+            RC_ASSERT(actor.statusTracker->has(StatusType::Burning));
+            RC_ASSERT(actor.statusTracker->getRemainingDuration(StatusType::Burning) == 3);
+        } else {
+            RC_ASSERT(!actor.statusTracker->has(StatusType::Burning));
+        }
+
+        // Verify: if "Shocking" was in the list → actor has Stunned with duration 1
+        if (includeShocking) {
+            RC_ASSERT(actor.statusTracker->has(StatusType::Stunned));
+            RC_ASSERT(actor.statusTracker->getRemainingDuration(StatusType::Stunned) == 1);
+        } else {
+            RC_ASSERT(!actor.statusTracker->has(StatusType::Stunned));
+        }
+
+        // Verify: if "Toxic" was in the list → actor has Poisoned with duration 5
+        if (includeToxic) {
+            RC_ASSERT(actor.statusTracker->has(StatusType::Poisoned));
+            RC_ASSERT(actor.statusTracker->getRemainingDuration(StatusType::Poisoned) == 5);
+        } else {
+            RC_ASSERT(!actor.statusTracker->has(StatusType::Poisoned));
+        }
+    });
+
+    rc::prop("noise-only qualities produce no status effects", []() {
+        const std::vector<std::string> noiseOptions = { "Balanced", "Accurate", "Reliable", "Tearing" };
+
+        // Build a qualities list containing ONLY noise strings (1 to 4)
+        const int noiseCount = *rc::gen::inRange(1, 5);
+        std::vector<std::string> qualities;
+        for (int i = 0; i < noiseCount; ++i) {
+            const int noiseIdx = *rc::gen::inRange(0, static_cast<int>(noiseOptions.size()));
+            qualities.push_back(noiseOptions[noiseIdx]);
+        }
+
+        // Create an actor with status tracker
+        Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+        StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+        // No status effects should be applied
+        RC_ASSERT(!actor.statusTracker->has(StatusType::Burning));
+        RC_ASSERT(!actor.statusTracker->has(StatusType::Stunned));
+        RC_ASSERT(!actor.statusTracker->has(StatusType::Poisoned));
+
+        // Active effects list should be empty
+        RC_ASSERT(actor.statusTracker->getActiveEffects().empty());
+    });
+
+    rc::prop("empty qualities list produces no status effects", []() {
+        std::vector<std::string> qualities; // empty
+
+        Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+        StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+        // No status effects should be applied
+        RC_ASSERT(actor.statusTracker->getActiveEffects().empty());
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects, Property 1: Critical Trigger Table Correctness
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#include "StatusTrigger.h"
+#include "HitLocation.h"
+#include "WeaponTypes.h"
+
+// ─── Property 1: Critical Trigger Table Correctness ──────────────────────────
+// **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18**
+//
+// For any valid combination of (DamageType, HitLocation, magnitude) where
+// magnitude meets or exceeds a trigger threshold defined in the crit trigger
+// table, calling StatusTrigger::fromCritical SHALL apply exactly the
+// StatusType(s) specified by the table to the target actor.
+
+namespace {
+    // Reference crit trigger table — hardcoded from the design document.
+    // Duration of 3 is used for "1d5" entries (deterministic test value).
+    struct RefTrigger {
+        DamageType dmg;
+        HitLocation loc;
+        int minMag;
+        StatusType status;
+        int duration;
+    };
+
+    const std::vector<RefTrigger>& getReferenceTriggerTable() {
+        static const std::vector<RefTrigger> table = {
+            // Energy
+            { DamageType::E, HitLocation::HEAD,      3, StatusType::Blinded,           3 },
+            { DamageType::E, HitLocation::HEAD,      5, StatusType::Burning,            3 },
+            { DamageType::E, HitLocation::RIGHT_ARM, 5, StatusType::Missing_Right_Arm,  0 },
+            { DamageType::E, HitLocation::LEFT_ARM,  5, StatusType::Missing_Left_Arm,   0 },
+            { DamageType::E, HitLocation::BODY,      3, StatusType::Burning,            3 },
+            { DamageType::E, HitLocation::RIGHT_LEG, 5, StatusType::Missing_Right_Leg,  0 },
+            { DamageType::E, HitLocation::LEFT_LEG,  5, StatusType::Missing_Left_Leg,   0 },
+            // Impact
+            { DamageType::I, HitLocation::HEAD,      1, StatusType::Stunned,            1 },
+            { DamageType::I, HitLocation::BODY,      5, StatusType::Prone,              0 },
+            { DamageType::I, HitLocation::RIGHT_ARM, 6, StatusType::Missing_Right_Arm,  0 },
+            { DamageType::I, HitLocation::LEFT_ARM,  6, StatusType::Missing_Left_Arm,   0 },
+            { DamageType::I, HitLocation::RIGHT_LEG, 6, StatusType::Missing_Right_Leg,  0 },
+            { DamageType::I, HitLocation::LEFT_LEG,  6, StatusType::Missing_Left_Leg,   0 },
+            // Rending
+            { DamageType::R, HitLocation::HEAD,      1, StatusType::Bleeding,           0 },
+            { DamageType::R, HitLocation::HEAD,      5, StatusType::Blinded,            3 },
+            { DamageType::R, HitLocation::RIGHT_ARM, 6, StatusType::Missing_Right_Arm,  0 },
+            { DamageType::R, HitLocation::LEFT_ARM,  6, StatusType::Missing_Left_Arm,   0 },
+            { DamageType::R, HitLocation::RIGHT_LEG, 5, StatusType::Missing_Right_Leg,  0 },
+            { DamageType::R, HitLocation::LEFT_LEG,  5, StatusType::Missing_Left_Leg,   0 },
+            { DamageType::R, HitLocation::BODY,      4, StatusType::Bleeding,           0 },
+            { DamageType::R, HitLocation::BODY,      4, StatusType::Prone,              0 },
+            // Explosive
+            { DamageType::X, HitLocation::HEAD,      1, StatusType::Stunned,            1 },
+            { DamageType::X, HitLocation::RIGHT_ARM, 4, StatusType::Missing_Right_Arm,  0 },
+            { DamageType::X, HitLocation::LEFT_ARM,  4, StatusType::Missing_Left_Arm,   0 },
+            { DamageType::X, HitLocation::RIGHT_LEG, 4, StatusType::Missing_Right_Leg,  0 },
+            { DamageType::X, HitLocation::LEFT_LEG,  4, StatusType::Missing_Left_Leg,   0 },
+            { DamageType::X, HitLocation::BODY,      4, StatusType::Bleeding,           0 },
+            { DamageType::X, HitLocation::BODY,      4, StatusType::Prone,              0 },
+        };
+        return table;
+    }
+
+    // Given a (DamageType, HitLocation, magnitude), compute expected set of triggered statuses.
+    std::vector<StatusType> expectedStatuses(DamageType dmg, HitLocation loc, int magnitude) {
+        std::vector<StatusType> result;
+        for (const auto& entry : getReferenceTriggerTable()) {
+            if (entry.dmg == dmg && entry.loc == loc && magnitude >= entry.minMag) {
+                result.push_back(entry.status);
+            }
+        }
+        return result;
+    }
+}
+
+TEST_CASE("PBT: Property 1 — Critical trigger table correctness", "[pbt][property][status-effects]")
+{
+    rc::prop("fromCritical applies exactly the correct statuses for any (DamageType, HitLocation, magnitude)", []() {
+        // Generate random DamageType: E=0, X=1, I=2, R=3
+        const int dmgInt = *rc::gen::inRange(0, 4);
+        const DamageType dmgType = static_cast<DamageType>(dmgInt);
+
+        // Generate random HitLocation: HEAD=0, RIGHT_ARM=1, LEFT_ARM=2, BODY=3, RIGHT_LEG=4, LEFT_LEG=5
+        const int locInt = *rc::gen::inRange(0, 6);
+        const HitLocation loc = static_cast<HitLocation>(locInt);
+
+        // Generate random magnitude in [1, 9]
+        const int magnitude = *rc::gen::inRange(1, 10);
+
+        // Build expected set of triggered statuses from the reference table
+        std::vector<StatusType> expected = expectedStatuses(dmgType, loc, magnitude);
+
+        // Create an actor with statusTracker
+        Actor actor(0, 0, '@', "TestActor", TCODColor(255, 255, 255));
+        actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+        // Call fromCritical
+        StatusTrigger::fromCritical(&actor, dmgType, loc, magnitude);
+
+        // Collect actual applied statuses
+        const auto& effects = actor.statusTracker->getActiveEffects();
+        std::vector<StatusType> actual;
+        for (const auto& e : effects) {
+            actual.push_back(e.type);
+        }
+
+        // Sort both for comparison
+        std::sort(expected.begin(), expected.end());
+        std::sort(actual.begin(), actual.end());
+
+        // Verify exactly the correct statuses were applied (no more, no less)
+        RC_ASSERT(actual.size() == expected.size());
+        RC_ASSERT(actual == expected);
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects — Unit Tests: Weapon Quality Parsing (fromWeaponQualities)
+// Task 8.2: Validates Requirements 3.1, 3.2, 3.3, 3.4
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#include "StatusTrigger.h"
+
+namespace {
+    // Helper: creates an Actor with statusTracker initialized for weapon quality tests.
+    Actor makeActorWithTracker() {
+        Actor actor(0, 0, '@', "TestTarget", TCODColor(255, 255, 255));
+        actor.statusTracker = std::make_unique<StatusEffectTracker>();
+        return actor;
+    }
+}
+
+TEST_CASE("Weapon quality: Flame applies Burning with duration 3", "[status-effects]")
+{
+    // Requirement 3.1: Flame quality → Burning status
+    Actor actor = makeActorWithTracker();
+    std::vector<std::string> qualities = { "Flame" };
+
+    StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+    REQUIRE(actor.statusTracker->has(StatusType::Burning));
+    CHECK(actor.statusTracker->getRemainingDuration(StatusType::Burning) == 3);
+}
+
+TEST_CASE("Weapon quality: Shocking applies Stunned with duration 1", "[status-effects]")
+{
+    // Requirement 3.2: Shocking quality → Stunned with duration 1
+    Actor actor = makeActorWithTracker();
+    std::vector<std::string> qualities = { "Shocking" };
+
+    StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+    REQUIRE(actor.statusTracker->has(StatusType::Stunned));
+    CHECK(actor.statusTracker->getRemainingDuration(StatusType::Stunned) == 1);
+}
+
+TEST_CASE("Weapon quality: Toxic applies Poisoned with duration 5", "[status-effects]")
+{
+    // Requirement 3.3: Toxic quality → Poisoned with duration 5
+    Actor actor = makeActorWithTracker();
+    std::vector<std::string> qualities = { "Toxic" };
+
+    StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+    REQUIRE(actor.statusTracker->has(StatusType::Poisoned));
+    CHECK(actor.statusTracker->getRemainingDuration(StatusType::Poisoned) == 5);
+}
+
+TEST_CASE("Weapon quality: Multiple qualities apply all corresponding effects", "[status-effects]")
+{
+    // Requirement 3.4: Qualities read from Lua table structure (vector<string> interface)
+    // Both "Flame" and "Toxic" should produce their respective statuses
+    Actor actor = makeActorWithTracker();
+    std::vector<std::string> qualities = { "Flame", "Toxic" };
+
+    StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+    REQUIRE(actor.statusTracker->has(StatusType::Burning));
+    CHECK(actor.statusTracker->getRemainingDuration(StatusType::Burning) == 3);
+
+    REQUIRE(actor.statusTracker->has(StatusType::Poisoned));
+    CHECK(actor.statusTracker->getRemainingDuration(StatusType::Poisoned) == 5);
+}
+
+TEST_CASE("Weapon quality: Unknown quality does not apply any status effect", "[status-effects]")
+{
+    // Non-status-triggering qualities like "Balanced" should be silently ignored
+    Actor actor = makeActorWithTracker();
+    std::vector<std::string> qualities = { "Balanced" };
+
+    StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+    CHECK_FALSE(actor.statusTracker->has(StatusType::Burning));
+    CHECK_FALSE(actor.statusTracker->has(StatusType::Stunned));
+    CHECK_FALSE(actor.statusTracker->has(StatusType::Poisoned));
+    CHECK(actor.statusTracker->getActiveEffects().empty());
+}
+
+TEST_CASE("Weapon quality: Empty qualities list applies no status effects", "[status-effects]")
+{
+    // An empty qualities vector (e.g., Combat Knife) should produce no effects
+    Actor actor = makeActorWithTracker();
+    std::vector<std::string> qualities = {};
+
+    StatusTrigger::fromWeaponQualities(&actor, qualities);
+
+    CHECK(actor.statusTracker->getActiveEffects().empty());
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature: status-effects — Unit Tests: Specific Crit Scenarios
+// Task 7.2: Validates Requirements 2.1, 2.2, 2.3, 2.6, 2.7, 2.10, 2.17, 2.18
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#include "StatusTrigger.h"
+
+TEST_CASE("Crit scenario: Energy Head magnitude 3 applies Blinded", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::E, HitLocation::HEAD, 3);
+
+    CHECK(actor.statusTracker->has(StatusType::Blinded));
+}
+
+TEST_CASE("Crit scenario: Energy Head magnitude 5 applies Burning", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::E, HitLocation::HEAD, 5);
+
+    CHECK(actor.statusTracker->has(StatusType::Burning));
+}
+
+TEST_CASE("Crit scenario: Energy Right Arm magnitude 5 applies Missing_Right_Arm", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::E, HitLocation::RIGHT_ARM, 5);
+
+    CHECK(actor.statusTracker->has(StatusType::Missing_Right_Arm));
+}
+
+TEST_CASE("Crit scenario: Energy Left Arm magnitude 5 applies Missing_Left_Arm", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::E, HitLocation::LEFT_ARM, 5);
+
+    CHECK(actor.statusTracker->has(StatusType::Missing_Left_Arm));
+}
+
+TEST_CASE("Crit scenario: Impact Head magnitude 1 applies Stunned", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::I, HitLocation::HEAD, 1);
+
+    CHECK(actor.statusTracker->has(StatusType::Stunned));
+}
+
+TEST_CASE("Crit scenario: Impact Body magnitude 5 applies Prone", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::I, HitLocation::BODY, 5);
+
+    CHECK(actor.statusTracker->has(StatusType::Prone));
+}
+
+TEST_CASE("Crit scenario: Rending Head magnitude 1 applies Bleeding", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::R, HitLocation::HEAD, 1);
+
+    CHECK(actor.statusTracker->has(StatusType::Bleeding));
+}
+
+TEST_CASE("Crit scenario: Rending Body magnitude 4 applies Bleeding and Prone (dual)", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::R, HitLocation::BODY, 4);
+
+    CHECK(actor.statusTracker->has(StatusType::Bleeding));
+    CHECK(actor.statusTracker->has(StatusType::Prone));
+}
+
+TEST_CASE("Crit scenario: Explosive Body magnitude 4 applies Bleeding and Prone (dual)", "[status-effects]")
+{
+    Actor actor(0, 0, '@', "Test", TCODColor(255, 255, 255));
+    actor.statusTracker = std::make_unique<StatusEffectTracker>();
+
+    StatusTrigger::fromCritical(&actor, DamageType::X, HitLocation::BODY, 4);
+
+    CHECK(actor.statusTracker->has(StatusType::Bleeding));
+    CHECK(actor.statusTracker->has(StatusType::Prone));
+}
