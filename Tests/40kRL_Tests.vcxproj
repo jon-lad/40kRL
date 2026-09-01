@@ -154,6 +154,7 @@
     <ClCompile Include="test_help_system.cpp" />
     <ClCompile Include="test_status_effects.cpp" />
     <ClCompile Include="test_character_sheet.cpp" />
+    <ClCompile Include="test_high_score.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
