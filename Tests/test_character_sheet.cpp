@@ -538,3 +538,166 @@ TEST_CASE("purchase of unrecognized characteristic deducts cost but changes no s
 		CHECK(chars.get(static_cast<CharId>(i)) == before[i]);
 	}
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// evaluateRankUp / availableXp tests (tasks 4.1 – 4.4)
+//
+// These lock in the EXISTING (already-implemented) evaluateRankUp and availableXp
+// logic, so they are expected to PASS. All engine-independent.
+//
+// evaluateRankUp semantics (Source/CareerProgression.cpp):
+//   for (const auto& rank : career.ranks)
+//       if (spentXp >= rank.xpThreshold && rank.rankNumber > currentRank)
+//           currentRank = rank.rankNumber;
+// The loop mutates currentRank in place, so each iteration compares rank.rankNumber
+// against the RUNNING currentRank (already updated by earlier iterations), not the
+// original. The reference model below replicates that running-update behavior
+// exactly rather than computing an idealized max.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+namespace {
+
+// Builds a small vector of RankDefinition records with varied rankNumber and
+// xpThreshold. Only the fields evaluateRankUp reads (rankNumber, xpThreshold) plus
+// a title are populated; advances/starting lists are left empty.
+std::vector<RankDefinition> genRankDefinitions() {
+	const int count = *rc::gen::inRange(0, 5);
+	std::vector<RankDefinition> ranks;
+	ranks.reserve(count);
+	for (int i = 0; i < count; ++i) {
+		RankDefinition rank;
+		rank.rankNumber  = *rc::gen::inRange(-3, 10);
+		rank.rankTitle   = *rc::gen::string(0, 8);
+		rank.xpThreshold = *rc::gen::inRange(kIntLo, kIntHi);
+		ranks.push_back(rank);
+	}
+	return ranks;
+}
+
+// Reference reimplementation of evaluateRankUp's exact loop semantics: iterate the
+// ranks in order, updating a running currentRank whenever spentXp meets the
+// threshold and the rank number exceeds the running value.
+int referenceRankUp(int startingRank, int spentXp, const std::vector<RankDefinition>& ranks) {
+	int currentRank = startingRank;
+	for (const auto& rank : ranks) {
+		if (spentXp >= rank.xpThreshold && rank.rankNumber > currentRank) {
+			currentRank = rank.rankNumber;
+		}
+	}
+	return currentRank;
+}
+
+} // anonymous namespace
+
+// Feature: charactersheet-tests, Property 7: evaluateRankUp selects the highest eligible rank
+// For any CareerProgression and CareerTemplate, after evaluateRankUp the currentRank
+// equals an independently recomputed reference that replicates the implementation's
+// exact in-order, running-currentRank update loop (not an idealized max).
+// Validates: Requirements 6.1, 6.2, 6.3
+TEST_CASE("evaluateRankUp matches reference selection over generated ranks", "[character-sheet][pbt]")
+{
+	rc::check("currentRank after evaluateRankUp equals the running-loop reference", [] {
+		CareerProgression cp = genCareerProgression();
+
+		CareerTemplate career;
+		career.ranks = genRankDefinitions();
+
+		const int expected = referenceRankUp(cp.currentRank, cp.spentXp, career.ranks);
+
+		cp.evaluateRankUp(career);
+
+		RC_ASSERT(cp.currentRank == expected);
+	});
+}
+
+// Feature: charactersheet-tests, Property 8: evaluateRankUp is idempotent
+// For any CareerProgression and CareerTemplate, calling evaluateRankUp a second time
+// with no change to spentXp leaves currentRank equal to its value after the first call.
+// Validates: Requirement 6.4
+TEST_CASE("evaluateRankUp is idempotent", "[character-sheet][pbt]")
+{
+	rc::check("a second evaluateRankUp with unchanged spentXp does not change currentRank", [] {
+		CareerProgression cp = genCareerProgression();
+
+		CareerTemplate career;
+		career.ranks = genRankDefinitions();
+
+		cp.evaluateRankUp(career);
+		const int afterFirst = cp.currentRank;
+
+		// spentXp is untouched between calls.
+		cp.evaluateRankUp(career);
+
+		RC_ASSERT(cp.currentRank == afterFirst);
+	});
+}
+
+// Feature: charactersheet-tests, Property 9: availableXp equals xpPool minus spentXp
+// For any integer xpPool/spentXp, availableXp() returns xpPool - spentXp. The range
+// is kept within [-1000000, 1000000] so the subtraction cannot signed-overflow.
+// Validates: Requirements 7.1, 7.2
+TEST_CASE("availableXp equals xpPool minus spentXp", "[character-sheet][pbt]")
+{
+	rc::check("availableXp() == xpPool - spentXp for any overflow-safe int pair", [] {
+		const int xpPool  = *rc::gen::inRange(kIntLo, kIntHi);
+		const int spentXp = *rc::gen::inRange(kIntLo, kIntHi);
+
+		CareerProgression cp;
+		cp.xpPool  = xpPool;
+		cp.spentXp = spentXp;
+
+		RC_ASSERT(cp.availableXp() == xpPool - spentXp);
+	});
+}
+
+// ─── evaluateRankUp threshold + availableXp unit tests (task 4.4) ──────────────
+
+// Feature: charactersheet-tests, evaluateRankUp threshold coverage (example-based)
+// Concrete cases for the rank-up threshold branches: no eligible rank leaves
+// currentRank unchanged; meeting a higher rank's threshold advances to it.
+// Validates: Requirements 6.2, 6.3
+TEST_CASE("evaluateRankUp respects xp thresholds", "[character-sheet]")
+{
+	SECTION("no eligible rank leaves currentRank unchanged (Req 6.2)") {
+		CareerProgression cp;
+		cp.currentRank = 1;
+		cp.spentXp = 500;
+
+		CareerTemplate career;
+		// Every threshold is above spentXp, so none is eligible.
+		career.ranks.push_back(RankDefinition{ 2, "Rank 2", 1000, {}, {}, {} });
+		career.ranks.push_back(RankDefinition{ 3, "Rank 3", 2000, {}, {}, {} });
+
+		cp.evaluateRankUp(career);
+
+		CHECK(cp.currentRank == 1);
+	}
+
+	SECTION("meeting a higher rank threshold advances currentRank (Req 6.3)") {
+		CareerProgression cp;
+		cp.currentRank = 1;
+		cp.spentXp = 2500;
+
+		CareerTemplate career;
+		career.ranks.push_back(RankDefinition{ 2, "Rank 2", 1000, {}, {}, {} });
+		career.ranks.push_back(RankDefinition{ 3, "Rank 3", 2000, {}, {}, {} });
+		career.ranks.push_back(RankDefinition{ 4, "Rank 4", 3000, {}, {}, {} });
+
+		cp.evaluateRankUp(career);
+
+		// spentXp 2500 meets thresholds for ranks 2 and 3 but not 4.
+		CHECK(cp.currentRank == 3);
+	}
+}
+
+// Feature: charactersheet-tests, availableXp arithmetic (example-based)
+// Known xpPool/spentXp values yield the expected availableXp.
+// Validates: Requirement 7.1
+TEST_CASE("availableXp returns expected value for known inputs", "[character-sheet]")
+{
+	CareerProgression cp;
+	cp.xpPool = 5000;
+	cp.spentXp = 1800;
+
+	CHECK(cp.availableXp() == 3200);
+}
