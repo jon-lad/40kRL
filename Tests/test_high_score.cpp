@@ -780,3 +780,231 @@ TEST_CASE("Menu contains a High Scores item in MAIN display mode", "[high-score-
     REQUIRE(menu.containsCode(Menu::MenuItemCode::HIGH_SCORES));
     REQUIRE(menu.containsItem(Menu::MenuItemCode::HIGH_SCORES, "High Scores"));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Task 10.3 — Example tests for the empty-board view and paginator wiring
+// **Validates: Requirements 9.6, 9.8**
+//
+// Feature: high-score-system
+//
+// The high-scores view (Engine::beginHighScores/renderHighScores) needs the live
+// Engine + GUI to render, so it cannot run in the engine-free test binary
+// (per test-isolation.md). These example tests therefore exercise the underlying
+// LOGIC the view is built on:
+//
+//   - Empty board  -> renderHighScores() shows the "no runs recorded" message.
+//     The condition that view uses is the pure Leaderboard state
+//     (empty()/size()) plus a Paginator sized with totalItems == 0. We assert on
+//     those pure pieces (Req 9.8).
+//   - Page indicator -> renderLeaderboard() shows Paginator::indicator() only when
+//     totalPages() > 1. We construct a Paginator exactly as beginHighScores()
+//     sizes it (pageSize from content height, totalItems == board size) and assert
+//     the indicator string and totalPages() threshold (Req 9.6).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#include "Paginator.hpp"
+
+namespace {
+
+// Mirror Engine::beginHighScores()'s paginator sizing (Source/Engine.cpp):
+//   contentHeight = screenHeight - 5
+//   pageSize      = max(1, contentHeight / HS_ROWS_PER_ENTRY)
+// Kept local to the test so it validates the same arithmetic the view relies on
+// without needing the Engine. HS_ROWS_PER_ENTRY is 3 (two lines + spacer).
+constexpr int HS_ROWS_PER_ENTRY = 3;
+
+Paginator makeHighScoresPaginator(int totalItems, int screenHeight)
+{
+    Paginator pag;
+    pag.currentPage = 0;
+    pag.totalItems = totalItems;
+    const int contentHeight = screenHeight - 5;
+    pag.pageSize = std::max(1, contentHeight / HS_ROWS_PER_ENTRY);
+    return pag;
+}
+
+} // namespace
+
+TEST_CASE("HighScores view: empty board is detectable via pure Leaderboard state (no runs recorded)", "[high-score-system]")
+{
+    // renderHighScores() shows the "no runs recorded yet." message when the
+    // board is empty. That decision is driven entirely by the pure Leaderboard
+    // state, which is what we assert here (Req 9.8).
+    Leaderboard board; // default capacity, no entries inserted
+    REQUIRE(board.empty());
+    REQUIRE(board.size() == 0);
+
+    // A paginator sized exactly as beginHighScores() would for an empty board:
+    // zero items means a single (empty) page with nothing to display.
+    const Paginator pag = makeHighScoresPaginator(board.size(), 50);
+    REQUIRE(pag.totalItems == 0);
+    REQUIRE(pag.totalPages() == 1);   // clamped minimum of 1 page
+    REQUIRE(pag.displayCount() == 0); // nothing to draw -> empty-state message
+}
+
+TEST_CASE("HighScores view: single page hides the indicator (totalPages() == 1)", "[high-score-system]")
+{
+    // When every entry fits on one page, renderLeaderboard() must NOT show the
+    // "Page x/y" indicator. That is gated on totalPages() > 1 (Req 9.6).
+    // Build a board whose size is <= pageSize.
+    const int screenHeight = 50; // pageSize = max(1, (50-5)/3) = 15
+    const Paginator sizingProbe = makeHighScoresPaginator(0, screenHeight);
+    const int pageSize = sizingProbe.pageSize;
+    REQUIRE(pageSize == 15);
+
+    Leaderboard board(200);
+    for (int i = 0; i < pageSize; ++i) {           // exactly one full page
+        ScoreEntry e = entryWithXp(1000 - i, "runner");
+        board.insert(e);
+    }
+    REQUIRE(board.size() == pageSize);
+
+    const Paginator pag = makeHighScoresPaginator(board.size(), screenHeight);
+    REQUIRE(pag.totalItems <= pag.pageSize);
+    REQUIRE(pag.totalPages() == 1); // single page -> indicator hidden (Req 9.6)
+}
+
+TEST_CASE("HighScores view: multiple pages show the indicator with the expected 'Page x/y' string", "[high-score-system]")
+{
+    // When the board overflows one page, renderLeaderboard() shows the paginator
+    // indicator. Assert totalPages() > 1 and the exact indicator strings the
+    // shared Paginator produces (Req 9.6).
+    const int screenHeight = 50; // pageSize = 15
+    const Paginator sizingProbe = makeHighScoresPaginator(0, screenHeight);
+    const int pageSize = sizingProbe.pageSize;
+    REQUIRE(pageSize == 15);
+
+    // 2.5 pages worth of entries -> 3 pages total.
+    const int totalItems = pageSize * 2 + pageSize / 2; // 37
+    Leaderboard board(200);
+    for (int i = 0; i < totalItems; ++i) {
+        board.insert(entryWithXp(100000 - i, "runner"));
+    }
+    REQUIRE(board.size() == totalItems);
+
+    Paginator pag = makeHighScoresPaginator(board.size(), screenHeight);
+
+    // More than one page -> the indicator is shown (Req 9.6).
+    REQUIRE(pag.totalItems > pag.pageSize);
+    REQUIRE(pag.totalPages() == 3);
+
+    // The indicator reflects the current page in "Page x/y" form, 1-based.
+    REQUIRE(pag.indicator() == "Page 1/3");
+    pag.nextPage();
+    REQUIRE(pag.indicator() == "Page 2/3");
+    pag.nextPage();
+    REQUIRE(pag.indicator() == "Page 3/3");
+}
+
+TEST_CASE("HighScores view: indicator threshold flips exactly at pageSize + 1 entries", "[high-score-system]")
+{
+    // Boundary check for Req 9.6: totalPages() is 1 while items <= pageSize and
+    // becomes > 1 the moment items exceed pageSize.
+    const int screenHeight = 50; // pageSize = 15
+    const int pageSize = makeHighScoresPaginator(0, screenHeight).pageSize;
+
+    const Paginator exactlyFull = makeHighScoresPaginator(pageSize, screenHeight);
+    REQUIRE(exactlyFull.totalPages() == 1); // <= pageSize -> indicator hidden
+
+    const Paginator oneOver = makeHighScoresPaginator(pageSize + 1, screenHeight);
+    REQUIRE(oneOver.totalPages() == 2);     // > pageSize -> indicator shown
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Task 11.2 — Example test: the earned-entry page is selected on the death screen
+// **Validates: Requirements 10.5**
+//
+// Feature: high-score-system
+//
+// Engine::renderDefeat() (Source/Engine.cpp) scrolls the newly recorded entry
+// into view by selecting its page with the EXACT formula:
+//
+//     highScoresPaginator_.currentPage = *lastEntryIndex_ / highScoresPaginator_.pageSize;
+//
+// The paginator is engine-independent, so we replicate that formula here and
+// assert the earned entry falls on the selected page:
+//     startIndex() <= lastEntryIndex < endIndex()
+// across several indices spanning multiple pages (first entry, middle pages,
+// last entry). This validates the real page-selection behavior renderDefeat
+// relies on without initializing the Engine (per test-isolation.md).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+namespace {
+
+// Apply the EXACT page-selection formula from Engine::renderDefeat():
+//   currentPage = lastEntryIndex / pageSize
+// then confirm the entry lies within the selected page's [startIndex, endIndex).
+void assertEntryOnSelectedPage(int totalItems, int pageSize, int lastEntryIndex)
+{
+    REQUIRE(pageSize > 0);
+    REQUIRE(lastEntryIndex >= 0);
+    REQUIRE(lastEntryIndex < totalItems);
+
+    Paginator pag;
+    pag.totalItems = totalItems;
+    pag.pageSize = pageSize;
+    // The formula renderDefeat() uses verbatim (Req 10.5).
+    pag.currentPage = lastEntryIndex / pag.pageSize;
+
+    // The earned entry must fall on the current page.
+    REQUIRE(pag.startIndex() <= lastEntryIndex);
+    REQUIRE(lastEntryIndex < pag.endIndex());
+}
+
+} // namespace
+
+TEST_CASE("Death screen: earned entry on the first page is selected (index 0)", "[high-score-system]")
+{
+    // First entry always lands on page 0 (Req 10.5).
+    assertEntryOnSelectedPage(/*totalItems*/ 100, /*pageSize*/ 15, /*index*/ 0);
+}
+
+TEST_CASE("Death screen: earned entry on a middle page is selected", "[high-score-system]")
+{
+    // Index 20 with pageSize 15 -> page 1 (entries 15..29). 20 is on that page.
+    assertEntryOnSelectedPage(/*totalItems*/ 100, /*pageSize*/ 15, /*index*/ 20);
+
+    // Index 44 with pageSize 15 -> page 2 (entries 30..44).
+    assertEntryOnSelectedPage(/*totalItems*/ 100, /*pageSize*/ 15, /*index*/ 44);
+}
+
+TEST_CASE("Death screen: earned entry as the last board entry is selected", "[high-score-system]")
+{
+    // The last entry of a full 100-entry board (index 99) must be scrolled into
+    // view on its page (Req 10.5).
+    assertEntryOnSelectedPage(/*totalItems*/ 100, /*pageSize*/ 15, /*index*/ 99);
+
+    // A board whose size is an exact multiple of pageSize: last index on the
+    // final full page.
+    assertEntryOnSelectedPage(/*totalItems*/ 45, /*pageSize*/ 15, /*index*/ 44);
+}
+
+TEST_CASE("Death screen: page selection places every index on its own page across the board", "[high-score-system]")
+{
+    // Sweep every index of a multi-page board and confirm the renderDefeat
+    // formula always selects a page that contains that index (Req 10.5). This
+    // covers first page, all middle pages, and the last entry in one pass.
+    const int totalItems = 100;
+    const int pageSize = 15; // -> 7 pages (0..6), last page holds 90..99
+    for (int index = 0; index < totalItems; ++index) {
+        assertEntryOnSelectedPage(totalItems, pageSize, index);
+    }
+}
+
+TEST_CASE("Death screen: page selection works with a single-entry-per-page paginator", "[high-score-system]")
+{
+    // Degenerate pageSize == 1: each entry is its own page, so currentPage
+    // equals the index and startIndex()==index, endIndex()==index+1 (Req 10.5).
+    const int totalItems = 8;
+    for (int index = 0; index < totalItems; ++index) {
+        assertEntryOnSelectedPage(totalItems, /*pageSize*/ 1, index);
+
+        Paginator pag;
+        pag.totalItems = totalItems;
+        pag.pageSize = 1;
+        pag.currentPage = index / pag.pageSize;
+        REQUIRE(pag.currentPage == index);
+        REQUIRE(pag.startIndex() == index);
+        REQUIRE(pag.endIndex() == index + 1);
+    }
+}
