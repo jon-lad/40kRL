@@ -71,6 +71,42 @@ bool entriesFieldEqual(const ScoreEntry& a, const ScoreEntry& b)
 } // namespace
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Task 8.3 — Unit tests for outcome formatting
+// **Validates: Requirements 1.6, 1.7**
+//
+// formatOutcome() is the pure-core helper extracted from Engine::recordRunOutcome
+// so the "Slain by <cause>" / "Slain" rule is testable without the Engine
+// (per test-isolation.md). recordRunOutcome now delegates to it.
+//   - non-empty cause -> "Slain by " + cause  (Req 1.6)
+//   - empty cause     -> "Slain"              (Req 1.7)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+TEST_CASE("Outcome: known cause formats as 'Slain by <cause>'", "[high-score-system]")
+{
+    // A typical enemy name yields the "Slain by" phrasing (Req 1.6).
+    REQUIRE(formatOutcome("Ork Nob") == "Slain by Ork Nob");
+}
+
+TEST_CASE("Outcome: empty cause formats as 'Slain'", "[high-score-system]")
+{
+    // An unavailable cause records the bare "Slain" outcome (Req 1.7).
+    REQUIRE(formatOutcome("") == "Slain");
+}
+
+TEST_CASE("Outcome: cause with spaces and unicode is preserved verbatim", "[high-score-system]")
+{
+    // Multi-word names keep their internal spacing (Req 1.6).
+    REQUIRE(formatOutcome("Chaos Space Marine") == "Slain by Chaos Space Marine");
+
+    // Multibyte UTF-8 content is appended intact — no truncation or re-encoding.
+    REQUIRE(formatOutcome(u8"Ørk Nöb") == std::string(u8"Slain by Ørk Nöb"));
+
+    // A single-space cause is non-empty, so it takes the "Slain by" branch
+    // rather than being treated as an unknown cause (Req 1.6 vs 1.7 boundary).
+    REQUIRE(formatOutcome(" ") == "Slain by  ");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Task 2.1 — Property test for ranking total order
 // Feature: high-score-system, Property 1: Ranking is a deterministic total order
 //                                          with XP primary and depth tiebreak

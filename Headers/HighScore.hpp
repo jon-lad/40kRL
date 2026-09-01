@@ -19,6 +19,12 @@ struct ScoreEntry {
 	std::string date;             // fixed human-readable format (Req 1.4)
 };
 
+// Outcome formatting (Requirements 1.6, 1.7). Pure function — no engine access.
+// Formats the death outcome description from the cause-of-death actor name:
+//   - non-empty cause  -> "Slain by " + cause   (Req 1.6)
+//   - empty cause      -> "Slain"                (Req 1.7)
+std::string formatOutcome(const std::string& cause);
+
 // Ranking (Requirement 2). Pure functions — no engine access (Req 2.5).
 // Returns negative if a ranks below b, 0 if equal rank, positive if a ranks above b.
 int scoreCompare(const ScoreEntry& a, const ScoreEntry& b);

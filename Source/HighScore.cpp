@@ -42,6 +42,18 @@ int compareString(const std::string& a, const std::string& b)
 
 } // namespace
 
+// ─── Outcome formatting (Req 1.6, 1.7) ───────────────────────────────────────
+//
+// Pure formatting of the death outcome description from the cause-of-death
+// actor name. When the cause is known (non-empty) the outcome reads
+// "Slain by <cause>" (Req 1.6); when it is unavailable (empty) it is simply
+// "Slain" (Req 1.7). Engine::recordRunOutcome calls this so the exact same
+// rule is exercised by the engine-free test binary.
+std::string formatOutcome(const std::string& cause)
+{
+	return cause.empty() ? std::string("Slain") : ("Slain by " + cause);
+}
+
 // ─── Ranking (task 2.3) ──────────────────────────────────────────────────────
 //
 // Returns positive if a ranks strictly above b, negative if a ranks below b,

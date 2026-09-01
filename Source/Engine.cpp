@@ -1103,9 +1103,10 @@ void Engine::recordRunOutcome(const std::string& cause)
 	// Deepest dungeon level reached, clamped to >= 1 (Req 1.3).
 	entry.deepestLevel = dungeonLevel < 1 ? 1 : dungeonLevel;
 
-	// Outcome description (Req 1.5-1.7, 5.1). "Slain by <cause>" when the cause
-	// is known, else "Slain".
-	entry.outcome = cause.empty() ? "Slain" : ("Slain by " + cause);
+	// Outcome description (Req 1.5-1.7, 5.1). Delegated to the pure-core
+	// formatOutcome() so the exact rule ("Slain by <cause>" when known, else
+	// "Slain") is unit-testable without the Engine.
+	entry.outcome = formatOutcome(cause);
 
 	// Run date in the fixed human-readable format "YYYY-MM-DD HH:MM" (Req 1.4).
 	{
