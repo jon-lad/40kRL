@@ -233,6 +233,7 @@ void Engine::load()
 	if (std::filesystem::exists("game.sav")) {
 		engine.gui->menu.addItem(Menu::MenuItemCode::CONTINUE, "Continue");
 	}
+	engine.gui->menu.addItem(Menu::MenuItemCode::HIGH_SCORES, "High Scores");
 	engine.gui->menu.addItem(Menu::MenuItemCode::HELP, "Help");
 	engine.gui->menu.addItem(Menu::MenuItemCode::EXIT, "Exit");
 
@@ -240,6 +241,11 @@ void Engine::load()
 
 	if (choice == Menu::MenuItemCode::EXIT || choice == Menu::MenuItemCode::NONE) {
 		exit(0);
+	}
+
+	if (choice == Menu::MenuItemCode::HIGH_SCORES) {
+		engine.beginHighScores();
+		return;
 	}
 
 	if (choice == Menu::MenuItemCode::HELP) {
