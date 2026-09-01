@@ -1,4 +1,4 @@
-#include "WfcGenerator.h"
+#include "WfcGenerator.hpp"
 
 #include <algorithm>
 #include <queue>

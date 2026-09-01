@@ -1,4 +1,4 @@
-#include "../Headers/TabbedMenuState.h"
+#include "../Headers/TabbedMenuState.hpp"
 
 void TabbedMenuState::cycleTab() {
     int next = (static_cast<int>(activeTab) + 1) % static_cast<int>(Tab::COUNT);

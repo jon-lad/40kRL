@@ -4,7 +4,7 @@
 #include <string>
 #include <sstream>
 #include <tuple>
-#include "main.h"
+#include "main.hpp"
 
 // ─── Gui ─────────────────────────────────────────────────────────────────────
 

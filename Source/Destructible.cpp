@@ -1,6 +1,6 @@
 
 #include <sstream>
-#include "main.h"
+#include "main.hpp"
 
 Destructible::Destructible(float maxHp, float defense, std::string_view corpseName, int xp)
 	: maxHp{ maxHp + CRIT_BUFFER }, hp{ maxHp + CRIT_BUFFER }, defense{ defense }, corpseName{ corpseName }, xp{ xp }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "HitLocation.h"
+#include "HitLocation.hpp"
 
 namespace CriticalEffects {
 	struct CritEffect {

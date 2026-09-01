@@ -1,4 +1,4 @@
-#include "CriticalEffects.h"
+#include "CriticalEffects.hpp"
 #include <algorithm>
 #include <array>
 

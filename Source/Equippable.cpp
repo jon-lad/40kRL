@@ -1,5 +1,5 @@
-#include "main.h"
-#include "DiceRoller.h"
+#include "main.hpp"
+#include "DiceRoller.hpp"
 #include <algorithm>
 
 static constexpr int EQUIPPABLE_SAVE_V1 = -1;  // sentinel for format with MeleeStats/ArmourProfile

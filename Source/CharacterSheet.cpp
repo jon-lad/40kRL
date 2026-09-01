@@ -1,4 +1,4 @@
-#include "main.h"
+#include "main.hpp"
 
 void CharacterSheet::save(TCODZip& zip) {
 	characteristics.save(zip);

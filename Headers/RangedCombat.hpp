@@ -1,8 +1,8 @@
 #pragma once
 
 #include <functional>
-#include "HitLocation.h"
-#include "Equippable.h"
+#include "HitLocation.hpp"
+#include "Equippable.hpp"
 
 class Actor;
 

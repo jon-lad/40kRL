@@ -3,7 +3,7 @@
 // Implements stacking (refresh if new > existing, keep permanent), idempotent removal,
 // and query interface for active effects.
 
-#include "StatusEffects.h"
+#include "StatusEffects.hpp"
 #include <vector>
 #include <string>
 #include <algorithm>

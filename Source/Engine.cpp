@@ -5,8 +5,8 @@
 #include <memory>
 #include <sstream>
 #include <sol/sol.hpp>
-#include "main.h"
-#include "HelpContent.h"
+#include "main.hpp"
+#include "HelpContent.hpp"
 
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
 static constexpr int MAP_WIDTH            = 160;

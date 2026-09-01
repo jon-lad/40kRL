@@ -4,11 +4,11 @@
 #include <algorithm>
 #include <numeric>
 #include <cstring>
-#include "main.h"
-#include "CriticalEffects.h"
-#include "DiceRoller.h"
-#include "ReactionResolver.h"
-#include "StatusTrigger.h"
+#include "main.hpp"
+#include "CriticalEffects.hpp"
+#include "DiceRoller.hpp"
+#include "ReactionResolver.hpp"
+#include "StatusTrigger.hpp"
 
 Attacker::Attacker(float power, int skillValue)
 	: power{ power }

@@ -2,7 +2,7 @@
 #include "lib/rapidcheck.h"
 #include "lib/rapidcheck_catch.h"
 
-#include "main.h"
+#include "main.hpp"
 
 #include <algorithm>
 #include <vector>

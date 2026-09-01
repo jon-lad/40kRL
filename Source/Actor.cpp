@@ -4,8 +4,8 @@
 #include <sstream>
 #include <list>
 #include <cmath>
-#include "main.h"
-#include "CP437.h"
+#include "main.hpp"
+#include "CP437.hpp"
 
 Actor::Actor(int x, int y, int glyph, std::string_view name, const TCODColor& color)
 	: x{ x }, y{ y }, glyph{ cp437::sanitizeGlyph(glyph) }, name{ name }, description{}, color{ color }, blocks{ true }, fovOnly{ true }

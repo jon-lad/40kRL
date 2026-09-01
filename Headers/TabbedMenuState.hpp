@@ -1,5 +1,5 @@
 #pragma once
-#include "Paginator.h"
+#include "Paginator.hpp"
 #include <array>
 
 // Forward-declare InventoryState::Action to avoid pulling in Engine.h

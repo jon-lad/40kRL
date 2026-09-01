@@ -1,4 +1,4 @@
-#include "DiceRoller.h"
+#include "DiceRoller.hpp"
 #include <random>
 #include <regex>
 

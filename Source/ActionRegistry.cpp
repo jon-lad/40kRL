@@ -1,4 +1,4 @@
-#include "ActionRegistry.h"
+#include "ActionRegistry.hpp"
 
 #include <cassert>
 

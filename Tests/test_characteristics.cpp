@@ -1,6 +1,6 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck_catch.h"
-#include "main.h"
+#include "main.hpp"
 
 #include <algorithm>
 

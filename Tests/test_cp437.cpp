@@ -1,7 +1,7 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck.h"
 #include "lib/rapidcheck_catch.h"
-#include "CP437.h"
+#include "CP437.hpp"
 
 #include <utility>
 #include <vector>

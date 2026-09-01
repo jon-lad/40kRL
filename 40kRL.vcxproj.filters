@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -71,70 +71,70 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Headers\Destructible.h">
+    <ClInclude Include="Headers\Destructible.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Engine.h">
+    <ClInclude Include="Headers\Engine.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Gui.h">
+    <ClInclude Include="Headers\Gui.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\main.h">
+    <ClInclude Include="Headers\main.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Map.h">
+    <ClInclude Include="Headers\Map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Persistent.h">
+    <ClInclude Include="Headers\Persistent.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Pickable.h">
+    <ClInclude Include="Headers\Pickable.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Actor.h">
+    <ClInclude Include="Headers\Actor.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Ai.h">
+    <ClInclude Include="Headers\Ai.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Attacker.h">
+    <ClInclude Include="Headers\Attacker.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Constants.h">
+    <ClInclude Include="Headers\Constants.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Container.h">
+    <ClInclude Include="Headers\Container.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\CharConstants.h">
+    <ClInclude Include="Headers\CharConstants.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Colors.h">
+    <ClInclude Include="Headers\Colors.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\InputHandler.h">
+    <ClInclude Include="Headers\InputHandler.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\RenderUtils.h">
+    <ClInclude Include="Headers\RenderUtils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Equippable.h">
+    <ClInclude Include="Headers\Equippable.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Equipment.h">
+    <ClInclude Include="Headers\Equipment.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Characteristics.h">
+    <ClInclude Include="Headers\Characteristics.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\WorldMap.h">
+    <ClInclude Include="Headers\WorldMap.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\WfcGenerator.h">
+    <ClInclude Include="Headers\WfcGenerator.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\CharacterSheet.h">
+    <ClInclude Include="Headers\CharacterSheet.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

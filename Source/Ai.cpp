@@ -1,8 +1,8 @@
 
 #include <memory>
 #include <list>
-#include "main.h"
-#include "ChargeResolver.h"
+#include "main.hpp"
+#include "ChargeResolver.hpp"
 
 // ─── PlayerAi ────────────────────────────────────────────────────────────────
 

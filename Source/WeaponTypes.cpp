@@ -1,7 +1,7 @@
-#include "main.h"
-#include "WeaponTypes.h"
-#include "Actor.h"
-#include "CareerProgression.h"
+#include "main.hpp"
+#include "WeaponTypes.hpp"
+#include "Actor.hpp"
+#include "CareerProgression.hpp"
 
 #include <array>
 #include <string>

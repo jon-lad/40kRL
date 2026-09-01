@@ -1,5 +1,5 @@
-#include "WorldMap.h"
-#include "main.h"
+#include "WorldMap.hpp"
+#include "main.hpp"
 #include <sol/sol.hpp>
 #include <algorithm>
 #include <cmath>

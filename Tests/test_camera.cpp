@@ -1,7 +1,7 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck_catch.h"
-#include "main.h"
-#include "Constants.h"
+#include "main.hpp"
+#include "Constants.hpp"
 
 // ─── Camera unit tests ───────────────────────────────────────────────────────
 

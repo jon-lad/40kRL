@@ -1,8 +1,8 @@
 #pragma once
 
 #include <array>
-#include "HitLocation.h"
-#include "Characteristics.h"
+#include "HitLocation.hpp"
+#include "Characteristics.hpp"
 
 namespace InjuryDebuffs {
     static constexpr int MAX_MODIFIERS_PER_INJURY = 3;

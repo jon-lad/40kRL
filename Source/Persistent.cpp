@@ -2,9 +2,9 @@
 #include <sstream>
 #include <filesystem>
 #include <sol/sol.hpp>
-#include "main.h"
-#include "WfcGenerator.h"
-#include "CP437.h"
+#include "main.hpp"
+#include "WfcGenerator.hpp"
+#include "CP437.hpp"
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
 

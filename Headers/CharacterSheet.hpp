@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Persistent.h"
-#include "Characteristics.h"
-#include "CareerProgression.h"
+#include "Persistent.hpp"
+#include "Characteristics.hpp"
+#include "CareerProgression.hpp"
 #include <memory>
 
 // Unified character component for the player. Owns both characteristics and career data.

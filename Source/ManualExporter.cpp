@@ -1,6 +1,6 @@
 // Source/ManualExporter.cpp
-#include "ManualExporter.h"
-#include "HelpContent.h"
+#include "ManualExporter.hpp"
+#include "HelpContent.hpp"
 
 #include <fstream>
 #include <string>
