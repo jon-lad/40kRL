@@ -15,7 +15,7 @@ ROADMAP
 ## Immediate / Short-term
 
 - [x] Rename all .h headers to .hpp
-- [ ] Complete tests for CharacterSheet (unit + property-based)
+- [x] Complete tests for CharacterSheet (unit + property-based)
 - [ ] Implement stat locks based on CharacterSheet for NPCs
 - [ ] Add high score system
 
