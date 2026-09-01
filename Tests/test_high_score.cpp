@@ -423,3 +423,253 @@ TEST_CASE("PBT: Property 3 — serialization round-trip preserves the leaderboar
         RC_ASSERT(isSortedDescending(got));
     });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Task 4.2 — Property test for deserialization robustness
+// Feature: high-score-system, Property 4: Deserialization of invalid data yields
+//   an empty leaderboard without failing
+// **Validates: Requirements 7.3**
+//
+// For any byte buffer that is NOT a valid serialized leaderboard (arbitrary,
+// corrupt, foreign, or empty archive content), deserializeLeaderboard must
+// return an empty Leaderboard and never throw or abort, so the game can
+// continue. The valid format begins with the sentinel 0x48534452; anything
+// that does not match that sentinel is invalid input.
+//
+// TCODZip has no in-memory-only API, so (as with the round-trip test) each
+// crafted archive is flushed to a temp file and reloaded before it is fed to
+// deserializeLeaderboard.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+namespace {
+
+// The valid format sentinel (design: "HSDR"). Any archive whose first int does
+// not equal this value is, by definition, invalid leaderboard content.
+constexpr int HIGHSCORE_SENTINEL = 0x48534452;
+
+} // namespace
+
+TEST_CASE("PBT: Property 4 — deserialization of invalid data yields an empty leaderboard", "[pbt][property][high-score-system]")
+{
+    rc::check("arbitrary/corrupt/foreign/empty archive content deserializes to an empty board without throwing", []() {
+        const char* tempFile = "__test_highscore_invalid.dat";
+
+        // Choose one of several "invalid archive" shapes each iteration so we
+        // exercise empty, foreign, and wrong-sentinel content broadly.
+        //   0 = empty archive (nothing written)
+        //   1 = wrong/foreign sentinel followed by arbitrary ints & strings
+        //   2 = arbitrary leading int (that happens NOT to be the sentinel)
+        //       followed by random junk
+        //   3 = a valid-looking sentinel but a corrupt/garbage body
+        //       (bogus entry count, missing fields)
+        const int shape = *rc::gen::inRange(0, 3);
+
+        {
+            TCODZip zip;
+
+            switch (shape) {
+                case 0:
+                    // Empty archive — write nothing at all.
+                    break;
+
+                case 1: {
+                    // Foreign sentinel: pick a value guaranteed to differ from
+                    // the real HIGHSCORE_SENTINEL, then append random content.
+                    int foreign = *rc::gen::inRange(0, 1000000);
+                    if (foreign == HIGHSCORE_SENTINEL) foreign ^= 0x1; // ensure mismatch
+                    zip.putInt(foreign);
+                    const int junkInts = *rc::gen::inRange(0, 8);
+                    for (int i = 0; i < junkInts; ++i) {
+                        zip.putInt(*rc::gen::inRange(-100000, 100000));
+                    }
+                    const int junkStrings = *rc::gen::inRange(0, 5);
+                    for (int i = 0; i < junkStrings; ++i) {
+                        zip.putString((*rc::gen::string(0, 16)).c_str());
+                    }
+                    break;
+                }
+
+                case 2: {
+                    // A random leading int that is not the sentinel, followed by
+                    // arbitrary junk of mixed types.
+                    int leading = *rc::gen::inRange(-1000000, 1000000);
+                    if (leading == HIGHSCORE_SENTINEL) leading ^= 0x1;
+                    zip.putInt(leading);
+                    const int junk = *rc::gen::inRange(1, 10);
+                    for (int i = 0; i < junk; ++i) {
+                        if (*rc::gen::arbitrary_bool()) {
+                            zip.putInt(*rc::gen::inRange(-100000, 100000));
+                        } else {
+                            zip.putString((*rc::gen::string(0, 12)).c_str());
+                        }
+                    }
+                    break;
+                }
+
+                case 3: {
+                    // Correct sentinel but a corrupt body: a bogus entry count
+                    // and truncated / mismatched fields. deserialize must not
+                    // trust the count blindly in a way that throws/aborts; on any
+                    // parse failure it yields an empty board (Req 7.3).
+                    zip.putInt(HIGHSCORE_SENTINEL);
+                    zip.putInt(*rc::gen::inRange(1, 5)); // format version (arbitrary)
+                    // Claim more entries than we actually write.
+                    zip.putInt(*rc::gen::inRange(1, 1000));
+                    // Write only a partial, mismatched smattering of fields.
+                    const int partial = *rc::gen::inRange(0, 4);
+                    for (int i = 0; i < partial; ++i) {
+                        zip.putString((*rc::gen::string(0, 8)).c_str());
+                    }
+                    break;
+                }
+            }
+
+            zip.saveToFile(tempFile);
+        }
+
+        // Feed the crafted archive to deserializeLeaderboard. This must not
+        // throw or abort, and must return an empty leaderboard.
+        Leaderboard result(1);
+        bool threw = false;
+        try {
+            TCODZip zip;
+            zip.loadFromFile(tempFile);
+            result = deserializeLeaderboard(zip);
+        } catch (...) {
+            threw = true;
+        }
+
+        std::remove(tempFile);
+
+        // No throw/abort escaped (Req 7.3).
+        RC_ASSERT(!threw);
+
+        // An empty leaderboard is returned for invalid content (Req 7.3).
+        RC_ASSERT(result.empty());
+        RC_ASSERT(result.size() == 0);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Task 4.3 — Unit tests for serialization edge cases
+// **Validates: Requirements 8.1, 8.2, 7.3**
+//
+// - Empty board round-trips to empty.
+// - Unicode / empty-string fields survive a round trip.
+// - A sentinel-mismatch archive deserializes to an empty board.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+TEST_CASE("Serialization: empty board round-trips to empty", "[high-score-system]")
+{
+    const char* tempFile = "__test_highscore_empty_roundtrip.dat";
+
+    Leaderboard original(10); // no entries inserted
+    REQUIRE(original.empty());
+
+    {
+        TCODZip zip;
+        serializeLeaderboard(original, zip);
+        zip.saveToFile(tempFile);
+    }
+
+    Leaderboard loaded(10);
+    {
+        TCODZip zip;
+        zip.loadFromFile(tempFile);
+        loaded = deserializeLeaderboard(zip);
+    }
+
+    std::remove(tempFile);
+
+    // An empty board must round-trip to an empty board (Req 8.1).
+    REQUIRE(loaded.empty());
+    REQUIRE(loaded.size() == 0);
+}
+
+TEST_CASE("Serialization: unicode and empty-string fields survive a round trip", "[high-score-system]")
+{
+    const char* tempFile = "__test_highscore_unicode_roundtrip.dat";
+
+    // One entry with UTF-8 multibyte content, one with all-empty string fields
+    // (Req 8.2 — every field must survive, including edge-case strings).
+    ScoreEntry unicodeEntry;
+    unicodeEntry.characterName = u8"Ürsün-Kâhïn";       // multibyte UTF-8
+    unicodeEntry.careerName    = u8"Rögue Träder";
+    unicodeEntry.homeworldName = u8"武神の世界";          // CJK characters
+    unicodeEntry.rankTitle     = u8"Séneschal ★";
+    unicodeEntry.totalXp       = 4200;
+    unicodeEntry.deepestLevel  = 12;
+    unicodeEntry.outcome       = u8"Slain by Ørk Nöb";
+    unicodeEntry.date          = u8"2024-07-01 13:37";
+
+    ScoreEntry emptyFields;                              // all strings empty
+    emptyFields.characterName = "";
+    emptyFields.careerName    = "";
+    emptyFields.homeworldName = "";
+    emptyFields.rankTitle     = "";
+    emptyFields.totalXp       = 0;
+    emptyFields.deepestLevel  = 1;
+    emptyFields.outcome       = "";
+    emptyFields.date          = "";
+
+    Leaderboard original(10);
+    original.insert(unicodeEntry);
+    original.insert(emptyFields);
+
+    {
+        TCODZip zip;
+        serializeLeaderboard(original, zip);
+        zip.saveToFile(tempFile);
+    }
+
+    Leaderboard loaded(10);
+    {
+        TCODZip zip;
+        zip.loadFromFile(tempFile);
+        loaded = deserializeLeaderboard(zip);
+    }
+
+    std::remove(tempFile);
+
+    // Same number of entries survived (Req 8.1).
+    REQUIRE(loaded.size() == original.size());
+    REQUIRE(loaded.entries().size() == original.entries().size());
+
+    // Every field of every entry survived intact, in order (Req 8.1, 8.2).
+    for (size_t i = 0; i < original.entries().size(); ++i) {
+        REQUIRE(entriesFieldEqual(loaded.entries()[i], original.entries()[i]));
+    }
+}
+
+TEST_CASE("Serialization: sentinel-mismatch archive deserializes to empty board", "[high-score-system]")
+{
+    const char* tempFile = "__test_highscore_bad_sentinel.dat";
+
+    // Write an archive whose leading int is NOT the high-score sentinel,
+    // followed by some plausible-looking but foreign data (Req 7.3).
+    {
+        TCODZip zip;
+        zip.putInt(0xDEADBEEF);          // wrong sentinel
+        zip.putInt(3);                   // looks like an entry count
+        zip.putString("not a real entry");
+        zip.putInt(999);
+        zip.saveToFile(tempFile);
+    }
+
+    Leaderboard loaded(10);
+    bool threw = false;
+    try {
+        TCODZip zip;
+        zip.loadFromFile(tempFile);
+        loaded = deserializeLeaderboard(zip);
+    } catch (...) {
+        threw = true;
+    }
+
+    std::remove(tempFile);
+
+    // Must not throw, and must yield an empty board on sentinel mismatch (Req 7.3).
+    REQUIRE_FALSE(threw);
+    REQUIRE(loaded.empty());
+    REQUIRE(loaded.size() == 0);
+}
