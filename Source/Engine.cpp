@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
+#include <ctime>
 #include <list>
 #include <memory>
 #include <sstream>
@@ -1050,6 +1051,94 @@ void Engine::renderCharacterSheet()
 		TCODConsole::root,
 		screenWidth  / 2 - SHEET_WIDTH  / 2,
 		screenHeight / 2 - SHEET_HEIGHT / 2);
+}
+
+void Engine::recordRunOutcome(const std::string& cause)
+{
+	// Record at most one entry per completed run (Req 4.4). If we've already
+	// recorded this run, do nothing.
+	if (runRecorded_) {
+		return;
+	}
+	runRecorded_ = true;
+
+	ScoreEntry entry;
+
+	// Character identity and career-sourced fields. player and player->career
+	// may be null in test-isolation contexts, so guard before dereferencing.
+	if (player) {
+		entry.characterName = player->name;
+
+		if (player->career) {
+			const auto& career = *player->career;
+			entry.careerName    = career.careerName;
+			entry.homeworldName = career.homeworldName;
+
+			// Total XP earned, clamped to >= 0 (Req 1.2).
+			entry.totalXp = career.xpPool < 0 ? 0 : career.xpPool;
+
+			// Resolve the final rank title from the matching career template's
+			// rank definition. Fall back to "Rank N" when no match is found.
+			const CareerTemplate* careerTpl = nullptr;
+			for (const auto& tpl : careerTemplates) {
+				if (tpl.name == career.careerName) {
+					careerTpl = &tpl;
+					break;
+				}
+			}
+			if (careerTpl) {
+				for (const auto& rank : careerTpl->ranks) {
+					if (rank.rankNumber == career.currentRank) {
+						entry.rankTitle = rank.rankTitle;
+						break;
+					}
+				}
+			}
+			if (entry.rankTitle.empty()) {
+				entry.rankTitle = "Rank " + std::to_string(career.currentRank);
+			}
+		}
+	}
+
+	// Deepest dungeon level reached, clamped to >= 1 (Req 1.3).
+	entry.deepestLevel = dungeonLevel < 1 ? 1 : dungeonLevel;
+
+	// Outcome description (Req 1.5-1.7, 5.1). "Slain by <cause>" when the cause
+	// is known, else "Slain".
+	entry.outcome = cause.empty() ? "Slain" : ("Slain by " + cause);
+
+	// Run date in the fixed human-readable format "YYYY-MM-DD HH:MM" (Req 1.4).
+	{
+		std::time_t now = std::time(nullptr);
+		std::tm local{};
+#if defined(_WIN32)
+		localtime_s(&local, &now);
+#else
+		localtime_r(&now, &local);
+#endif
+		char buf[32] = {};
+		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", &local);
+		entry.date = buf;
+	}
+
+	// Insert into the leaderboard and record the placement for the death-screen
+	// highlight (Req 4.2, 10.2). insert() returns whether the entry earned a
+	// place; when it did, locate its index in the sorted board.
+	const bool earned = highScores_.insert(entry);
+	if (earned) {
+		const auto& entries = highScores_.entries();
+		for (int i = 0; i < static_cast<int>(entries.size()); ++i) {
+			if (scoreCompare(entries[i], entry) == 0) {
+				lastEntryIndex_ = i;
+				break;
+			}
+		}
+	} else {
+		lastEntryIndex_.reset();
+	}
+
+	// Persist the updated leaderboard to highscores.dat (Req 4.3, 6.4).
+	HighScoreStore::save(highScores_);
 }
 
 void Engine::beginAdvances()

@@ -287,6 +287,12 @@ public:
 	// Renders help overlay.
 	void renderHelp();
 
+	// Records the outcome of the just-finished run as a ScoreEntry, inserts it into
+	// the in-memory leaderboard, and persists the leaderboard to highscores.dat.
+	// Guarded so at most one entry is recorded per run (Req 4.4). `cause` is the
+	// killing actor's name when known; empty for unknown/non-combat deaths.
+	void recordRunOutcome(const std::string& cause);
+
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);
 
