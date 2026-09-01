@@ -1,6 +1,6 @@
 #include <memory>
 #include <list>
-#include "main.h"
+#include "main.hpp"
 
 Container::Container(int size) : size{ size } {}
 

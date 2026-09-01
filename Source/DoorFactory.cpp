@@ -1,7 +1,7 @@
-#include "main.h"
-#include "Colors.h"
-#include "Openable.h"
-#include "DoorFactory.h"
+#include "main.hpp"
+#include "Colors.hpp"
+#include "Openable.hpp"
+#include "DoorFactory.hpp"
 
 // Creates a door Actor with all construction invariants satisfied:
 // glyph '+', name "door", colour doorClosed, blocks=true, fovOnly=false, Openable attached.

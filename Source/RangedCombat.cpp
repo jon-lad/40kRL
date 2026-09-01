@@ -2,12 +2,12 @@
 #include <algorithm>
 #include <numeric>
 #include <random>
-#include "main.h"
-#include "RangedCombat.h"
-#include "CriticalEffects.h"
-#include "DiceRoller.h"
-#include "WeaponTypes.h"
-#include "ReactionResolver.h"
+#include "main.hpp"
+#include "RangedCombat.hpp"
+#include "CriticalEffects.hpp"
+#include "DiceRoller.hpp"
+#include "WeaponTypes.hpp"
+#include "ReactionResolver.hpp"
 
 namespace {
 	int defaultRollD100() {

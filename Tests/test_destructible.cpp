@@ -4,7 +4,7 @@
 // Pull in only what we need — the game headers require libtcod, so we
 // include the full main.h here.  The test binary links against libtcod
 // and the game object files (excluding main.obj to avoid duplicate main).
-#include "main.h"
+#include "main.hpp"
 
 // ─── Destructible unit tests ──────────────────────────────────────────────────
 

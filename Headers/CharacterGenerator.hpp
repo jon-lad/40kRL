@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Characteristics.h"
+#include "Characteristics.hpp"
 
 #include <string>
 #include <unordered_map>

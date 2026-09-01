@@ -1,5 +1,5 @@
 // Source/HelpContent.cpp
-#include "HelpContent.h"
+#include "HelpContent.hpp"
 
 namespace HelpContent {
 

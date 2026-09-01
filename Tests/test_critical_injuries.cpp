@@ -1,8 +1,8 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck_catch.h"
-#include "main.h"
-#include "InjuryDebuffs.h"
-#include "InjuryTracker.h"
+#include "main.hpp"
+#include "InjuryDebuffs.hpp"
+#include "InjuryTracker.hpp"
 
 #include <algorithm>
 #include <cstdio>

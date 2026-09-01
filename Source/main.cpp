@@ -2,7 +2,7 @@
 #include <memory>
 #include <list>
 #include <sstream>
-#include "main.h"
+#include "main.hpp"
 
 Engine engine(layout::SCREEN_WIDTH, layout::SCREEN_HEIGHT);
 

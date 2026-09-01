@@ -1,5 +1,5 @@
-#include "main.h"
-#include "StatusEffectTracker.h"
+#include "main.hpp"
+#include "StatusEffectTracker.hpp"
 
 void StatusEffectTracker::apply(Actor* owner, StatusType type, int duration, const std::string& source) {
     // Clamp negative durations to 0 (treat as permanent)

@@ -2,9 +2,9 @@
 // StatusTrigger.h — Maps critical injuries and weapon qualities to status effects.
 // Stub: fromCritical and fromWeaponQualities are no-ops until task 7.3 / 8.3 implement the tables.
 
-#include "WeaponTypes.h"
-#include "HitLocation.h"
-#include "StatusEffects.h"
+#include "WeaponTypes.hpp"
+#include "HitLocation.hpp"
+#include "StatusEffects.hpp"
 #include <vector>
 #include <string>
 

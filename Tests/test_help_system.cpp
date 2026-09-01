@@ -1,7 +1,7 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck_catch.h"
-#include "HelpContent.h"
-#include "main.h"
+#include "HelpContent.hpp"
+#include "main.hpp"
 
 #include <algorithm>
 #include <sstream>
@@ -839,9 +839,9 @@ TEST_CASE("PBT: Manual section formatting structure",
 // They are conditionally compiled only when MANUAL_EXPORTER_AVAILABLE is defined.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#if __has_include("ManualExporter.h")
+#if __has_include("ManualExporter.hpp")
 #define MANUAL_EXPORTER_AVAILABLE 1
-#include "ManualExporter.h"
+#include "ManualExporter.hpp"
 #else
 #define MANUAL_EXPORTER_AVAILABLE 0
 #endif

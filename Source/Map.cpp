@@ -7,10 +7,10 @@
 #include <list>
 #include <sstream>
 #include <sol/sol.hpp>
-#include "main.h"
-#include "WfcGenerator.h"
-#include "DoorFactory.h"
-#include "CP437.h"
+#include "main.hpp"
+#include "WfcGenerator.hpp"
+#include "DoorFactory.hpp"
+#include "CP437.hpp"
 
 static constexpr int ROOM_MAX_SIZE     = 12;
 static constexpr int ROOM_MIN_SIZE     = 6;

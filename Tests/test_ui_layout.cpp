@@ -13,7 +13,7 @@
 // ─── Local test-only definitions ─────────────────────────────────────────────
 // These mirror the design doc structs. Once Headers/LayoutRect.h and
 // Headers/ScreenLayout.h are implemented (task 1.2), these can be replaced
-// with #include "LayoutRect.h" / #include "ScreenLayout.h".
+// with #include "LayoutRect.hpp" / #include "ScreenLayout.hpp".
 
 namespace test_layout {
 

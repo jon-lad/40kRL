@@ -2,7 +2,7 @@
 #include <array>
 #include <memory>
 #include <vector>
-#include "HitLocation.h"
+#include "HitLocation.hpp"
 
 class Actor;
 class Container;

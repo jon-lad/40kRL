@@ -1,5 +1,5 @@
 #include "lib/catch_amalgamated.hpp"
-#include "HitLocation.h"
+#include "HitLocation.hpp"
 
 // ─── Property-based test (exhaustive) ────────────────────────────────────────
 // **Validates: Requirements 3.1, 3.2, 3.3**

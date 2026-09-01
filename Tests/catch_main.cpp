@@ -2,7 +2,7 @@
 // Do NOT include this in any other translation unit.
 #define CATCH_CONFIG_RUNNER
 #include "lib/catch_amalgamated.hpp"
-#include "main.h"
+#include "main.hpp"
 
 // Global engine instance for tests. The real game defines this in main.cpp which
 // we exclude from the test binary to avoid duplicate main(). The Engine constructor

@@ -1,6 +1,6 @@
-#include "main.h"
-#include "InjuryTracker.h"
-#include "InjuryDebuffs.h"
+#include "main.hpp"
+#include "InjuryTracker.hpp"
+#include "InjuryDebuffs.hpp"
 
 #include <algorithm>
 

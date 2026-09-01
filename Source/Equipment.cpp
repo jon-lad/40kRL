@@ -1,4 +1,4 @@
-#include "main.h"
+#include "main.hpp"
 
 Actor* Equipment::getSlot(EquipmentSlot slot) const {
 	return slots[static_cast<int>(slot)];

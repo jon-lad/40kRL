@@ -1,7 +1,7 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck.h"
 #include "lib/rapidcheck_catch.h"
-#include "../Headers/Paginator.h"
+#include "../Headers/Paginator.hpp"
 
 #include <algorithm>
 #include <string>

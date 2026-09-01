@@ -1,5 +1,5 @@
 #include "lib/catch_amalgamated.hpp"
-#include "main.h"
+#include "main.hpp"
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Unit Tests for Equipment.lua Parsing Logic

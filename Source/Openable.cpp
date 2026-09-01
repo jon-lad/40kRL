@@ -1,5 +1,5 @@
-#include "main.h"
-#include "Openable.h"
+#include "main.hpp"
+#include "Openable.hpp"
 
 Openable::Openable() : opened(false) {}
 

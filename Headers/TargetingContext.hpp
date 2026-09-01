@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Pickable.h"
+#include "Pickable.hpp"
 
 // Stores all state needed while the Engine is in TARGETING mode.
 // Populated when the player uses a targeted item; consumed when

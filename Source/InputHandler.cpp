@@ -1,5 +1,5 @@
-#include "InputHandler.h"
-#include "Constants.h"
+#include "InputHandler.hpp"
+#include "Constants.hpp"
 
 void pollInput(InputState& state, int cellWidth, int cellHeight) {
     // Reset per-frame flags so callers see only this frame's events.

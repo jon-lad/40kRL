@@ -1,8 +1,8 @@
-#include "main.h"
-#include "StatusTrigger.h"
-#include "StatusEffectTracker.h"
-#include "Actor.h"
-#include "HitLocation.h"
+#include "main.hpp"
+#include "StatusTrigger.hpp"
+#include "StatusEffectTracker.hpp"
+#include "Actor.hpp"
+#include "HitLocation.hpp"
 
 namespace StatusTrigger {
 

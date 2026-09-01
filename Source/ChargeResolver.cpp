@@ -1,5 +1,5 @@
-#include "main.h"
-#include "ChargeResolver.h"
+#include "main.hpp"
+#include "ChargeResolver.hpp"
 #include <vector>
 #include <utility>
 #include <cmath>

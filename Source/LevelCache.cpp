@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <sstream>
-#include "main.h"
-#include "LevelCache.h"
+#include "main.hpp"
+#include "LevelCache.hpp"
 
 LevelCache::LevelCache(int maxCapacity)
 	: maxCapacity(std::clamp(maxCapacity, 2, 200)) {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "LayoutRect.h"
-#include "Constants.h"
+#include "LayoutRect.hpp"
+#include "Constants.hpp"
 
 // Precomputed screen panel rectangles derived from layout constants.
 // All values are in character-cell coordinates.

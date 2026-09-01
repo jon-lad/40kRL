@@ -8,10 +8,10 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck.h"
 #include "lib/rapidcheck_catch.h"
-#include "main.h"
+#include "main.hpp"
 
-#include "ActionBudget.h"
-#include "ActionRegistry.h"
+#include "ActionBudget.hpp"
+#include "ActionRegistry.hpp"
 
 // ─── Property 1: AP budget conservation ──────────────────────────────────────
 // For any sequence of valid spend() calls with costs in {0,1,2}, the sum of

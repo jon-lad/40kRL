@@ -1,7 +1,7 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck.h"
 #include "lib/rapidcheck_catch.h"
-#include "../Headers/Paginator.h"
+#include "../Headers/Paginator.hpp"
 
 #include <array>
 #include <algorithm>
@@ -10,7 +10,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // Test-local stub for TabbedMenuState (production code not yet implemented).
 // This mirrors the interface defined in the design document and will be replaced
-// by #include "../Headers/TabbedMenuState.h" once task 11.3 is complete.
+// by #include "../Headers/TabbedMenuState.hpp" once task 11.3 is complete.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 namespace TabbedMenuStub {

@@ -1,7 +1,7 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck_catch.h"
-#include "main.h"
-#include "StatusEffects.h"
+#include "main.hpp"
+#include "StatusEffects.hpp"
 
 #include <string>
 
@@ -82,7 +82,7 @@ TEST_CASE("PBT: Property 12 — Status abbreviation mapping", "[pbt][property][s
     }
 }
 
-#include "StatusEffectTracker.h"
+#include "StatusEffectTracker.hpp"
 
 #include <set>
 #include <algorithm>
@@ -931,7 +931,7 @@ TEST_CASE("PBT: Property 6 — Bleeding tick damage", "[pbt][property][status-ef
 // SHALL apply the corresponding StatusType with the correct default duration to
 // the target actor. Non-triggering quality strings SHALL produce no status effects.
 
-#include "StatusTrigger.h"
+#include "StatusTrigger.hpp"
 
 TEST_CASE("PBT: Property 2 — Weapon quality trigger correctness", "[pbt][property][status-effects]")
 {
@@ -1051,9 +1051,9 @@ TEST_CASE("PBT: Property 2 — Weapon quality trigger correctness", "[pbt][prope
 // Feature: status-effects, Property 1: Critical Trigger Table Correctness
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#include "StatusTrigger.h"
-#include "HitLocation.h"
-#include "WeaponTypes.h"
+#include "StatusTrigger.hpp"
+#include "HitLocation.hpp"
+#include "WeaponTypes.hpp"
 
 // ─── Property 1: Critical Trigger Table Correctness ──────────────────────────
 // **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18**
@@ -1171,7 +1171,7 @@ TEST_CASE("PBT: Property 1 — Critical trigger table correctness", "[pbt][prope
 // Task 8.2: Validates Requirements 3.1, 3.2, 3.3, 3.4
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#include "StatusTrigger.h"
+#include "StatusTrigger.hpp"
 
 namespace {
     // Helper: creates an Actor with statusTracker initialized for weapon quality tests.
@@ -1265,7 +1265,7 @@ TEST_CASE("Weapon quality: Empty qualities list applies no status effects", "[st
 // Task 7.2: Validates Requirements 2.1, 2.2, 2.3, 2.6, 2.7, 2.10, 2.17, 2.18
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#include "StatusTrigger.h"
+#include "StatusTrigger.hpp"
 
 TEST_CASE("Crit scenario: Energy Head magnitude 3 applies Blinded", "[status-effects]")
 {
@@ -1846,7 +1846,7 @@ TEST_CASE("PBT: Property 8 — Serialization round-trip", "[pbt][property][statu
 // isMovementHalved() to determine enemy behaviour each turn.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#include "ActionBudget.h"
+#include "ActionBudget.hpp"
 
 TEST_CASE("AI behaviour: Stunned enemy skips turn (AP set to 0)", "[status-effects]")
 {

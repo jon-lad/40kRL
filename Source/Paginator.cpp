@@ -1,4 +1,4 @@
-#include "Paginator.h"
+#include "Paginator.hpp"
 
 int Paginator::totalPages() const {
     if (totalItems <= 0) return 1;

@@ -2,8 +2,8 @@
 
 #include <array>
 #include <vector>
-#include "HitLocation.h"
-#include "Persistent.h"
+#include "HitLocation.hpp"
+#include "Persistent.hpp"
 
 class Actor;
 class TCODZip;

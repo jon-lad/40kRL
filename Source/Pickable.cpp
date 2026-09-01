@@ -2,7 +2,7 @@
 #include <string>
 #include <sstream>
 #include <sol/sol.hpp>
-#include "main.h"
+#include "main.hpp"
 
 // ─── Pickable ────────────────────────────────────────────────────────────────
 

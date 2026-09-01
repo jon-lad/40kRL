@@ -1,5 +1,5 @@
-#include "main.h"
-#include "ReactionResolver.h"
+#include "main.hpp"
+#include "ReactionResolver.hpp"
 
 // ─── Helper: check if actor has a melee weapon in the WEAPON slot ───────────
 

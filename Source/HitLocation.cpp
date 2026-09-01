@@ -1,4 +1,4 @@
-#include "HitLocation.h"
+#include "HitLocation.hpp"
 
 namespace HitLocationTable {
 

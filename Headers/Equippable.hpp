@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Persistent.h"
-#include "DiceRoller.h"
-#include "HitLocation.h"
-#include "WeaponTypes.h"
+#include "Persistent.hpp"
+#include "DiceRoller.hpp"
+#include "HitLocation.hpp"
+#include "WeaponTypes.hpp"
 #include <array>
 #include <optional>
 #include <string>

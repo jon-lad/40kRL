@@ -3,13 +3,13 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Equippable.h"
-#include "CharacterData.h"
-#include "CharacterGenerator.h"
-#include "LevelCache.h"
-#include "TabbedMenuState.h"
-#include "TargetingContext.h"
-#include "WorldMap.h"
+#include "Equippable.hpp"
+#include "CharacterData.hpp"
+#include "CharacterGenerator.hpp"
+#include "LevelCache.hpp"
+#include "TabbedMenuState.hpp"
+#include "TargetingContext.hpp"
+#include "WorldMap.hpp"
 
 // Rarity tier for equipment items — used for weighted random selection during enemy spawning.
 enum class ItemTier { COMMON, UNCOMMON, RARE };

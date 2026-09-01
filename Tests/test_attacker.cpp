@@ -1,6 +1,6 @@
 #include "lib/catch_amalgamated.hpp"
 #include "lib/rapidcheck_catch.h"
-#include "main.h"
+#include "main.hpp"
 
 // ─── Attacker unit tests ─────────────────────────────────────────────────────
 // These tests verify the damage formula: effective = power - defence

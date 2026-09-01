@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Persistent.h"
-#include "CharacterData.h"
+#include "Persistent.hpp"
+#include "CharacterData.hpp"
 
 #include <string>
 #include <unordered_map>

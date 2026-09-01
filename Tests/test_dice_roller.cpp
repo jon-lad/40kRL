@@ -1,5 +1,5 @@
 #include "lib/catch_amalgamated.hpp"
-#include "DiceRoller.h"
+#include "DiceRoller.hpp"
 
 #include <random>
 #include <string>
