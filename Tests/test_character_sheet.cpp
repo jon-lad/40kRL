@@ -258,3 +258,283 @@ TEST_CASE("CareerProgression with empty collections round-trips", "[character-sh
 	CHECK(loaded.talents.empty());
 	CHECK(loaded.traits.empty());
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Purchase / canPurchase tests (tasks 3.1 – 3.5)
+//
+// These lock in the EXISTING (already-implemented) canPurchase / purchase logic,
+// so they are expected to PASS. purchase() takes a Characteristics&, so each test
+// constructs a local `Characteristics chars(40)` — no engine involvement.
+//
+// AdvanceEntry::Type enum order (from CharacterData.hpp):
+//   CHARACTERISTIC = 0, SKILL = 1, TALENT = 2
+// Property tests that pick a type use inRange(0, 2) and cast to the enum.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Feature: charactersheet-tests, Property 4: Insufficient XP always rejects purchase
+// For any CareerProgression state and any AdvanceEntry whose cost strictly exceeds
+// availableXp(), canPurchase returns false regardless of the advance type
+// (CHARACTERISTIC / SKILL / TALENT).
+// Validates: Requirement 4.1
+TEST_CASE("canPurchase rejects when cost exceeds available XP", "[character-sheet][pbt]")
+{
+	rc::check("cost > availableXp always yields canPurchase == false for every type", [] {
+		CareerProgression cp = genCareerProgression();
+
+		// availableXp() = xpPool - spentXp. Pick a cost strictly greater than it.
+		// Guard against int overflow when availableXp is already near INT_MAX by
+		// keeping the surplus modest.
+		const int available = cp.availableXp();
+		const int surplus = *rc::gen::inRange(1, 1000);
+		// Clamp so available + surplus does not overflow.
+		long long costLL = static_cast<long long>(available) + surplus;
+		const int cost = static_cast<int>(costLL);
+		RC_PRE(cost > available); // discard degenerate overflow cases
+
+		const std::string name = *rc::gen::string(1, 8);
+		const int amount = *rc::gen::inRange(-20, 20);
+
+		for (int t = 0; t <= 2; ++t) {
+			AdvanceEntry advance;
+			advance.type = static_cast<AdvanceEntry::Type>(t);
+			advance.name = name;
+			advance.cost = cost;
+			advance.amount = amount;
+			RC_ASSERT(cp.canPurchase(advance) == false);
+		}
+	});
+}
+
+// Feature: charactersheet-tests, Property 5: Rejected purchase is a no-op
+// For any CareerProgression + AdvanceEntry where canPurchase is false (forced here
+// via cost > availableXp), purchase returns false and leaves spentXp, skills,
+// talents, and the target Characteristics all unchanged.
+// Validates: Requirement 5.1
+TEST_CASE("rejected purchase leaves all state unchanged", "[character-sheet][pbt]")
+{
+	rc::check("purchase returns false and mutates nothing when canPurchase is false", [] {
+		CareerProgression cp = genCareerProgression();
+
+		// Snapshot the mutable state before the attempted purchase.
+		const int spentBefore = cp.spentXp;
+		const auto skillsBefore = cp.skills;
+		const auto talentsBefore = cp.talents;
+
+		Characteristics chars(40);
+		std::array<int, static_cast<int>(CharId::COUNT)> charsBefore{};
+		for (int i = 0; i < static_cast<int>(CharId::COUNT); ++i) {
+			charsBefore[i] = chars.get(static_cast<CharId>(i));
+		}
+
+		// Force rejection: cost strictly greater than availableXp().
+		const int available = cp.availableXp();
+		const int surplus = *rc::gen::inRange(1, 1000);
+		const int cost = static_cast<int>(static_cast<long long>(available) + surplus);
+		RC_PRE(cost > available);
+
+		AdvanceEntry advance;
+		advance.type = static_cast<AdvanceEntry::Type>(*rc::gen::inRange(0, 2));
+		advance.name = *rc::gen::string(1, 8);
+		advance.cost = cost;
+		advance.amount = *rc::gen::inRange(-20, 20);
+
+		RC_PRE(cp.canPurchase(advance) == false);
+
+		const bool result = cp.purchase(advance, chars);
+
+		RC_ASSERT(result == false);
+		RC_ASSERT(cp.spentXp == spentBefore);
+		RC_ASSERT(cp.skills == skillsBefore);
+		RC_ASSERT(cp.talents == talentsBefore);
+		for (int i = 0; i < static_cast<int>(CharId::COUNT); ++i) {
+			RC_ASSERT(chars.get(static_cast<CharId>(i)) == charsBefore[i]);
+		}
+	});
+}
+
+// Feature: charactersheet-tests, Property 6: Accepted purchase deducts exactly the cost
+// For any CareerProgression + AdvanceEntry where canPurchase is true, purchase
+// returns true and increases spentXp by exactly cost. The setup guarantees
+// eligibility: availableXp() >= cost, and for SKILL the named skill is not maxed,
+// for TALENT the named talent is not already owned.
+// Validates: Requirement 5.2
+TEST_CASE("accepted purchase deducts exactly the cost", "[character-sheet][pbt]")
+{
+	rc::check("purchase increases spentXp by exactly cost when canPurchase is true", [] {
+		CareerProgression cp = genCareerProgression();
+
+		// Choose a non-negative cost, then set xpPool/spentXp so availableXp >= cost.
+		const int cost = *rc::gen::inRange(0, 1000);
+		// Set spentXp to a modest baseline and give xpPool enough headroom.
+		cp.spentXp = *rc::gen::inRange(0, 1000);
+		const int slack = *rc::gen::inRange(0, 1000);
+		cp.xpPool = cp.spentXp + cost + slack; // availableXp() = cost + slack >= cost
+
+		// A name that is guaranteed unused for SKILL/TALENT preconditions.
+		const std::string freshName = std::string("adv_") + *rc::gen::string(1, 8);
+
+		AdvanceEntry advance;
+		advance.type = static_cast<AdvanceEntry::Type>(*rc::gen::inRange(0, 2));
+		advance.name = freshName;
+		advance.cost = cost;
+		advance.amount = *rc::gen::inRange(-20, 20);
+
+		if (advance.type == AdvanceEntry::Type::SKILL) {
+			cp.skills.erase(freshName); // ensure absent (< rank 2)
+		} else if (advance.type == AdvanceEntry::Type::TALENT) {
+			cp.talents.erase(freshName); // ensure not owned
+		}
+
+		RC_PRE(cp.canPurchase(advance) == true);
+
+		const int spentBefore = cp.spentXp;
+		Characteristics chars(40);
+		const bool result = cp.purchase(advance, chars);
+
+		RC_ASSERT(result == true);
+		RC_ASSERT(cp.spentXp == spentBefore + cost);
+	});
+}
+
+// ─── canPurchase branch unit tests (task 3.4) ──────────────────────────────────
+
+// Feature: charactersheet-tests, canPurchase branch coverage (example-based)
+// Covers every non-XP branch of canPurchase with concrete inputs.
+// Validates: Requirements 4.2, 4.3, 4.4, 4.5, 4.6
+TEST_CASE("canPurchase branch coverage", "[character-sheet]")
+{
+	CareerProgression cp;
+	cp.xpPool = 1000;
+	cp.spentXp = 0; // availableXp() == 1000, ample for any cost below
+
+	SECTION("SKILL already at rank 2 is rejected (Req 4.2)") {
+		cp.skills["Dodge"] = 2;
+		AdvanceEntry advance{ AdvanceEntry::Type::SKILL, "Dodge", 100, 5 };
+		CHECK(cp.canPurchase(advance) == false);
+	}
+
+	SECTION("TALENT already owned is rejected (Req 4.3)") {
+		cp.talents.insert("Ambidextrous");
+		AdvanceEntry advance{ AdvanceEntry::Type::TALENT, "Ambidextrous", 100, 5 };
+		CHECK(cp.canPurchase(advance) == false);
+	}
+
+	SECTION("CHARACTERISTIC with sufficient XP is allowed (Req 4.4)") {
+		AdvanceEntry advance{ AdvanceEntry::Type::CHARACTERISTIC, "WS", 100, 5 };
+		CHECK(cp.canPurchase(advance) == true);
+	}
+
+	SECTION("SKILL absent with sufficient XP is allowed (Req 4.5)") {
+		AdvanceEntry advance{ AdvanceEntry::Type::SKILL, "Awareness", 100, 5 };
+		CHECK(cp.canPurchase(advance) == true);
+	}
+
+	SECTION("SKILL at rank 1 with sufficient XP is allowed (Req 4.5)") {
+		cp.skills["Awareness"] = 1;
+		AdvanceEntry advance{ AdvanceEntry::Type::SKILL, "Awareness", 100, 5 };
+		CHECK(cp.canPurchase(advance) == true);
+	}
+
+	SECTION("TALENT absent with sufficient XP is allowed (Req 4.6)") {
+		AdvanceEntry advance{ AdvanceEntry::Type::TALENT, "Quick Draw", 100, 5 };
+		CHECK(cp.canPurchase(advance) == true);
+	}
+}
+
+// ─── purchase-effect + unrecognized-char unit tests (task 3.5) ─────────────────
+
+// Feature: charactersheet-tests, purchase effect coverage (example-based)
+// Covers each purchase mutation branch: CHARACTERISTIC (add amount, clamp-high,
+// clamp-low), SKILL insert/increment, and TALENT insertion.
+// Validates: Requirements 5.3, 5.4, 5.5, 5.6
+TEST_CASE("purchase applies the correct effect per type", "[character-sheet]")
+{
+	SECTION("CHARACTERISTIC recognized name adds amount (Req 5.3)") {
+		CareerProgression cp;
+		cp.xpPool = 1000;
+		cp.spentXp = 0;
+		Characteristics chars(40);
+		AdvanceEntry advance{ AdvanceEntry::Type::CHARACTERISTIC, "WS", 100, 5 };
+		CHECK(cp.purchase(advance, chars) == true);
+		CHECK(chars.get(CharId::WS) == 45); // 40 + 5
+		CHECK(cp.spentXp == 100);
+	}
+
+	SECTION("CHARACTERISTIC clamps high at 99 (Req 5.3)") {
+		CareerProgression cp;
+		cp.xpPool = 1000;
+		cp.spentXp = 0;
+		Characteristics chars(97); // WS starts at 97
+		AdvanceEntry advance{ AdvanceEntry::Type::CHARACTERISTIC, "WS", 100, 5 };
+		CHECK(cp.purchase(advance, chars) == true);
+		CHECK(chars.get(CharId::WS) == 99); // clamp(97 + 5, 1, 99) == 99
+	}
+
+	SECTION("CHARACTERISTIC with a positive amount stays >= 1 (Req 5.3, clamp-low)") {
+		CareerProgression cp;
+		cp.xpPool = 1000;
+		cp.spentXp = 0;
+		Characteristics chars(1); // already at the floor
+		AdvanceEntry advance{ AdvanceEntry::Type::CHARACTERISTIC, "WS", 100, 5 };
+		CHECK(cp.purchase(advance, chars) == true);
+		CHECK(chars.get(CharId::WS) == 6); // clamp(1 + 5, 1, 99) == 6, never below 1
+	}
+
+	SECTION("SKILL absent is inserted at rank 1 (Req 5.4)") {
+		CareerProgression cp;
+		cp.xpPool = 1000;
+		cp.spentXp = 0;
+		Characteristics chars(40);
+		AdvanceEntry advance{ AdvanceEntry::Type::SKILL, "Awareness", 100, 5 };
+		CHECK(cp.purchase(advance, chars) == true);
+		REQUIRE(cp.skills.count("Awareness") == 1);
+		CHECK(cp.skills.at("Awareness") == 1);
+	}
+
+	SECTION("SKILL present has its rank incremented (Req 5.5)") {
+		CareerProgression cp;
+		cp.xpPool = 1000;
+		cp.spentXp = 0;
+		cp.skills["Awareness"] = 1;
+		Characteristics chars(40);
+		AdvanceEntry advance{ AdvanceEntry::Type::SKILL, "Awareness", 100, 5 };
+		CHECK(cp.purchase(advance, chars) == true);
+		CHECK(cp.skills.at("Awareness") == 2);
+	}
+
+	SECTION("TALENT is inserted into the talents set (Req 5.6)") {
+		CareerProgression cp;
+		cp.xpPool = 1000;
+		cp.spentXp = 0;
+		Characteristics chars(40);
+		AdvanceEntry advance{ AdvanceEntry::Type::TALENT, "Quick Draw", 100, 5 };
+		CHECK(cp.purchase(advance, chars) == true);
+		CHECK(cp.talents.count("Quick Draw") == 1);
+	}
+}
+
+// Feature: charactersheet-tests, unrecognized characteristic purchase (example-based)
+// A purchasable CHARACTERISTIC advance naming an unrecognized abbreviation deducts
+// the cost from spentXp, leaves all nine characteristics unchanged, and returns true.
+// Validates: Requirement 5.7
+TEST_CASE("purchase of unrecognized characteristic deducts cost but changes no stat", "[character-sheet]")
+{
+	CareerProgression cp;
+	cp.xpPool = 1000;
+	cp.spentXp = 0;
+	Characteristics chars(40);
+
+	std::array<int, static_cast<int>(CharId::COUNT)> before{};
+	for (int i = 0; i < static_cast<int>(CharId::COUNT); ++i) {
+		before[i] = chars.get(static_cast<CharId>(i));
+	}
+
+	AdvanceEntry advance{ AdvanceEntry::Type::CHARACTERISTIC, "ZZ", 100, 5 };
+	const bool result = cp.purchase(advance, chars);
+
+	CHECK(result == true);
+	CHECK(cp.spentXp == 100);
+	for (int i = 0; i < static_cast<int>(CharId::COUNT); ++i) {
+		CHECK(chars.get(static_cast<CharId>(i)) == before[i]);
+	}
+}
