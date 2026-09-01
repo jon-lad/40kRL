@@ -203,6 +203,14 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 		return;
 	}
 
+	// ── Thread cause-of-death (Req 1.6, 1.7) ──
+	// When the victim is the player, record the attacker's name so that if this
+	// damage triggers PlayerDestructible::die(), the run outcome is "Slain by <name>".
+	// Set before damage is applied so it is available in every death branch below.
+	if (owner && target == engine.player) {
+		engine.pendingCauseOfDeath_ = owner->name;
+	}
+
 	// ── Critical Hit Logic ──
 	// All actors have a crit buffer (Destructible::CRIT_BUFFER = 10 internal HP).
 	// Internal HP in (0, CRIT_BUFFER] = crit territory (displayed as 0 wounds).

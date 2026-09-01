@@ -175,4 +175,9 @@ void PlayerDestructible::die(Actor* owner)
 	engine.gui->message(Colors::damage, "You died!");
 	Destructible::die(owner);
 	engine.gameStatus = Engine::DEFEAT;
+
+	// Record the run outcome on player death (Req 4.1-4.3). The cause is the
+	// attacker's name threaded via engine.pendingCauseOfDeath_ by the combat
+	// pipeline; empty for non-combat deaths, yielding "Slain".
+	engine.recordRunOutcome(engine.pendingCauseOfDeath_);
 }
