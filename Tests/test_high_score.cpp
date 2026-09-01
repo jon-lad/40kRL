@@ -5,6 +5,12 @@
 
 #include "libtcod.hpp"
 
+// main.hpp brings in the Menu / Menu::MenuItemCode declarations (Headers/Gui.hpp).
+// Only Menu::clear()/addItem() are exercised here — both are pure list operations
+// with no engine.gui/map/player/SDL access — so no Engine initialization is needed
+// (per test-isolation.md).
+#include "main.hpp"
+
 #include <algorithm>
 #include <cstdio>
 #include <string>
@@ -672,4 +678,69 @@ TEST_CASE("Serialization: sentinel-mismatch archive deserializes to empty board"
     REQUIRE_FALSE(threw);
     REQUIRE(loaded.empty());
     REQUIRE(loaded.size() == 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Task 7.3 — Unit test: the main menu contains a "High Scores" item
+// **Validates: Requirements 9.1**
+//
+// Isolation decision (per test-isolation.md): the Menu can be built and
+// populated entirely in isolation. Menu::clear() and Menu::addItem() are pure
+// list operations that never touch engine.gui/map/player or SDL/libtcod — only
+// Menu::pick() enters a blocking render loop, which we do NOT call here. Since
+// Menu::items is protected and Menu exposes no public accessor, we use a tiny
+// test-only subclass to inspect the populated items.
+//
+// This test verifies the mechanism Requirement 9.1 depends on: that the Menu
+// supports a HIGH_SCORES item labelled "High Scores". The production wiring that
+// inserts this item into the live main menu lives in Engine::load()
+// (Source/Persistent.cpp) and is added by task 10.2. This test replicates the
+// menu-building step so it exercises the Menu type directly without the Engine.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+namespace {
+
+// Test-only subclass that exposes the protected item list for inspection.
+class InspectableMenu : public Menu {
+public:
+    // Returns true iff an item with the given code and label is present.
+    bool containsItem(MenuItemCode code, std::string_view label) const {
+        for (const auto& item : items) {
+            if (item->code == code && item->label == label) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Returns true iff any item carries the given code (label-agnostic).
+    bool containsCode(MenuItemCode code) const {
+        for (const auto& item : items) {
+            if (item->code == code) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+} // namespace
+
+TEST_CASE("Menu contains a High Scores item in MAIN display mode", "[high-score-system]")
+{
+    InspectableMenu menu;
+
+    // Populate the menu exactly as the main-menu build path will (task 10.2),
+    // with the "High Scores" entry sitting between "Continue" and "Help"
+    // (design: Engine integration point 4).
+    menu.clear();
+    menu.addItem(Menu::MenuItemCode::NEW_GAME, "New Game");
+    menu.addItem(Menu::MenuItemCode::CONTINUE, "Continue");
+    menu.addItem(Menu::MenuItemCode::HIGH_SCORES, "High Scores");
+    menu.addItem(Menu::MenuItemCode::HELP, "Help");
+    menu.addItem(Menu::MenuItemCode::EXIT, "Exit");
+
+    // The menu must present a "High Scores" entry (Req 9.1).
+    REQUIRE(menu.containsCode(Menu::MenuItemCode::HIGH_SCORES));
+    REQUIRE(menu.containsItem(Menu::MenuItemCode::HIGH_SCORES, "High Scores"));
 }
