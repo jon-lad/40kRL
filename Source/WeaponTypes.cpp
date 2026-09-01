@@ -2,6 +2,7 @@
 #include "WeaponTypes.hpp"
 #include "Actor.hpp"
 #include "CareerProgression.hpp"
+#include "StatBlock.hpp"
 
 #include <array>
 #include <string>
@@ -140,11 +141,8 @@ WeaponValidationResult validateWeaponClassification(
 // ─── Proficiency Check Utility ───────────────────────────────────────────────
 
 bool hasProficiency(const Actor* actor, WeaponGroup group) {
-    if (!actor || !actor->career) {
-        return false;
-    }
     std::string talentStr = "Weapon Training (" + std::string(weaponGroupName(group)) + ")";
-    return actor->career->talents.count(talentStr) > 0;
+    return hasTalent(actor, talentStr);   // null-safe; reads actor->career->talents
 }
 
 int proficiencyModifier(const Actor* actor, WeaponGroup group) {

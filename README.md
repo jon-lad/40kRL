@@ -18,6 +18,7 @@ A Warhammer 40,000 Rogue Trader roguelike built in C++17 with [libtcod](https://
 - Turn-based movement and combat with melee attacks and ranged shooting
 - Ranged combat system with d100 roll-under vs Ballistic Skill, dodge tests, and ammunition management
 - FOV (field of view) with libtcod's shadow-casting algorithm
+- NPC stat blocks — enemies carry skills, talents, and traits (defined in Enemies.lua) and are treated like the player in combat: Dodge skill improves evasion, and Weapon Training talents remove the unproficient penalty. Enemies never gain XP (fixed profiles, Rogue Trader bestiary style)
 - Scent-tracking monster AI that follows the player even outside line of sight
 - Ranged AI enemies that shoot at range, reload when empty, and melee when cornered
 - Look mode for inspecting tiles and reading actor descriptions
