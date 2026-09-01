@@ -117,6 +117,25 @@ void Engine::update()
 		return;
 	}
 
+	// Handle high-scores view — skip all normal game logic.
+	if (gameStatus == HIGH_SCORES) {
+		updateHighScores();
+		return;
+	}
+
+	// Handle the death screen — the leaderboard is shown and can be scrolled
+	// with PageUp/PageDown while the game is in DEFEAT (Req 10.1, 10.4).
+	if (gameStatus == DEFEAT) {
+		if (inputState.key.pressed) {
+			if (inputState.key.key == SDLK_PAGEDOWN) {
+				highScoresPaginator_.nextPage();
+			} else if (inputState.key.key == SDLK_PAGEUP) {
+				highScoresPaginator_.prevPage();
+			}
+		}
+		return;
+	}
+
 	// ── PLAYER_TURN: player has AP, keep accepting input ──
 	if (gameStatus == PLAYER_TURN) {
 		// ESC during player turn: save and return to menu
@@ -238,6 +257,18 @@ void Engine::render()
 	// Help overlay can be active from the menu before map/player exist.
 	if (gameStatus == HELP) {
 		renderHelp();
+		return;
+	}
+
+	// High-scores view can be active from the menu before map/player exist.
+	if (gameStatus == HIGH_SCORES) {
+		renderHighScores();
+		return;
+	}
+
+	// Death screen: render the leaderboard overlay while in DEFEAT (Req 10.1).
+	if (gameStatus == DEFEAT) {
+		renderDefeat();
 		return;
 	}
 
@@ -3016,6 +3047,7 @@ void Engine::init()
 	runRecorded_ = false;
 	lastEntryIndex_.reset();
 	pendingCauseOfDeath_.clear();
+	defeatScreenInitialized_ = false; // death screen re-initializes its paginator per run
 
 	// Load character generation data files (homeworlds, careers, skills, talents).
 	// Must run early — before chargen or player creation.
@@ -3502,5 +3534,154 @@ void Engine::renderHelp()
 
 	// Blit help console onto root
 	TCODConsole::blit(&helpConsole, 0, 0, screenWidth, screenHeight,
+		TCODConsole::root, 0, 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  High Scores view + Death screen (high-score-system spec)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Number of screen rows each leaderboard entry occupies (two lines + spacer).
+static constexpr int HS_ROWS_PER_ENTRY = 3;
+
+void Engine::beginHighScores()
+{
+	// Reload from disk so the view always reflects the persisted board (Req 6.6).
+	highScores_ = HighScoreStore::load();
+
+	// Initialize the shared paginator to show the first page from the top.
+	highScoresPaginator_ = Paginator{};
+	highScoresPaginator_.currentPage = 0;
+	highScoresPaginator_.totalItems = highScores_.size();
+	// Page size in *entries*: content area height divided by rows-per-entry.
+	const int contentHeight = screenHeight - 5; // frame + title + footer
+	highScoresPaginator_.pageSize = std::max(1, contentHeight / HS_ROWS_PER_ENTRY);
+
+	gameStatus = HIGH_SCORES;
+}
+
+void Engine::updateHighScores()
+{
+	if (!inputState.key.pressed) return;
+
+	// ESC or Enter dismisses the view and returns to the main menu (Req 9.9).
+	if (inputState.key.key == SDLK_ESCAPE || inputState.key.key == SDLK_RETURN) {
+		load(); // re-show the main menu
+		return;
+	}
+
+	// PageUp/PageDown scroll through the list; Paginator clamps the bounds (Req 9.5, 9.7).
+	if (inputState.key.key == SDLK_PAGEDOWN) {
+		highScoresPaginator_.nextPage();
+		return;
+	}
+	if (inputState.key.key == SDLK_PAGEUP) {
+		highScoresPaginator_.prevPage();
+		return;
+	}
+}
+
+void Engine::renderHighScores()
+{
+	// Keep the paginator's item count current in case the board changed.
+	highScoresPaginator_.totalItems = highScores_.size();
+	renderLeaderboard(highScoresPaginator_, std::nullopt, "-- High Scores --",
+		"ESC/Enter: back | PgUp/PgDn: scroll");
+}
+
+void Engine::renderDefeat()
+{
+	// Lazily initialize the death-screen paginator the first time we render DEFEAT
+	// (recordRunOutcome ran at death but left rendering to the game loop).
+	if (!defeatScreenInitialized_) {
+		highScoresPaginator_ = Paginator{};
+		highScoresPaginator_.currentPage = 0;
+		highScoresPaginator_.totalItems = highScores_.size();
+		const int contentHeight = screenHeight - 5;
+		highScoresPaginator_.pageSize = std::max(1, contentHeight / HS_ROWS_PER_ENTRY);
+
+		// If this run earned a place, scroll that entry into view (Req 10.5).
+		if (lastEntryIndex_ && highScoresPaginator_.pageSize > 0) {
+			highScoresPaginator_.currentPage = *lastEntryIndex_ / highScoresPaginator_.pageSize;
+		}
+		defeatScreenInitialized_ = true;
+	}
+
+	highScoresPaginator_.totalItems = highScores_.size();
+
+	// Highlight the earned entry only when the run placed on the board (Req 10.2, 10.3).
+	renderLeaderboard(highScoresPaginator_, lastEntryIndex_, "-- You Died --",
+		"PgUp/PgDn: scroll");
+}
+
+void Engine::renderLeaderboard(const Paginator& pag, std::optional<int> highlightIndex,
+                               const char* title, const char* footer)
+{
+	static TCODConsole boardConsole(screenWidth, screenHeight);
+	boardConsole.clear();
+
+	boardConsole.setDefaultForeground(Colors::menuFrame);
+	boardConsole.printFrame(0, 0, screenWidth, screenHeight, true, TCOD_BKGND_DEFAULT, title);
+
+	const int contentX = 2;
+	const int contentStartY = 2;
+
+	if (highScores_.empty()) {
+		// Empty-state message when no runs have been recorded (Req 9.8).
+		boardConsole.setDefaultForeground(Colors::uiText);
+		boardConsole.printf(contentX, contentStartY, "No runs recorded yet.");
+	} else {
+		const auto& entries = highScores_.entries();
+		const int start = pag.startIndex();
+		const int end = pag.endIndex();
+
+		int drawY = contentStartY;
+		for (int i = start; i < end; ++i) {
+			const ScoreEntry& e = entries[i];
+
+			// Highlight the row belonging to the just-finished run (death screen).
+			const bool isHighlight = highlightIndex && *highlightIndex == i;
+			const TCODColor primary = isHighlight ? Colors::uiHighlight : Colors::uiText;
+
+			// Line 1: rank number, character name, homeworld, XP, deepest level, date
+			// (Req 9.3). Names/fields are plain data from the pure core.
+			boardConsole.setDefaultForeground(primary);
+			boardConsole.printf(contentX, drawY,
+				"%3d. %-16.16s  %-14.14s  XP:%-6d  Lvl:%-3d  %s",
+				i + 1,
+				e.characterName.c_str(),
+				e.homeworldName.c_str(),
+				e.totalXp,
+				e.deepestLevel,
+				e.date.c_str());
+			drawY++;
+
+			// Line 2: combined career / rank / cause-of-death description (Req 9.4).
+			boardConsole.setDefaultForeground(isHighlight ? Colors::menuHighlightAlt : Colors::menuFrame);
+			boardConsole.printf(contentX + 5, drawY,
+				"%s, %s -- %s",
+				e.careerName.c_str(),
+				e.rankTitle.c_str(),
+				e.outcome.c_str());
+			drawY++;
+
+			// Spacer line between entries.
+			drawY++;
+		}
+
+		// Page indicator when the list spans more than one page (Req 9.6, consistent
+		// with the existing paginator indicator).
+		if (pag.totalPages() > 1) {
+			std::string ind = pag.indicator();
+			boardConsole.setDefaultForeground(Colors::uiHighlight);
+			boardConsole.printf(contentX, screenHeight - 3, "%s", ind.c_str());
+		}
+	}
+
+	// Footer navigation hint.
+	boardConsole.setDefaultForeground(Colors::uiText);
+	boardConsole.printf(contentX, screenHeight - 2, "%s", footer);
+
+	TCODConsole::blit(&boardConsole, 0, 0, screenWidth, screenHeight,
 		TCODConsole::root, 0, 0);
 }
