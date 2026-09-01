@@ -128,3 +128,133 @@ TEST_CASE("CharacterSheet scaffold: default currentRank is 1", "[character-sheet
 	CHECK(sheet.career.currentRank == 1);
 	CHECK(sheet.career.availableXp() == 0);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Serialization round-trip tests (tasks 2.1 – 2.4)
+//
+// TCODZip has no in-memory round-trip; the buffer must be flushed to disk and
+// reloaded (saveToFile / loadFromFile). Each test uses a distinct temp filename
+// and removes it afterward so the cases are independent and leave no artifacts.
+//
+// These tests are EXPECTED TO FAIL against the current empty CareerProgression::
+// save/load stubs (TDD red state): all career data is dropped across the cycle,
+// so careerEqual / sheetEqual will report a mismatch. They will pass once
+// serialization is implemented (task 6).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Feature: charactersheet-tests, Property 1: CareerProgression serialization round-trip
+// For any CareerProgression with arbitrary scalars and collections, saving to a
+// TCODZip and loading into a fresh instance produces an equal instance.
+// Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.1, 2.3
+TEST_CASE("CareerProgression serialization round-trip", "[character-sheet][pbt]")
+{
+	rc::check("saving and loading a CareerProgression preserves every field", [] {
+		const CareerProgression original = genCareerProgression();
+
+		TCODZip zip;
+		CareerProgression saveTarget = original;
+		saveTarget.save(zip);
+		zip.saveToFile("__test_career_rt.sav");
+
+		TCODZip loadZip;
+		loadZip.loadFromFile("__test_career_rt.sav");
+		CareerProgression loaded;
+		loaded.load(loadZip);
+
+		std::remove("__test_career_rt.sav");
+
+		RC_ASSERT(careerEqual(original, loaded));
+	});
+}
+
+// Feature: charactersheet-tests, Property 2: Load clears stale state
+// For any source and dirty CareerProgression, saving source and loading the
+// produced data into the pre-populated dirty instance yields an instance equal
+// to source — the dirty instance's prior skills/talents/traits do not survive.
+// Validates: Requirements 1.10
+TEST_CASE("CareerProgression load clears stale state", "[character-sheet][pbt]")
+{
+	rc::check("loading over a pre-populated instance leaves no stale entries", [] {
+		const CareerProgression source = genCareerProgression();
+
+		// A dirty target that already carries its own skills/talents/traits.
+		CareerProgression dirty = genCareerProgression();
+		dirty.skills["__stale_skill__"] = 2;
+		dirty.talents.insert("__stale_talent__");
+		dirty.traits.push_back("__stale_trait__");
+
+		TCODZip zip;
+		CareerProgression saveTarget = source;
+		saveTarget.save(zip);
+		zip.saveToFile("__test_career_stale.sav");
+
+		TCODZip loadZip;
+		loadZip.loadFromFile("__test_career_stale.sav");
+		dirty.load(loadZip);
+
+		std::remove("__test_career_stale.sav");
+
+		RC_ASSERT(careerEqual(source, dirty));
+	});
+}
+
+// Feature: charactersheet-tests, Property 3: CharacterSheet serialization round-trip
+// For any CharacterSheet with nine base characteristics in [1, 99] and arbitrary
+// CareerProgression state, saving to a TCODZip and loading into a fresh instance
+// produces an equal instance (nine base characteristics + all career fields).
+// Validates: Requirements 3.1, 3.2, 3.3, 3.4
+TEST_CASE("CharacterSheet serialization round-trip", "[character-sheet][pbt]")
+{
+	rc::check("saving and loading a CharacterSheet preserves characteristics and career", [] {
+		const CharacterSheet original = genCharacterSheet();
+
+		TCODZip zip;
+		CharacterSheet saveTarget = original;
+		saveTarget.save(zip);
+		zip.saveToFile("__test_sheet_rt.sav");
+
+		TCODZip loadZip;
+		loadZip.loadFromFile("__test_sheet_rt.sav");
+		CharacterSheet loaded;
+		loaded.load(loadZip);
+
+		std::remove("__test_sheet_rt.sav");
+
+		RC_ASSERT(sheetEqual(original, loaded));
+	});
+}
+
+// Feature: charactersheet-tests, Empty-collections edge case (example-based)
+// A CareerProgression with empty skills/talents/traits but known scalar fields
+// round-trips with all three collections restored empty and scalars preserved.
+// Validates: Requirements 2.3
+TEST_CASE("CareerProgression with empty collections round-trips", "[character-sheet]")
+{
+	CareerProgression original;
+	original.homeworldName = "Death World";
+	original.careerName    = "Arch-Militant";
+	original.currentRank   = 3;
+	original.xpPool        = 5000;
+	original.spentXp       = 2200;
+	// skills / talents / traits left empty on purpose.
+
+	TCODZip zip;
+	original.save(zip);
+	zip.saveToFile("__test_career_empty.sav");
+
+	TCODZip loadZip;
+	loadZip.loadFromFile("__test_career_empty.sav");
+	CareerProgression loaded;
+	loaded.load(loadZip);
+
+	std::remove("__test_career_empty.sav");
+
+	CHECK(loaded.homeworldName == "Death World");
+	CHECK(loaded.careerName == "Arch-Militant");
+	CHECK(loaded.currentRank == 3);
+	CHECK(loaded.xpPool == 5000);
+	CHECK(loaded.spentXp == 2200);
+	CHECK(loaded.skills.empty());
+	CHECK(loaded.talents.empty());
+	CHECK(loaded.traits.empty());
+}
