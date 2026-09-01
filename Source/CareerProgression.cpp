@@ -98,10 +98,72 @@ void CareerProgression::evaluateRankUp(const CareerTemplate& career)
 
 void CareerProgression::save(TCODZip& zip)
 {
-	// Stub — full implementation in task 3.3
+	// Write order is the load-order contract (see design: Serialization Write/Read Order).
+	// Scalars first, then each collection as count-then-elements.
+	zip.putString(homeworldName.c_str());
+	zip.putString(careerName.c_str());
+	zip.putInt(currentRank);
+	zip.putInt(xpPool);
+	zip.putInt(spentXp);
+
+	// Skills: count, then (name, rank) pairs. Map iteration order is unspecified,
+	// which is fine — load reconstructs by insertion and equality is membership-based.
+	zip.putInt(static_cast<int>(skills.size()));
+	for (const auto& entry : skills) {
+		zip.putString(entry.first.c_str());
+		zip.putInt(entry.second);
+	}
+
+	// Talents: count, then each name.
+	zip.putInt(static_cast<int>(talents.size()));
+	for (const auto& name : talents) {
+		zip.putString(name.c_str());
+	}
+
+	// Traits: count, then each name in vector order (sequence preserved).
+	zip.putInt(static_cast<int>(traits.size()));
+	for (const auto& trait : traits) {
+		zip.putString(trait.c_str());
+	}
 }
 
 void CareerProgression::load(TCODZip& zip)
 {
-	// Stub — full implementation in task 3.3
+	// Clear collections first so a reused instance does not accumulate stale entries.
+	skills.clear();
+	talents.clear();
+	traits.clear();
+
+	// Strings may come back as nullptr from TCODZip::getString — guard every read.
+	const char* homeworld = zip.getString();
+	homeworldName = homeworld ? homeworld : "";
+	const char* career = zip.getString();
+	careerName = career ? career : "";
+
+	currentRank = zip.getInt();
+	xpPool = zip.getInt();
+	spentXp = zip.getInt();
+
+	// Skills: count, then (name, rank) pairs.
+	const int skillCount = zip.getInt();
+	for (int i = 0; i < skillCount; ++i) {
+		const char* name = zip.getString();
+		const std::string skillName = name ? name : "";
+		const int rank = zip.getInt();
+		skills[skillName] = rank;
+	}
+
+	// Talents: count, then each name.
+	const int talentCount = zip.getInt();
+	for (int i = 0; i < talentCount; ++i) {
+		const char* name = zip.getString();
+		talents.insert(name ? name : "");
+	}
+
+	// Traits: count, then each name (order preserved).
+	const int traitCount = zip.getInt();
+	for (int i = 0; i < traitCount; ++i) {
+		const char* name = zip.getString();
+		traits.push_back(name ? name : "");
+	}
 }
