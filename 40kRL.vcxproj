@@ -185,6 +185,7 @@
     <ClCompile Include="Source\StatusEffectTracker.cpp" />
     <ClCompile Include="Source\StatusTrigger.cpp" />
     <ClCompile Include="Source\HighScore.cpp" />
+    <ClCompile Include="Source\HighScoreStore.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.hpp" />
@@ -233,6 +234,7 @@
     <ClInclude Include="Headers\StatusEffectTracker.hpp" />
     <ClInclude Include="Headers\StatusTrigger.hpp" />
     <ClInclude Include="Headers\HighScore.hpp" />
+    <ClInclude Include="Headers\HighScoreStore.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
