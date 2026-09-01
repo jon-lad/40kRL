@@ -7,6 +7,7 @@
 #include <sol/sol.hpp>
 #include "main.hpp"
 #include "HelpContent.hpp"
+#include "HighScoreStore.hpp"
 
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
 static constexpr int MAP_WIDTH            = 160;
@@ -2913,6 +2914,19 @@ void Engine::loadTalentDefinitions()
 
 void Engine::init()
 {
+	// Load the persisted leaderboard once at startup / new-game entry (Req 6.5).
+	// This only reads highscores.dat and never writes it, so starting a new game
+	// leaves the existing high-score file contents unchanged (Req 6.2).
+	highScores_ = HighScoreStore::load();
+
+	// A fresh run begins here (New Game path: term() + init()). Reset the per-run
+	// recording guard and death-screen highlight state so a new run can be recorded
+	// (Req 4.4). The Continue flow does NOT call init(), so a loaded save keeps its
+	// guard state untouched.
+	runRecorded_ = false;
+	lastEntryIndex_.reset();
+	pendingCauseOfDeath_.clear();
+
 	// Load character generation data files (homeworlds, careers, skills, talents).
 	// Must run early — before chargen or player creation.
 	// Clear first to avoid duplicates on restart (init() can be called multiple times).
