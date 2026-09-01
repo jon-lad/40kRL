@@ -522,6 +522,72 @@ TEST_CASE("Pre-feature NPC save loads with an empty stat block", "[npc-stat-bloc
 	CHECK(loaded.traits.empty());
 }
 
+// Feature: npc-stat-blocks, Task 14.1: Actor-level NPC career round-trip (example-based)
+// Verifies the full Actor::save / Actor::load path (not just CareerProgression) for an
+// NPC-shaped actor that carries a standalone `career` (skills/talents/traits) and NO
+// CharacterSheet. Asserts:
+//   1. Actor::save writes the career for ANY actor with one (not player-gated).
+//   2. Actor::load reconstructs the career and assigns it to actor->career.
+//   3. The CharacterSheet re-alias path (player-only) does NOT run for an NPC, so the
+//      NPC's standalone career survives load intact.
+// This actor deliberately omits Openable / InjuryTracker / StatusEffectTracker so the
+// save/load path never touches the global Engine (engine.map / reapply*), keeping the
+// test engine-independent per the test-isolation rules.
+// Validates: Requirements 7.1, 7.2, 7.3 (via the Actor boundary), design §6 guard.
+TEST_CASE("Actor::save/load round-trips a standalone NPC career without re-aliasing", "[npc-stat-blocks]")
+{
+	// Build an NPC-shaped actor: a career with skills/talents/traits, no CharacterSheet.
+	Actor npc = makeActor();
+	npc.career = std::make_shared<CareerProgression>();
+	npc.career->skills["Dodge"]     = 2;
+	npc.career->skills["Awareness"] = 0;
+	npc.career->talents.insert("Weapon Training (Primitive)");
+	npc.career->talents.insert("Sturdy Grip");
+	npc.career->traits.push_back("Sturdy");
+	npc.career->traits.push_back("Brutal Charge");
+
+	REQUIRE(npc.characterSheet == nullptr); // NPCs never carry a CharacterSheet
+
+	// Keep a copy of the original career pointer to confirm load builds a fresh one.
+	CareerProgression* originalCareerPtr = npc.career.get();
+
+	TCODZip zip;
+	npc.save(zip);
+	zip.saveToFile("__test_actor_npc_rt.sav");
+
+	// Load into a completely fresh Actor (mirrors Engine::deserializeLevel).
+	TCODZip loadZip;
+	loadZip.loadFromFile("__test_actor_npc_rt.sav");
+	Actor loaded = makeActor();
+	loaded.load(loadZip);
+
+	std::remove("__test_actor_npc_rt.sav");
+
+	// The career survived the round-trip and was assigned to a fresh instance.
+	REQUIRE(loaded.career != nullptr);
+	CHECK(loaded.career.get() != originalCareerPtr);
+
+	// The NPC never gains a CharacterSheet on load (re-alias path is player-only).
+	CHECK(loaded.characterSheet == nullptr);
+
+	// Skills round-trip (through the Skill_Provider, which reads loaded.career).
+	CHECK(hasSkill(&loaded, "Dodge") == true);
+	CHECK(getSkillRank(&loaded, "Dodge") == 2);
+	CHECK(hasSkill(&loaded, "Awareness") == true);
+	CHECK(getSkillRank(&loaded, "Awareness") == 0);
+	CHECK(getSkillRank(&loaded, "__absent__") == SKILL_UNTRAINED);
+
+	// Talents round-trip.
+	CHECK(hasTalent(&loaded, "Weapon Training (Primitive)") == true);
+	CHECK(hasTalent(&loaded, "Sturdy Grip") == true);
+	CHECK(hasTalent(&loaded, "__absent_talent__") == false);
+
+	// Traits round-trip in order.
+	REQUIRE(loaded.career->traits.size() == 2);
+	CHECK(loaded.career->traits[0] == "Sturdy");
+	CHECK(loaded.career->traits[1] == "Brutal Charge");
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 7.1 — Fixed-profile invariant
 // ═══════════════════════════════════════════════════════════════════════════════

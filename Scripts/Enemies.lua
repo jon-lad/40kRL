@@ -24,6 +24,10 @@ local enemies = {
         ws = 25, bs = 15, s = 20, t = 20, ag = 30, int = 15, per = 25, wp = 15, fel = 10,
         equipment = { "Choppa" },
         dropChance = 0.3,
+        -- Choppa is weaponGroup "Primitive" (Equipment.lua) -> Weapon Training (Primitive).
+        skills  = { Dodge = 0, Awareness = 0 },
+        talents = { "Weapon Training (Primitive)" },
+        traits  = { "Size (Puny)", "Cowardly" },
     },
     {
         chance  = 75,
@@ -39,6 +43,10 @@ local enemies = {
         ws = 35, bs = 20, s = 40, t = 40, ag = 25, int = 15, per = 25, wp = 25, fel = 15,
         equipTier = { common = 80, uncommon = 18, rare = 2 },
         dropChance = 0.4,
+        -- Orks favour primitive choppas (common/uncommon melee are weaponGroup "Primitive").
+        skills  = { Dodge = 0 },
+        talents = { "Weapon Training (Primitive)" },
+        traits  = { "Sturdy", "Mob Rule" },
     },
     {
         chance  = 90,
@@ -54,6 +62,10 @@ local enemies = {
         ws = 30, bs = 25, s = 35, t = 40, ag = 25, int = 15, per = 25, wp = 25, fel = 15,
         equipment = { "Shoota" },
         dropChance = 0.4,
+        -- Shoota is weaponGroup "SP" (Equipment.lua) -> Weapon Training (SP).
+        skills  = { Dodge = 0, Awareness = 0 },
+        talents = { "Weapon Training (SP)" },
+        traits  = { "Sturdy" },
     },
     {
         chance  = 100,
@@ -69,6 +81,10 @@ local enemies = {
         ws = 45, bs = 25, s = 50, t = 50, ag = 30, int = 20, per = 30, wp = 35, fel = 25,
         equipment = { "Big Choppa", "Ork Armor" },
         dropChance = 0.5,
+        -- Big Choppa is weaponGroup "Primitive" (Equipment.lua) -> Weapon Training (Primitive).
+        skills  = { Dodge = 1, Awareness = 1 },
+        talents = { "Weapon Training (Primitive)" },
+        traits  = { "Sturdy", "Brutal Charge" },
     },
 }
 
