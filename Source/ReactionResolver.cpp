@@ -11,6 +11,12 @@ bool hasEquippedMeleeWeapon(Actor* actor) {
 	return weapon->equippable->meleeStats.has_value();
 }
 
+// ─── Dodge pure helpers (STUB bodies — real logic implemented in task 9.1) ──
+
+int computeDodgeTarget(int, int, bool) { return 0; }
+
+bool dodgeSucceeds(int, int) { return false; }
+
 // ─── Helper: determine whether actor is player-controlled ───────────────────
 
 static bool isPlayerControlled(Actor* actor) {

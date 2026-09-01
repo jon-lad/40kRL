@@ -194,6 +194,7 @@
     <ClCompile Include="..\Source\ManualExporter.cpp" />
     <ClCompile Include="..\Source\StatusEffectTracker.cpp" />
     <ClCompile Include="..\Source\StatusTrigger.cpp" />
+    <ClCompile Include="..\Source\StatBlock.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.hpp" />
