@@ -6,6 +6,7 @@
 #include "Equippable.hpp"
 #include "CharacterData.hpp"
 #include "CharacterGenerator.hpp"
+#include "HighScore.hpp"
 #include "LevelCache.hpp"
 #include "TabbedMenuState.hpp"
 #include "TargetingContext.hpp"
@@ -117,7 +118,8 @@ public:
 		TABBED_MENU,     // tabbed menu overlay (inventory/equipment/skills) is open
 		WORLD_MAP,      // world map overlay is open
 		CHARACTER_GEN,  // character generation overlay is active
-		HELP            // help overlay is open
+		HELP,           // help overlay is open
+		HIGH_SCORES     // high scores leaderboard overlay is open
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -159,6 +161,12 @@ public:
 	std::optional<WorldMapState> worldMapState; // active only during WORLD_MAP state
 	std::optional<CharGenState> charGenState; // active only during CHARACTER_GEN state
 	std::optional<HelpState> helpState; // active only during HELP state
+
+	// High-score system state (high-score-system spec).
+	Leaderboard highScores_;                 // in-memory leaderboard, loaded on startup
+	std::optional<int> lastEntryIndex_;      // index of the entry earned by the most recent run (for death-screen highlight)
+	bool runRecorded_ = false;               // guards recording at most one entry per run (Req 4.4)
+	std::string pendingCauseOfDeath_;        // attacker name threaded to run recording (Req 1.6, 1.7)
 
 	uint32_t worldSeed = 0; // deterministic seed for world map generation, set during init()
 

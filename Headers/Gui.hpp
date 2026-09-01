@@ -15,7 +15,8 @@ public:
 		CONSTITUTION,
 		STRENGTH,
 		AGILITY,
-		HELP
+		HELP,
+		HIGH_SCORES
 	};
 	enum class DisplayMode {
 		MAIN,
