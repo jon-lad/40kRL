@@ -188,6 +188,7 @@
     <ClCompile Include="Source\HighScore.cpp" />
     <ClCompile Include="Source\HighScoreStore.cpp" />
     <ClCompile Include="Source\StatBlock.cpp" />
+    <ClCompile Include="Source\TurnFlow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Actor.hpp" />
@@ -239,6 +240,7 @@
     <ClInclude Include="Headers\HighScore.hpp" />
     <ClInclude Include="Headers\HighScoreStore.hpp" />
     <ClInclude Include="Headers\StatBlock.hpp" />
+    <ClInclude Include="Headers\TurnFlow.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="menu_background1.png" />
