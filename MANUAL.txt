@@ -66,10 +66,12 @@ Mechanics
     career, rank, homeworld, total XP, deepest level reached, cause of
     death, and date. Runs are ranked by total XP, with the deepest
     level used as a tiebreak.
-    View the leaderboard from the main menu's "High Scores" entry. On
-    the death screen the run you just earned is highlighted in the
-    ranking. High scores are stored separately from your save in
-    highscores.dat, so starting a new game never clears them.
+    View the leaderboard from the main menu's "High Scores" entry. When
+    you die, press Enter to jump to your placement on the leaderboard —
+    your entry is highlighted with its rank number — or the top 10 if
+    your run did not place. High scores are stored separately from your
+    save in highscores.dat, so starting a new game never clears them.
+      - Enter        (death screen) Show your placement / the top 10
       - PgUp / PgDn  Scroll through the ranked runs
       - ESC / Enter  Return from the High Scores screen
 
