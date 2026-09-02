@@ -127,14 +127,34 @@ void Engine::update()
 		return;
 	}
 
-	// Handle the death screen — the leaderboard is shown and can be scrolled
-	// with PageUp/PageDown while the game is in DEFEAT (Req 10.1, 10.4).
+	// Handle the two-phase death screen (death-screen-highscore-jump). In the PROMPT
+	// phase, Enter transitions to the high-score view (jumping to the earned entry's
+	// page) and ESC returns to the menu. In the SCORES phase, PageUp/PageDown scroll
+	// the leaderboard and ESC returns to the menu.
 	if (gameStatus == DEFEAT) {
 		if (inputState.key.pressed) {
-			if (inputState.key.key == SDLK_PAGEDOWN) {
-				highScoresPaginator_.nextPage();
-			} else if (inputState.key.key == SDLK_PAGEUP) {
-				highScoresPaginator_.prevPage();
+			if (deathScreenPhase_ == DeathScreenPhase::PROMPT) {
+				if (inputState.key.key == SDLK_RETURN) {
+					// Transition to the high-score view, opening on the earned entry's page.
+					highScoresPaginator_.totalItems = highScores_.size();
+					DeathScoreView v = computeDeathScoreView(
+						lastEntryIndex_, highScoresPaginator_.totalItems,
+						highScoresPaginator_.pageSize);
+					highScoresPaginator_.currentPage = v.initialPage;
+					deathScreenPhase_ = DeathScreenPhase::SCORES;
+				} else if (inputState.key.key == SDLK_ESCAPE) {
+					load(); // return to main menu
+					return;
+				}
+			} else { // SCORES phase
+				if (inputState.key.key == SDLK_PAGEDOWN) {
+					highScoresPaginator_.nextPage();
+				} else if (inputState.key.key == SDLK_PAGEUP) {
+					highScoresPaginator_.prevPage();
+				} else if (inputState.key.key == SDLK_ESCAPE) {
+					load(); // return to main menu
+					return;
+				}
 			}
 		}
 		return;
@@ -3109,6 +3129,7 @@ void Engine::init()
 	lastEntryIndex_.reset();
 	pendingCauseOfDeath_.clear();
 	defeatScreenInitialized_ = false; // death screen re-initializes its paginator per run
+	deathScreenPhase_ = DeathScreenPhase::PROMPT; // every new run starts at the death prompt
 
 	// Load character generation data files (homeworlds, careers, skills, talents).
 	// Must run early — before chargen or player creation.
@@ -3653,26 +3674,61 @@ void Engine::renderHighScores()
 void Engine::renderDefeat()
 {
 	// Lazily initialize the death-screen paginator the first time we render DEFEAT
-	// (recordRunOutcome ran at death but left rendering to the game loop).
+	// (recordRunOutcome ran at death but left rendering to the game loop). The
+	// initial page is no longer set here — it is set at the PROMPT->SCORES
+	// transition in update() via computeDeathScoreView().
 	if (!defeatScreenInitialized_) {
 		highScoresPaginator_ = Paginator{};
 		highScoresPaginator_.currentPage = 0;
 		highScoresPaginator_.totalItems = highScores_.size();
 		const int contentHeight = screenHeight - 5;
 		highScoresPaginator_.pageSize = std::max(1, contentHeight / HS_ROWS_PER_ENTRY);
-
-		// If this run earned a place, scroll that entry into view (Req 10.5).
-		if (lastEntryIndex_ && highScoresPaginator_.pageSize > 0) {
-			highScoresPaginator_.currentPage = *lastEntryIndex_ / highScoresPaginator_.pageSize;
-		}
 		defeatScreenInitialized_ = true;
 	}
 
+	// Phase 1: show the death prompt until the player presses Enter.
+	if (deathScreenPhase_ == DeathScreenPhase::PROMPT) {
+		renderDeathPrompt();
+		return;
+	}
+
+	// Phase 2: high-score view.
 	highScoresPaginator_.totalItems = highScores_.size();
 
-	// Highlight the earned entry only when the run placed on the board (Req 10.2, 10.3).
-	renderLeaderboard(highScoresPaginator_, lastEntryIndex_, "-- You Died --",
-		"PgUp/PgDn: scroll");
+	// Title reflects placement when the run placed on the board; generic otherwise.
+	std::string title;
+	if (lastEntryIndex_) {
+		title = "-- You placed #" + std::to_string(placementNumber(*lastEntryIndex_)) + " --";
+	} else {
+		title = "-- High Scores --";
+	}
+
+	// Highlight the earned entry only when the run placed on the board.
+	renderLeaderboard(highScoresPaginator_, lastEntryIndex_, title.c_str(),
+		"PgUp/PgDn: scroll   ESC: menu");
+}
+
+void Engine::renderDeathPrompt()
+{
+	static TCODConsole promptConsole(screenWidth, screenHeight);
+	promptConsole.clear();
+
+	promptConsole.setDefaultForeground(Colors::menuFrame);
+	promptConsole.printFrame(0, 0, screenWidth, screenHeight, true, TCOD_BKGND_DEFAULT,
+		"-- You Died --");
+
+	const int contentX = 2;
+	int drawY = 2;
+
+	promptConsole.setDefaultForeground(Colors::uiText);
+	promptConsole.printf(contentX, drawY, "You have fallen.");
+	drawY += 2;
+	promptConsole.printf(contentX, drawY, "Press Enter to see your high-score placement.");
+	drawY++;
+	promptConsole.printf(contentX, drawY, "Press ESC to return to the main menu.");
+
+	TCODConsole::blit(&promptConsole, 0, 0, screenWidth, screenHeight,
+		TCODConsole::root, 0, 0);
 }
 
 void Engine::renderLeaderboard(const Paginator& pag, std::optional<int> highlightIndex,

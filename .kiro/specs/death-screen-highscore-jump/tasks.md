@@ -69,25 +69,25 @@ Engine wiring follows: a new `DeathScreenPhase` enum plus a `deathScreenPhase_` 
     - `HighScore.cpp` is already in both `40kRL.vcxproj` and `Tests/40kRL_Tests.vcxproj` — no project edits needed
     - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3_
 
-- [~] 3. Checkpoint - build test project and confirm the seam tests pass
+- [x] 3. Checkpoint - build test project and confirm the seam tests pass
   - Build `Tests/40kRL_Tests.vcxproj` (Debug/x64) with the full-path MSBuild, run `.\x64\Debug\40kRL_Tests.exe "[death-screen-highscore-jump]"`
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Add death-screen phase data model to Engine
-  - [~] 4.1 Add `DeathScreenPhase` enum and `deathScreenPhase_` member, reset in the run-init path
+- [x] 4. Add death-screen phase data model to Engine
+  - [x] 4.1 Add `DeathScreenPhase` enum and `deathScreenPhase_` member, reset in the run-init path
     - In `Headers/Engine.hpp`, declare `enum class DeathScreenPhase { PROMPT, SCORES };` and add member `DeathScreenPhase deathScreenPhase_ = DeathScreenPhase::PROMPT;` near `defeatScreenInitialized_`
     - In `Source/Engine.cpp`, set `deathScreenPhase_ = DeathScreenPhase::PROMPT;` in the run-init path alongside the existing `defeatScreenInitialized_` / `lastEntryIndex_` reset so every new run starts at the prompt
     - _Requirements: 1.1_
 
-- [ ] 5. Implement death-screen rendering (prompt + phase-aware leaderboard)
-  - [~] 5.1 Add `renderDeathPrompt()` and branch `renderDefeat()` on phase
+- [x] 5. Implement death-screen rendering (prompt + phase-aware leaderboard)
+  - [x] 5.1 Add `renderDeathPrompt()` and branch `renderDefeat()` on phase
     - Declare `void renderDeathPrompt();` (private) in `Headers/Engine.hpp`; implement in `Source/Engine.cpp` drawing a framed "You Died" message stating the player died, that Enter shows the high-score placement, and that ESC returns to the menu
     - In `renderDefeat()`: keep the lazy paginator init (`pageSize`/`totalItems`); if phase is `PROMPT` call `renderDeathPrompt()` and return; in `SCORES` phase set `totalItems = highScores_.size()`, build the title (`"-- You placed #" + std::to_string(placementNumber(*lastEntryIndex_)) + " --"` when ranked, else `"-- High Scores --"`), and call `renderLeaderboard(highScoresPaginator_, lastEntryIndex_, title, "PgUp/PgDn: scroll   ESC: menu")` so highlight only occurs when ranked
     - Remove the old inline `*lastEntryIndex_ / pageSize` page computation from the lazy-init block (the page is now set at transition time in task 6.1)
     - _Requirements: 1.1, 1.2, 1.3, 2.2, 2.3, 3.2, 3.3, 3.4_
 
-- [ ] 6. Wire death-screen input transitions into the update loop
-  - [~] 6.1 Modify the DEFEAT branch of `Engine::update()` for phase transitions and scrolling
+- [x] 6. Wire death-screen input transitions into the update loop
+  - [x] 6.1 Modify the DEFEAT branch of `Engine::update()` for phase transitions and scrolling
     - In `Source/Engine.cpp` DEFEAT branch: in `PROMPT` phase, on `SDLK_RETURN` set `highScoresPaginator_.totalItems = highScores_.size()`, call `computeDeathScoreView(lastEntryIndex_, highScoresPaginator_.totalItems, highScoresPaginator_.pageSize)`, set `currentPage = v.initialPage`, and switch phase to `SCORES`; on `SDLK_ESCAPE` call `load()` and return
     - In `SCORES` phase: `SDLK_PAGEDOWN` → `highScoresPaginator_.nextPage()`; `SDLK_PAGEUP` → `highScoresPaginator_.prevPage()`; `SDLK_ESCAPE` → `load()` and return; ignore other keys
     - _Requirements: 2.1, 3.1, 4.1, 4.2, 5.1_
