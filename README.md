@@ -8,7 +8,7 @@ A Warhammer 40,000 Rogue Trader roguelike built in C++17 with [libtcod](https://
 
 ## Features
 
-- **Character generation** — select a homeworld (stat modifiers, starting skills/traits) and career path (rank-gated advances), then spend starting XP on characteristic, skill, and talent purchases
+- **Character generation** — name your character, select a homeworld (stat modifiers, starting skills/traits) and career path (rank-gated advances), then spend starting XP on characteristic, skill, and talent purchases
 - **Rogue Trader progression** — XP spending on rank-gated advances replaces traditional leveling; rank up by spending XP thresholds
 - **CharacterSheet component** — unified player identity (characteristics, career, skills, talents, traits) persisted through save/load
 - **In-game advance purchases** — press `x` to open the advance overlay and spend earned XP mid-game

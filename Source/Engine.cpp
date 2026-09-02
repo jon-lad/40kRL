@@ -2110,6 +2110,11 @@ void Engine::updateCharGen()
 				}
 			}
 
+			// Assign the player's name from the entered buffer, applying the
+			// empty-fallback ("Rogue Trader"), max-length, and printable-only
+			// rules via the pure helper.
+			player->name = sanitizeCharacterName(charGenState->enteredName);
+
 			gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 
 			// Clear chargen state.
