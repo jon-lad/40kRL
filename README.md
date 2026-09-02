@@ -31,7 +31,7 @@ A Warhammer 40,000 Rogue Trader roguelike built in C++17 with [libtcod](https://
 - World map overlay with Perlin-noise biomes and fast-travel to hive cities
 - WFC-generated hive city interiors with 10 distinct tile types and adjacency-based layouts
 - **Status effects** — Burning, Prone, Stunned, Bleeding, Blinded, Poisoned, and missing limbs triggered by critical injuries and weapon qualities (Flame, Shocking, Toxic), with duration ticking, characteristic modifiers, tick damage, and sidebar display
-- **High-score leaderboard** — each run is recorded on death (character, career, rank, homeworld, total XP, deepest level, cause of death, date), ranked by XP with depth as a tiebreak; view the top runs from the main-menu "High Scores" screen, and the death screen highlights the entry you just earned. Stored separately from the save file in `highscores.dat`
+- **High-score leaderboard** — each run is recorded on death (character, career, rank, homeworld, total XP, deepest level, cause of death, date), ranked by XP with depth as a tiebreak; view the top runs from the main-menu "High Scores" screen. On death, press Enter to jump to your placement on the leaderboard (highlighted, with your rank number) — or the top 10 if your run didn't place. Stored separately from the save file in `highscores.dat`
 
 ## Building
 

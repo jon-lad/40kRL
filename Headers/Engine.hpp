@@ -89,6 +89,12 @@ struct AdvancesState {
 	std::string statusMessage;   // purchase feedback message
 };
 
+// Which content the death screen is currently showing (death-screen-highscore-jump).
+enum class DeathScreenPhase {
+	PROMPT,   // "You died — press Enter" message
+	SCORES    // paginated leaderboard (high-score view)
+};
+
 // Stores state for the help overlay.
 struct HelpState {
 	int scrollOffset = 0;       // first visible line index
@@ -169,6 +175,7 @@ public:
 	std::string pendingCauseOfDeath_;        // attacker name threaded to run recording (Req 1.6, 1.7)
 	Paginator highScoresPaginator_;          // scroll state shared by the high-scores view and death screen
 	bool defeatScreenInitialized_ = false;   // lazily initializes the death-screen paginator on first DEFEAT render
+	DeathScreenPhase deathScreenPhase_ = DeathScreenPhase::PROMPT; // two-phase death screen: prompt then scores
 
 	uint32_t worldSeed = 0; // deterministic seed for world map generation, set during init()
 
@@ -304,6 +311,10 @@ public:
 	// the entry earned by the just-finished run when one placed. Also handles
 	// PageUp/PageDown scrolling on the death screen. Called from render() when DEFEAT.
 	void renderDefeat();
+
+	// Renders the initial death-screen prompt ("You Died" + Enter/ESC hints) shown
+	// before the player presses Enter to view the high-score placement.
+	void renderDeathPrompt();
 
 	// Shared leaderboard layout used by both the high-scores view and the death
 	// screen. Draws each visible entry from `pag`; when `highlightIndex` is set,
