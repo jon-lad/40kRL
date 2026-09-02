@@ -25,3 +25,20 @@ ReactionResult resolveReaction(Actor* target, Actor* attacker, bool isMelee);
 
 // Returns true if the actor has a melee weapon equipped in the WEAPON slot.
 bool hasEquippedMeleeWeapon(Actor* actor);
+
+// ─── Dodge pure helpers (engine-independent, unit- and property-testable) ───
+
+// Computes the effective Dodge target number (before roll comparison).
+//   hasDodgeSkill == true  -> clamp(agility + dodgeRank * 10, 0, 100)
+//   hasDodgeSkill == false -> clamp(agility - 20,            0, 100)
+// The result is always within [0, 100]. Pure and engine-independent; the
+// formula has no per-actor-type branch, so identical Agility + Dodge rank
+// yield identical thresholds for player and NPC. (Requirements 1.2, 1.3, 1.8)
+int computeDodgeTarget(int agility, int dodgeRank, bool hasDodgeSkill);
+
+// Resolves a d100 roll-under test against a Dodge target.
+//   roll == 1   -> true  (auto-success)
+//   roll == 100 -> false (auto-fail)
+//   otherwise   -> roll <= dodgeTarget
+// Pure and engine-independent. (Requirements 1.1, 1.6, 1.7)
+bool dodgeSucceeds(int roll, int dodgeTarget);

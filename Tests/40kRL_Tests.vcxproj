@@ -156,6 +156,7 @@
     <ClCompile Include="test_character_sheet.cpp" />
     <ClCompile Include="test_high_score.cpp" />
     <ClCompile Include="test_high_score_store.cpp" />
+    <ClCompile Include="test_npc_stat_blocks.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -198,6 +199,7 @@
     <ClCompile Include="..\Source\StatusTrigger.cpp" />
     <ClCompile Include="..\Source\HighScore.cpp" />
     <ClCompile Include="..\Source\HighScoreStore.cpp" />
+    <ClCompile Include="..\Source\StatBlock.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.hpp" />

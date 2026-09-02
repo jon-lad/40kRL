@@ -16,7 +16,8 @@ ROADMAP
 
 - [x] Rename all .h headers to .hpp
 - [x] Complete tests for CharacterSheet (unit + property-based)
-- [ ] Implement stat locks based on CharacterSheet for NPCs
+- [x] NPC stat blocks (shared skills/talents/traits; Dodge skill + Weapon Training wired into combat; NPCs never gain XP)
+- [ ] Wire remaining NPC skills/talents into combat (only Dodge + Weapon Training active so far; Awareness, other skills, non-training talents, and traits are stored but inert; also Parry skill-rank bonus)
 - [ ] Add high score system
 
 ## UI Overhaul

@@ -11,6 +11,8 @@
 #include "WfcGenerator.hpp"
 #include "DoorFactory.hpp"
 #include "CP437.hpp"
+#include "CareerProgression.hpp"
+#include "StatBlock.hpp"
 
 static constexpr int ROOM_MAX_SIZE     = 12;
 static constexpr int ROOM_MIN_SIZE     = 6;
@@ -1059,6 +1061,16 @@ void Map::addMonster(int x, int y)
 			chars->set(CharId::WP,  charWP);
 			chars->set(CharId::Fel, charFel);
 			monster->characteristics = chars;
+
+			// ── Parse optional stat-block sections (skills/talents/traits) into a CareerProgression. ──
+			sol::optional<sol::table> hasSkills  = entry["skills"];
+			sol::optional<sol::table> hasTalents = entry["talents"];
+			sol::optional<sol::table> hasTraits  = entry["traits"];
+			if (hasSkills || hasTalents || hasTraits) {
+				auto career = std::make_shared<CareerProgression>();
+				populateStatBlockFromLua(*career, entry);
+				monster->career = career;
+			}
 
 			// ── Parse equipment config from the Lua table ──
 			EnemyEquipmentConfig equipConfig;

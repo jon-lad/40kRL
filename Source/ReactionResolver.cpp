@@ -1,5 +1,8 @@
 #include "main.hpp"
 #include "ReactionResolver.hpp"
+#include "StatBlock.hpp"
+
+#include <algorithm>
 
 // ─── Helper: check if actor has a melee weapon in the WEAPON slot ───────────
 
@@ -9,6 +12,19 @@ bool hasEquippedMeleeWeapon(Actor* actor) {
 	if (!weapon) return false;
 	if (!weapon->equippable) return false;
 	return weapon->equippable->meleeStats.has_value();
+}
+
+// ─── Dodge pure helpers (engine-independent, unit- and property-testable) ──
+
+int computeDodgeTarget(int agility, int dodgeRank, bool hasDodgeSkill) {
+	int target = hasDodgeSkill ? (agility + dodgeRank * 10) : (agility - 20);
+	return std::clamp(target, 0, 100);
+}
+
+bool dodgeSucceeds(int roll, int dodgeTarget) {
+	if (roll == 1) return true;      // auto-success
+	if (roll == 100) return false;   // auto-fail
+	return roll <= dodgeTarget;
 }
 
 // ─── Helper: determine whether actor is player-controlled ───────────────────
@@ -86,17 +102,16 @@ ReactionResult resolveReaction(Actor* target, Actor* attacker, bool isMelee) {
 	}
 
 	if (choice == ReactionChoice::DODGE) {
-		int targetAg = target->characteristics->get(CharId::Ag);
-		if (roll <= targetAg) {
-			// 6. Log success
+		int agility     = target->characteristics->get(CharId::Ag);
+		bool hasDodge   = hasSkill(target, "Dodge");
+		int dodgeRank   = hasDodge ? getSkillRank(target, "Dodge") : 0;
+		int dodgeTarget = computeDodgeTarget(agility, dodgeRank, hasDodge);
+		if (dodgeSucceeds(roll, dodgeTarget)) {
 			engine.gui->message(Colors::reactionEvent, "# dodges the attack!", target->name);
-			// 7. Return NEGATED
 			return ReactionResult::NEGATED;
-		} else {
-			// 6. Log failure
-			engine.gui->message(Colors::reactionEvent, "# fails to dodge.", target->name);
-			return ReactionResult::FAILED;
 		}
+		engine.gui->message(Colors::reactionEvent, "# fails to dodge.", target->name);
+		return ReactionResult::FAILED;
 	}
 
 	if (choice == ReactionChoice::PARRY) {
