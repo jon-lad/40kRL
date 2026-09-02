@@ -92,7 +92,7 @@ Engine wiring follows: a new `DeathScreenPhase` enum plus a `deathScreenPhase_` 
     - In `SCORES` phase: `SDLK_PAGEDOWN` → `highScoresPaginator_.nextPage()`; `SDLK_PAGEUP` → `highScoresPaginator_.prevPage()`; `SDLK_ESCAPE` → `load()` and return; ignore other keys
     - _Requirements: 2.1, 3.1, 4.1, 4.2, 5.1_
 
-- [~] 7. Checkpoint - build both projects, re-run tests, and manual QA
+- [x] 7. Checkpoint - build both projects, re-run tests, and manual QA
   - Build `40kRL.vcxproj` and `Tests/40kRL_Tests.vcxproj` (Debug/x64) with the full-path MSBuild
   - Re-run `.\x64\Debug\40kRL_Tests.exe "[death-screen-highscore-jump]"` (seam tests still pass) plus the broader suite `.\x64\Debug\40kRL_Tests.exe`
   - Manual QA (the Engine update/render flow cannot run headless per `test-isolation.md`):
