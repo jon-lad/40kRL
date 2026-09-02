@@ -6,6 +6,7 @@
 #include "Equippable.hpp"
 #include "CharacterData.hpp"
 #include "CharacterGenerator.hpp"
+#include "HighScore.hpp"
 #include "LevelCache.hpp"
 #include "TabbedMenuState.hpp"
 #include "TargetingContext.hpp"
@@ -117,7 +118,8 @@ public:
 		TABBED_MENU,     // tabbed menu overlay (inventory/equipment/skills) is open
 		WORLD_MAP,      // world map overlay is open
 		CHARACTER_GEN,  // character generation overlay is active
-		HELP            // help overlay is open
+		HELP,           // help overlay is open
+		HIGH_SCORES     // high scores leaderboard overlay is open
 	} gameStatus;
 
 	std::list<std::unique_ptr<Actor>> actors; // all live actors, owned here
@@ -159,6 +161,14 @@ public:
 	std::optional<WorldMapState> worldMapState; // active only during WORLD_MAP state
 	std::optional<CharGenState> charGenState; // active only during CHARACTER_GEN state
 	std::optional<HelpState> helpState; // active only during HELP state
+
+	// High-score system state (high-score-system spec).
+	Leaderboard highScores_;                 // in-memory leaderboard, loaded on startup
+	std::optional<int> lastEntryIndex_;      // index of the entry earned by the most recent run (for death-screen highlight)
+	bool runRecorded_ = false;               // guards recording at most one entry per run (Req 4.4)
+	std::string pendingCauseOfDeath_;        // attacker name threaded to run recording (Req 1.6, 1.7)
+	Paginator highScoresPaginator_;          // scroll state shared by the high-scores view and death screen
+	bool defeatScreenInitialized_ = false;   // lazily initializes the death-screen paginator on first DEFEAT render
 
 	uint32_t worldSeed = 0; // deterministic seed for world map generation, set during init()
 
@@ -278,6 +288,34 @@ public:
 
 	// Renders help overlay.
 	void renderHelp();
+
+	// Enters the high-scores view from the menu. Reloads the leaderboard from
+	// highscores.dat (Req 6.6), initializes the paginator, and sets HIGH_SCORES.
+	void beginHighScores();
+
+	// Processes one frame of high-scores input: PageUp/PageDown scroll, ESC/Enter
+	// to return to the menu. Called from update() when HIGH_SCORES.
+	void updateHighScores();
+
+	// Renders the high-scores leaderboard overlay. Called from render() when HIGH_SCORES.
+	void renderHighScores();
+
+	// Renders the death screen leaderboard while gameStatus == DEFEAT, highlighting
+	// the entry earned by the just-finished run when one placed. Also handles
+	// PageUp/PageDown scrolling on the death screen. Called from render() when DEFEAT.
+	void renderDefeat();
+
+	// Shared leaderboard layout used by both the high-scores view and the death
+	// screen. Draws each visible entry from `pag`; when `highlightIndex` is set,
+	// the matching row is drawn in a distinct colour. `title` labels the frame.
+	void renderLeaderboard(const Paginator& pag, std::optional<int> highlightIndex,
+	                       const char* title, const char* footer);
+
+	// Records the outcome of the just-finished run as a ScoreEntry, inserts it into
+	// the in-memory leaderboard, and persists the leaderboard to highscores.dat.
+	// Guarded so at most one entry is recorded per run (Req 4.4). `cause` is the
+	// killing actor's name when known; empty for unknown/non-combat deaths.
+	void recordRunOutcome(const std::string& cause);
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);

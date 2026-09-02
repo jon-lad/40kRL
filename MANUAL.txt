@@ -50,3 +50,14 @@ Navigation
   >  Descend stairs
   ESC  Save and return to menu
 
+Mechanics
+---------
+  NPC stat blocks
+    Enemies carry their own skills, talents, and traits (defined in
+    Enemies.lua) and are treated like the player in combat:
+      - Dodge skill improves an enemy's evasion against your attacks.
+      - Weapon Training talents remove the unproficient penalty on
+        their attacks.
+    Enemies never gain XP — they use fixed profiles in the style of
+    the Rogue Trader bestiary.
+

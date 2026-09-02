@@ -233,6 +233,13 @@ void resolve(Actor* shooter, Actor* target,
 					engine.gui->message(Colors::uiText, "...but it has no effect!");
 				}
 			} else {
+				// ── Thread cause-of-death (Req 1.6, 1.7) ──
+				// When the victim is the player, record the shooter's name so that if this
+				// wound triggers PlayerDestructible::die(), the outcome is "Slain by <name>".
+				if (shooter && target == engine.player) {
+					engine.pendingCauseOfDeath_ = shooter->name;
+				}
+
 				// Apply wound
 				target->destructible->hp -= static_cast<float>(result.finalDamage);
 
