@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -56,3 +57,29 @@ private:
 // Serialization (Requirement 6.7, 8). Pure — operates on a TCODZip archive only.
 void serializeLeaderboard(const Leaderboard& board, TCODZip& zip);
 Leaderboard deserializeLeaderboard(TCODZip& zip);
+
+// ─── Death-screen view-decision seam (death-screen-highscore-jump) ────────────
+//
+// Pure, engine-free helpers describing how the high-score view should open on
+// the death screen. No engine.* access (per test-isolation.md), so they are
+// unit- and property-testable without initializing the Engine.
+
+// Pure result describing how the high-score view should open on the death screen.
+struct DeathScoreView {
+	int  initialPage = 0;     // page the paginator should show first (>= 0)
+	bool highlight   = false; // whether the earned entry should be highlighted
+};
+
+// Pure decision function — decides the paginator's initial page and whether to
+// highlight the earned entry.
+//   lastEntryIndex : the run's earned entry index, or nullopt if unranked
+//   totalItems     : number of leaderboard entries
+//   pageSize       : entries per page (clamped to >= 1 internally)
+// Postconditions:
+//   - if lastEntryIndex has value v in [0, totalItems): initialPage = v / pageSize, highlight = true
+//   - otherwise: initialPage = 0, highlight = false
+DeathScoreView computeDeathScoreView(std::optional<int> lastEntryIndex,
+                                     int totalItems, int pageSize);
+
+// Pure placement number: 1-based rank of the earned entry (entry index + 1).
+int placementNumber(int entryIndex);

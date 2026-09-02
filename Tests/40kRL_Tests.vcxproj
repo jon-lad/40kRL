@@ -156,6 +156,7 @@
     <ClCompile Include="test_character_sheet.cpp" />
     <ClCompile Include="test_character_name.cpp" />
     <ClCompile Include="test_high_score.cpp" />
+    <ClCompile Include="test_death_score_view.cpp" />
     <ClCompile Include="test_high_score_store.cpp" />
     <ClCompile Include="test_npc_stat_blocks.cpp" />
     <ClCompile Include="test_crit_hit_location.cpp" />

@@ -294,3 +294,34 @@ Leaderboard deserializeLeaderboard(TCODZip& zip)
 
 	return board;
 }
+
+// ─── Death-screen view-decision seam (death-screen-highscore-jump) ────────────
+//
+// Pure, engine-free (no engine.gui / engine.map / engine.player). These are the
+// single testable seam for the two-phase death screen: they decide which page
+// the leaderboard opens on and whether the earned entry is highlighted.
+
+DeathScoreView computeDeathScoreView(std::optional<int> lastEntryIndex,
+                                     int totalItems, int pageSize)
+{
+	// Clamp pageSize to >= 1 so v / effectivePageSize can never divide by zero
+	// (mirrors the std::max(1, ...) used when the paginator is built).
+	const int effectivePageSize = std::max(1, pageSize);
+
+	// A ranked run has an earned index within [0, totalItems). An unset or
+	// out-of-range index is treated as unranked: first page, no highlight.
+	if (lastEntryIndex.has_value()) {
+		const int v = *lastEntryIndex;
+		if (v >= 0 && v < totalItems) {
+			return DeathScoreView{ v / effectivePageSize, true };
+		}
+	}
+
+	return DeathScoreView{ 0, false };
+}
+
+int placementNumber(int entryIndex)
+{
+	// 1-based rank; matches the i + 1 rank renderLeaderboard prints.
+	return entryIndex + 1;
+}
