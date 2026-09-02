@@ -191,3 +191,202 @@ TEST_CASE("Part B: fatal crit at any non-body location is still unrecorded (gap 
         CHECK(tracker.getRecords().empty());
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRESERVATION PROPERTY TESTS (Task 2)
+//
+// Property 2: Preservation — baseline behaviour the fix must NOT change.
+// Observation-first: these are written to capture the CURRENT (unfixed) behaviour
+// so it stays locked against regression. They are all EXPECTED TO PASS on unfixed
+// code. Every InjuryTracker call passes owner == nullptr, keeping the seam
+// engine-free (applyDebuff is a no-op with a null owner) per test-isolation.md.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#include "libtcod.hpp"   // TCODZip for the save/load round-trip preservation test
+#include <cstdio>        // std::remove
+#include <vector>
+
+// ─── Preservation 1: Genuine-Body rolls still return BODY ──────────────────────
+// Property 2 (Preservation): for rolls whose reversed value lies in 31..70 (genuine
+// Body), resolve(X) == HitLocation::BODY. We generate rolls across the full domain
+// and only assert on those whose reversed value is genuinely a Body roll.
+// **Validates: Requirements 3.1**
+
+TEST_CASE("PBT Property 2: genuine-Body rolls still resolve to BODY",
+          "[pbt][property][crit-hit-location]")
+{
+    rc::prop("reversed value in 31..70 => resolve(X) == BODY", []() {
+        // INCLUSIVE bounds: rc::gen::inRange(1, 100) yields [1, 100].
+        const int roll = *rc::gen::inRange(1, 100);
+
+        // Compute the reversed value the same way the reference table does.
+        int reversed;
+        if (roll == 100) {
+            reversed = 0;
+        } else {
+            reversed = (roll % 10) * 10 + (roll / 10);
+        }
+
+        // Only the genuine-Body band is under test here (the non-buggy inputs).
+        RC_PRE(reversed >= 31 && reversed <= 70);
+
+        RC_ASSERT(HitLocationTable::resolve(roll) == HitLocation::BODY);
+        // And it must equal the independent reference table too.
+        RC_ASSERT(HitLocationTable::resolve(roll) == expectedLocation(roll));
+    });
+}
+
+// ─── Preservation 2: Non-fatal crit recording is unchanged ─────────────────────
+// Property 2 (Preservation): a non-fatal applyCrit (magnitude below FATAL_MAGNITUDE)
+// returns true, appends exactly one InjuryRecord whose location == the crit location
+// and whose magnitude == the cumulative total, and getRecords().back().location == loc.
+// owner == nullptr keeps applyDebuff a no-op; the record storage is what we assert.
+// **Validates: Requirements 3.4**
+
+TEST_CASE("PBT Property 2: non-fatal crit records location and cumulative magnitude",
+          "[pbt][property][crit-hit-location]")
+{
+    rc::prop("applyCrit(non-fatal) appends {loc, cumulativeTotal} and returns true", []() {
+        // A single non-fatal crit: magnitude in [1, FATAL_MAGNITUDE - 1] = [1, 9].
+        const int locIdx = *rc::gen::inRange(0, static_cast<int>(HitLocation::COUNT) - 1);
+        const HitLocation loc = static_cast<HitLocation>(locIdx);
+        const int mag = *rc::gen::inRange(1, InjuryTracker::FATAL_MAGNITUDE - 1);
+
+        InjuryTracker tracker;
+        // Engine-free: null owner => applyDebuff never touches characteristics.
+        const bool survived = tracker.applyCrit(nullptr, loc, mag);
+
+        // Non-fatal crit survives and is recorded (Req 3.4).
+        RC_ASSERT(survived == true);
+        RC_ASSERT(tracker.getRecords().size() == 1u);
+
+        const InjuryRecord& rec = tracker.getRecords().back();
+        RC_ASSERT(rec.location == loc);
+        // Cumulative magnitude of the first crit equals the crit magnitude.
+        RC_ASSERT(rec.magnitude == mag);
+        RC_ASSERT(tracker.getMagnitude() == mag);
+        RC_ASSERT(tracker.hasInjuries() == true);
+        RC_ASSERT(tracker.activeCount() == 1);
+    });
+}
+
+TEST_CASE("Preservation: sequence of non-fatal crits records each location with cumulative magnitude",
+          "[crit-hit-location]")
+{
+    // A concrete multi-crit sequence keeps cumulative magnitude below FATAL (10):
+    //   +2 (BODY)  -> total 2
+    //   +3 (HEAD)  -> total 5
+    //   +4 (LEFT_LEG) -> total 9
+    InjuryTracker tracker;
+
+    REQUIRE(tracker.applyCrit(nullptr, HitLocation::BODY, 2) == true);
+    REQUIRE(tracker.applyCrit(nullptr, HitLocation::HEAD, 3) == true);
+    REQUIRE(tracker.applyCrit(nullptr, HitLocation::LEFT_LEG, 4) == true);
+
+    const auto& records = tracker.getRecords();
+    REQUIRE(records.size() == 3u);
+
+    // Each record retains its own location, in insertion order.
+    CHECK(records[0].location == HitLocation::BODY);
+    CHECK(records[1].location == HitLocation::HEAD);
+    CHECK(records[2].location == HitLocation::LEFT_LEG);
+
+    // Each record stores the CUMULATIVE magnitude at the time of that crit.
+    CHECK(records[0].magnitude == 2);
+    CHECK(records[1].magnitude == 5);
+    CHECK(records[2].magnitude == 9);
+
+    // The most recent record is the last crit's location.
+    CHECK(records.back().location == HitLocation::LEFT_LEG);
+    CHECK(tracker.getMagnitude() == 9);
+}
+
+// ─── Preservation 3: Magnitude display is unchanged ────────────────────────────
+// Property 2 (Preservation): after a non-fatal applyCrit, getRecords().back().magnitude
+// equals the cumulative magnitude and getMagnitude() matches — the value the sidebar
+// renders per record must be stored/returned unchanged.
+// **Validates: Requirements 3.2**
+
+TEST_CASE("PBT Property 2: magnitude display value matches cumulative magnitude",
+          "[pbt][property][crit-hit-location]")
+{
+    rc::prop("back().magnitude == getMagnitude() after a non-fatal crit", []() {
+        const int locIdx = *rc::gen::inRange(0, static_cast<int>(HitLocation::COUNT) - 1);
+        const HitLocation loc = static_cast<HitLocation>(locIdx);
+        const int mag = *rc::gen::inRange(1, InjuryTracker::FATAL_MAGNITUDE - 1);
+
+        InjuryTracker tracker;
+        const bool survived = tracker.applyCrit(nullptr, loc, mag);
+        RC_ASSERT(survived == true);
+        RC_ASSERT(!tracker.getRecords().empty());
+
+        // The displayed magnitude value equals the tracker's cumulative magnitude (Req 3.2).
+        RC_ASSERT(tracker.getRecords().back().magnitude == tracker.getMagnitude());
+        RC_ASSERT(tracker.getRecords().back().magnitude == mag);
+    });
+}
+
+// ─── Preservation 4: Save/load round-trip preserves records ────────────────────
+// Property 2 (Preservation): build a tracker from a random sequence of non-fatal
+// crits (cumulative magnitude kept below FATAL_MAGNITUDE), save to a TCODZip flushed
+// to a temp file, load into a fresh tracker, and assert per-record location and
+// magnitude equality plus getMagnitude() equality. Follows the temp-file pattern used
+// by test_high_score.cpp / test_persistent_levels.cpp.
+// **Validates: Requirements 3.3**
+
+TEST_CASE("PBT Property 2: save/load round-trip preserves record location and magnitude",
+          "[pbt][property][crit-hit-location]")
+{
+    rc::prop("save then load yields identical records and cumulative magnitude", []() {
+        // Build a random sequence of non-fatal crits. Keep the running cumulative
+        // magnitude strictly below FATAL_MAGNITUDE so every applyCrit records a
+        // (non-fatal) InjuryRecord.
+        const int numCrits = *rc::gen::inRange(0, 12);
+
+        InjuryTracker original;
+        int runningTotal = 0;
+        for (int i = 0; i < numCrits; ++i) {
+            // Remaining headroom before hitting the fatal threshold.
+            const int remaining = (InjuryTracker::FATAL_MAGNITUDE - 1) - runningTotal;
+            if (remaining < 1) break; // no non-fatal room left
+            const int mag = *rc::gen::inRange(1, remaining);
+            const int locIdx = *rc::gen::inRange(0, static_cast<int>(HitLocation::COUNT) - 1);
+            const HitLocation loc = static_cast<HitLocation>(locIdx);
+
+            const bool survived = original.applyCrit(nullptr, loc, mag);
+            RC_ASSERT(survived == true); // stayed below fatal by construction
+            runningTotal += mag;
+        }
+
+        const char* tempFile = "__test_injury_roundtrip.dat";
+
+        // Serialize to a TCODZip archive and flush to disk.
+        {
+            TCODZip zip;
+            original.save(zip);
+            zip.saveToFile(tempFile);
+        }
+
+        // Deserialize into a fresh tracker.
+        InjuryTracker loaded;
+        {
+            TCODZip zip;
+            zip.loadFromFile(tempFile);
+            loaded.load(zip);
+        }
+
+        std::remove(tempFile);
+
+        // Cumulative magnitude survives the round trip (Req 3.3).
+        RC_ASSERT(loaded.getMagnitude() == original.getMagnitude());
+
+        // Same number of records, each with identical location and magnitude (Req 3.3).
+        const auto& orig = original.getRecords();
+        const auto& got = loaded.getRecords();
+        RC_ASSERT(got.size() == orig.size());
+        for (size_t i = 0; i < orig.size(); ++i) {
+            RC_ASSERT(got[i].location == orig[i].location);
+            RC_ASSERT(got[i].magnitude == orig[i].magnitude);
+        }
+    });
+}
