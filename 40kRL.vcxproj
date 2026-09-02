@@ -172,6 +172,7 @@
     <ClCompile Include="Source\Openable.cpp" />
     <ClCompile Include="Source\DoorFactory.cpp" />
     <ClCompile Include="Source\CareerProgression.cpp" />
+    <ClCompile Include="Source\CharacterName.cpp" />
     <ClCompile Include="Source\CharacterSheet.cpp" />
     <ClCompile Include="Source\Paginator.cpp" />
     <ClCompile Include="Source\TabbedMenuState.cpp" />
@@ -219,6 +220,7 @@
     <ClInclude Include="Headers\WfcGenerator.hpp" />
     <ClInclude Include="Headers\Openable.hpp" />
     <ClInclude Include="Headers\DoorFactory.hpp" />
+    <ClInclude Include="Headers\CharacterName.hpp" />
     <ClInclude Include="Headers\CharacterSheet.hpp" />
     <ClInclude Include="Headers\Paginator.hpp" />
     <ClInclude Include="Headers\CP437.hpp" />
