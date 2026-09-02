@@ -253,6 +253,10 @@ void resolve(Actor* shooter, Actor* target,
 							"Critical Hit on #! #",
 							HitLocationTable::name(result.location), critEffect.description);
 					}
+					if (!target->injuryTracker) {
+						target->injuryTracker = std::make_unique<InjuryTracker>();
+					}
+					target->injuryTracker->recordFatalCrit(result.location, critMagnitude);
 					target->destructible->die(target);
 					result.targetKilled = true;
 				} else if (target->destructible->hp <= 9.0f) {
@@ -267,6 +271,10 @@ void resolve(Actor* shooter, Actor* target,
 					}
 
 					if (critEffect.fatal) {
+						if (!target->injuryTracker) {
+							target->injuryTracker = std::make_unique<InjuryTracker>();
+						}
+						target->injuryTracker->recordFatalCrit(result.location, critMagnitude);
 						target->destructible->die(target);
 						result.targetKilled = true;
 					} else {
@@ -275,6 +283,7 @@ void resolve(Actor* shooter, Actor* target,
 						}
 						bool survived = target->injuryTracker->applyCrit(target, result.location, critMagnitude);
 						if (!survived) {
+							target->injuryTracker->recordFatalCrit(result.location, critMagnitude);
 							target->destructible->die(target);
 							result.targetKilled = true;
 						} else if (visibleToPlayer) {
