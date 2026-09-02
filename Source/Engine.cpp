@@ -9,6 +9,7 @@
 #include "main.hpp"
 #include "HelpContent.hpp"
 #include "HighScoreStore.hpp"
+#include "TurnFlow.hpp"
 
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
 static constexpr int MAP_WIDTH            = 160;
@@ -58,12 +59,14 @@ void Engine::update()
 		if (gameStatus == NEW_TURN) {
 			// Legacy path (shouldn't be hit anymore, but safe fallback).
 			runEnemyTurns();
-			gameStatus = IDLE;
+			if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+				gameStatus = IDLE;
 		} else if (gameStatus == PLAYER_TURN) {
 			// Targeting resolved, AP was spent. Check if turn should end.
 			if (player->actionBudget && player->actionBudget->getAP() <= 0) {
 				runEnemyTurns();
-				gameStatus = IDLE;
+				if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+					gameStatus = IDLE;
 			}
 		}
 		return;
@@ -150,7 +153,8 @@ void Engine::update()
 		if (player->actionBudget && player->actionBudget->getAP() <= 0) {
 			// Player turn over → run enemy turns
 			runEnemyTurns();
-			gameStatus = IDLE;
+			if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+				gameStatus = IDLE;
 		}
 		return;
 	}
@@ -158,7 +162,8 @@ void Engine::update()
 	// ── Legacy NEW_TURN: old code paths (targeting, inventory) still set NEW_TURN ──
 	if (gameStatus == NEW_TURN) {
 		runEnemyTurns();
-		gameStatus = IDLE;
+		if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+			gameStatus = IDLE;
 		return;
 	}
 
@@ -180,7 +185,7 @@ void Engine::update()
 			bool canAct = player->statusTracker->tickStartOfTurn(player);
 			// If player died from tick damage (e.g., Burning), handle death
 			if (player->destructible && player->destructible->isDead()) {
-				gameStatus = IDLE;
+				// die() has already set DEFEAT; do not reset to IDLE (Property 1).
 				return;
 			}
 			// If stunned, skip the player's turn entirely
@@ -188,7 +193,8 @@ void Engine::update()
 				if (player->actionBudget) player->actionBudget->setAP(0);
 				engine.gui->message(Colors::damage, "You are stunned and cannot act!");
 				runEnemyTurns();
-				gameStatus = IDLE;
+				if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+					gameStatus = IDLE;
 				return;
 			}
 		}
@@ -198,7 +204,8 @@ void Engine::update()
 
 		if (player->actionBudget && player->actionBudget->getAP() <= 0) {
 			runEnemyTurns();
-			gameStatus = IDLE;
+			if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+				gameStatus = IDLE;
 		}
 	}
 }
