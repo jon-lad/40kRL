@@ -7,8 +7,10 @@
 #include <sstream>
 #include <sol/sol.hpp>
 #include "main.hpp"
+#include "CharacterName.hpp"
 #include "HelpContent.hpp"
 #include "HighScoreStore.hpp"
+#include "TurnFlow.hpp"
 
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
 static constexpr int MAP_WIDTH            = 160;
@@ -58,12 +60,14 @@ void Engine::update()
 		if (gameStatus == NEW_TURN) {
 			// Legacy path (shouldn't be hit anymore, but safe fallback).
 			runEnemyTurns();
-			gameStatus = IDLE;
+			if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+				gameStatus = IDLE;
 		} else if (gameStatus == PLAYER_TURN) {
 			// Targeting resolved, AP was spent. Check if turn should end.
 			if (player->actionBudget && player->actionBudget->getAP() <= 0) {
 				runEnemyTurns();
-				gameStatus = IDLE;
+				if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+					gameStatus = IDLE;
 			}
 		}
 		return;
@@ -150,7 +154,8 @@ void Engine::update()
 		if (player->actionBudget && player->actionBudget->getAP() <= 0) {
 			// Player turn over → run enemy turns
 			runEnemyTurns();
-			gameStatus = IDLE;
+			if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+				gameStatus = IDLE;
 		}
 		return;
 	}
@@ -158,7 +163,8 @@ void Engine::update()
 	// ── Legacy NEW_TURN: old code paths (targeting, inventory) still set NEW_TURN ──
 	if (gameStatus == NEW_TURN) {
 		runEnemyTurns();
-		gameStatus = IDLE;
+		if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+			gameStatus = IDLE;
 		return;
 	}
 
@@ -180,7 +186,7 @@ void Engine::update()
 			bool canAct = player->statusTracker->tickStartOfTurn(player);
 			// If player died from tick damage (e.g., Burning), handle death
 			if (player->destructible && player->destructible->isDead()) {
-				gameStatus = IDLE;
+				// die() has already set DEFEAT; do not reset to IDLE (Property 1).
 				return;
 			}
 			// If stunned, skip the player's turn entirely
@@ -188,7 +194,8 @@ void Engine::update()
 				if (player->actionBudget) player->actionBudget->setAP(0);
 				engine.gui->message(Colors::damage, "You are stunned and cannot act!");
 				runEnemyTurns();
-				gameStatus = IDLE;
+				if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+					gameStatus = IDLE;
 				return;
 			}
 		}
@@ -198,7 +205,8 @@ void Engine::update()
 
 		if (player->actionBudget && player->actionBudget->getAP() <= 0) {
 			runEnemyTurns();
-			gameStatus = IDLE;
+			if (shouldEndTurnToIdle(player->destructible && player->destructible->isDead(), gameStatus))
+				gameStatus = IDLE;
 		}
 	}
 }
@@ -1815,7 +1823,7 @@ void Engine::renderWorldMap()
 void Engine::beginCharGen()
 {
 	charGenState = CharGenState{};
-	charGenState->currentStep = CharGenState::Step::HOMEWORLD;
+	charGenState->currentStep = CharGenState::Step::NAME;
 	gameStatus = CHARACTER_GEN;
 }
 
@@ -1834,6 +1842,29 @@ void Engine::updateCharGen()
 	}
 
 	switch (charGenState->currentStep) {
+		case CharGenState::Step::NAME:
+		{
+			// Text-input step: accumulate printable characters into the name buffer,
+			// support Backspace, and commit on Enter (follows the debug-seed-entry
+			// precedent in updateWorldMap). SDL_StartTextInput is active from Engine
+			// construction, so inputState.key.c carries printable characters.
+			if (inputState.key.pressed) {
+				if (inputState.key.key == SDLK_RETURN) {
+					// Commit the name and advance to the first selection step.
+					charGenState->currentStep = CharGenState::Step::HOMEWORLD;
+					charGenState->selectedIndex = 0;
+					charGenState->scrollOffset = 0;
+				} else if (inputState.key.key == SDLK_BACKSPACE) {
+					if (!charGenState->enteredName.empty())
+						charGenState->enteredName.pop_back();
+				} else if (inputState.key.c >= 32 && inputState.key.c < 127) {
+					// Printable ASCII only; cap the buffer at MAX_NAME_LENGTH.
+					if (static_cast<int>(charGenState->enteredName.size()) < MAX_NAME_LENGTH)
+						charGenState->enteredName += static_cast<char>(inputState.key.c);
+				}
+			}
+			break;
+		}
 		case CharGenState::Step::HOMEWORLD:
 		{
 			if (homeworldTemplates.empty()) break;
@@ -2086,6 +2117,11 @@ void Engine::updateCharGen()
 				}
 			}
 
+			// Assign the player's name from the entered buffer, applying the
+			// empty-fallback ("Rogue Trader"), max-length, and printable-only
+			// rules via the pure helper.
+			player->name = sanitizeCharacterName(charGenState->enteredName);
+
 			gui->message(Colors::uiText, "\n \n \n You awaken deep in the underhive. \n Find your way to the surface!");
 
 			// Clear chargen state.
@@ -2116,6 +2152,23 @@ void Engine::renderCharGen()
 	charGenConsole.setDefaultForeground(Colors::white);
 
 	switch (charGenState->currentStep) {
+		case CharGenState::Step::NAME:
+		{
+			charGenConsole.printf(2, 2, "Step 0: Name your character");
+
+			// Prompt and the current buffer with a trailing cursor.
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			charGenConsole.printf(2, 4, "Enter your name:");
+
+			charGenConsole.setDefaultForeground(Colors::uiHighlight);
+			charGenConsole.printf(2, 6, "%s_", charGenState->enteredName.c_str());
+
+			// Navigation hint.
+			charGenConsole.setDefaultForeground(Colors::uiText);
+			charGenConsole.printf(2, CHARGEN_HEIGHT - 2,
+				"[Type name]  [Backspace] Delete  [Enter] Confirm");
+			break;
+		}
 		case CharGenState::Step::HOMEWORLD:
 		{
 			charGenConsole.printf(2, 2, "Step 1: Select Homeworld");
@@ -2393,8 +2446,16 @@ void Engine::charGenGoBack()
 	if (!charGenState) return;
 
 	switch (charGenState->currentStep) {
+		case CharGenState::Step::NAME:
+			// First step — cannot go back further; do nothing.
+			break;
+
 		case CharGenState::Step::HOMEWORLD:
-			// Cannot go back further — do nothing.
+			// Back from homeworld returns to the NAME step, preserving the
+			// in-progress name buffer.
+			charGenState->currentStep = CharGenState::Step::NAME;
+			charGenState->selectedIndex = 0;
+			charGenState->scrollOffset = 0;
 			break;
 
 		case CharGenState::Step::CAREER:

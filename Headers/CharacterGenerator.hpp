@@ -9,11 +9,14 @@
 
 // Stores state for the character generation modal overlay.
 struct CharGenState {
-	enum class Step { HOMEWORLD, CAREER, ADVANCES, DONE };
-	Step currentStep = Step::HOMEWORLD;
+	enum class Step { NAME, HOMEWORLD, CAREER, ADVANCES, DONE };
+	Step currentStep = Step::NAME;
 
 	int selectedIndex = 0;     // cursor position in current list
 	int scrollOffset = 0;      // for scrollable lists
+
+	// In-progress player-typed name buffer (NAME step). Sanitized on finalization.
+	std::string enteredName;
 
 	// Accumulated choices (indices into Engine template vectors)
 	int homeworldIndex = -1;

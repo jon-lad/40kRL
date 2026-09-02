@@ -154,10 +154,12 @@
     <ClCompile Include="test_help_system.cpp" />
     <ClCompile Include="test_status_effects.cpp" />
     <ClCompile Include="test_character_sheet.cpp" />
+    <ClCompile Include="test_character_name.cpp" />
     <ClCompile Include="test_high_score.cpp" />
     <ClCompile Include="test_high_score_store.cpp" />
     <ClCompile Include="test_npc_stat_blocks.cpp" />
     <ClCompile Include="test_crit_hit_location.cpp" />
+    <ClCompile Include="test_turn_flow.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -186,6 +188,7 @@
     <ClCompile Include="..\Source\Openable.cpp" />
     <ClCompile Include="..\Source\DoorFactory.cpp" />
     <ClCompile Include="..\Source\CareerProgression.cpp" />
+    <ClCompile Include="..\Source\CharacterName.cpp" />
     <ClCompile Include="..\Source\CharacterSheet.cpp" />
     <ClCompile Include="..\Source\Paginator.cpp" />
     <ClCompile Include="..\Source\TabbedMenuState.cpp" />
@@ -201,6 +204,7 @@
     <ClCompile Include="..\Source\HighScore.cpp" />
     <ClCompile Include="..\Source\HighScoreStore.cpp" />
     <ClCompile Include="..\Source\StatBlock.cpp" />
+    <ClCompile Include="..\Source\TurnFlow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Headers\Actor.hpp" />
@@ -218,6 +222,7 @@
     <ClInclude Include="..\Headers\Persistent.hpp" />
     <ClInclude Include="..\Headers\Pickable.hpp" />
     <ClInclude Include="..\Headers\Characteristics.hpp" />
+    <ClInclude Include="..\Headers\CharacterName.hpp" />
     <ClInclude Include="..\Headers\DiceRoller.hpp" />
     <ClInclude Include="..\Headers\HitLocation.hpp" />
     <ClInclude Include="..\Headers\CriticalEffects.hpp" />
@@ -239,6 +244,7 @@
     <ClInclude Include="..\Headers\StatusTrigger.hpp" />
     <ClInclude Include="..\Headers\HighScore.hpp" />
     <ClInclude Include="..\Headers\HighScoreStore.hpp" />
+    <ClInclude Include="..\Headers\TurnFlow.hpp" />
     <ClInclude Include="lib\catch_amalgamated.hpp" />
     <ClInclude Include="lib\rapidcheck.h" />
     <ClInclude Include="lib\rapidcheck_catch.h" />
