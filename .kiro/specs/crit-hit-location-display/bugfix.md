@@ -66,3 +66,22 @@ collapses or over-represents BODY across the full `1..100` roll domain.
 4.1 The exploration test SHALL target the pure `HitLocationTable::resolve` mapping (engine-free, deterministic over the full `1..100` roll domain) to determine whether `resolve` collapses or over-represents BODY, or is correct. This is the single pure seam in the melee crit path.
 4.2 IF `HitLocationTable::resolve` is proven correct across the full `1..100` roll domain THEN the exploration test documents that the "always Body" symptom is a display/recording-path issue or a sampling artifact, and this Bug Analysis MUST be revised before a fix is designed.
 4.3 The fact that fatal critical hits are never recorded (clause 1.3) MAY or MAY NOT be intended behaviour. It is documented here as current behaviour. Whether the fatal blow's location should be recorded and shown in the sidebar is a separate scope decision to confirm with the user; it is out of scope for the "always Body" fix unless the user opts in.
+
+## Exploration Outcome (Task 1 result — resolves clause 4.2)
+
+The Task 1 bug-condition exploration test was run against the current (unfixed) code:
+
+- **Part A — Outcome (i) confirmed.** `HitLocationTable::resolve` is CORRECT across the
+  entire `1..100` roll domain (exhaustive sweep + a RapidCheck property of ≥100 iterations,
+  147 assertions, all passing; exactly 40 of 100 rolls resolve to BODY as intended by the
+  Rogue Trader digit-reversal table). No counterexample was found, so per clause 4.2 the
+  "always Body" symptom is NOT a `resolve` defect and the conditional Part A fix (tasks.md
+  Task 4) makes NO change to `Source/HitLocation.cpp`. The observed "one line — Body" was a
+  sampling artifact: the player had a single recorded non-fatal crit, and Body is the most
+  common location (40% of the table).
+
+- **Part B — the real defect.** Fatal critical hits were never recorded (the fatal branches
+  called `die()` without pushing an `InjuryRecord`), so the killing blow's location never
+  appeared in the sidebar/death screen. This is fixed by `InjuryTracker::recordFatalCrit`
+  wired into the fatal branches of `Attacker::resolveCharacterAttack` and
+  `RangedCombat::resolve` (tasks.md Task 3).

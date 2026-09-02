@@ -34,6 +34,14 @@ public:
     // (caller handles death). Returns true if non-fatal.
     bool applyCrit(Actor* owner, HitLocation loc, int critMagnitude);
 
+    // Records a fatal critical hit's location for display purposes WITHOUT applying
+    // characteristic debuffs (the actor is dying/dead — no living characteristics to
+    // modify). Pushes an InjuryRecord{loc, clampedMagnitude} and sets the cumulative
+    // magnitude to reflect the killing blow. The magnitude is clamped to
+    // [1, MAX_MAGNITUDE] so it round-trips symmetrically through save/load.
+    // Engine-free / test-safe: never touches engine globals or calls die().
+    void recordFatalCrit(HitLocation loc, int magnitude);
+
     // Reduces magnitude by the given amount. Returns excess (amount beyond reducing
     // magnitude to 0) which should be applied as HP healing.
     // Does NOT remove existing debuffs — they are permanent.

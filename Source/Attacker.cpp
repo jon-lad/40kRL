@@ -230,6 +230,10 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 				"Critical Hit on #! #",
 				HitLocationTable::name(loc), critEffect.description);
 		}
+		if (!target->injuryTracker) {
+			target->injuryTracker = std::make_unique<InjuryTracker>();
+		}
+		target->injuryTracker->recordFatalCrit(loc, critMagnitude);
 		target->destructible->die(target);
 	} else if (target->destructible->hp <= critBuffer) {
 		// Crit territory: HP in (0, CRIT_BUFFER]. Magnitude = CRIT_BUFFER - hp.
@@ -243,6 +247,10 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 		}
 
 		if (critEffect.fatal) {
+			if (!target->injuryTracker) {
+				target->injuryTracker = std::make_unique<InjuryTracker>();
+			}
+			target->injuryTracker->recordFatalCrit(loc, critMagnitude);
 			target->destructible->die(target);
 		} else {
 			// Apply crit debuffs — creature stays alive in crit territory
@@ -256,6 +264,7 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 				if (visibleToPlayer) {
 					engine.gui->message(Colors::damage, "Critical overload! #", fatalEffect.description);
 				}
+				target->injuryTracker->recordFatalCrit(loc, critMagnitude);
 				target->destructible->die(target);
 			} else {
 				// Trigger status effects from critical injury

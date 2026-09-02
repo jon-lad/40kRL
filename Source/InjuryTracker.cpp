@@ -30,6 +30,21 @@ bool InjuryTracker::applyCrit(Actor* owner, HitLocation loc, int critMagnitude) 
     return true;
 }
 
+void InjuryTracker::recordFatalCrit(HitLocation loc, int magnitude) {
+    // Clamp to [1, MAX_MAGNITUDE] so the record round-trips symmetrically through
+    // save/load (load clamps magnitude to [1, MAX_MAGNITUDE]).
+    int clampedMagnitude = std::clamp(magnitude, 1, MAX_MAGNITUDE);
+
+    // Set cumulative magnitude to reflect the killing blow. Kept within
+    // [1, MAX_MAGNITUDE] for save/load symmetry (load clamps magnitude_ to
+    // [0, MAX_MAGNITUDE]).
+    magnitude_ = clampedMagnitude;
+
+    // Record the fatal blow's location for display. Do NOT apply debuffs — the
+    // actor is dying/dead, so there are no living characteristics to modify.
+    records_.push_back(InjuryRecord{ loc, clampedMagnitude });
+}
+
 int InjuryTracker::healMagnitude(int amount) {
     if (amount <= 0) return 0;
     if (magnitude_ <= 0) return amount; // no crit damage, all goes to HP

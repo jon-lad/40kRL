@@ -158,6 +158,7 @@
     <ClCompile Include="test_high_score.cpp" />
     <ClCompile Include="test_high_score_store.cpp" />
     <ClCompile Include="test_npc_stat_blocks.cpp" />
+    <ClCompile Include="test_crit_hit_location.cpp" />
     <ClCompile Include="test_turn_flow.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
