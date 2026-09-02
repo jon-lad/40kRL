@@ -204,6 +204,7 @@ TEST_CASE("Part B: fatal crit at any non-body location is still unrecorded (gap 
 
 #include "libtcod.hpp"   // TCODZip for the save/load round-trip preservation test
 #include <cstdio>        // std::remove
+#include <string>        // std::string for display-name comparison
 #include <vector>
 
 // ─── Preservation 1: Genuine-Body rolls still return BODY ──────────────────────
@@ -389,4 +390,113 @@ TEST_CASE("PBT Property 2: save/load round-trip preserves record location and ma
             RC_ASSERT(got[i].magnitude == orig[i].magnitude);
         }
     });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FATAL-CRIT RECORDING FIDELITY TESTS (Task 5 — Property 3)
+//
+// recordFatalCrit now exists (Task 3.1). These tests verify the Part B fix:
+//   Property 3 (Fatal-Crit Recording Fidelity): for a fatal crit driven from a
+//   known roll X, the appended fatal InjuryRecord.location equals the resolved
+//   location HitLocationTable::resolve(X). This makes the killing blow's location
+//   available for a future death screen.
+//
+// Engine isolation (test-isolation.md): recordFatalCrit is engine-free — it never
+// touches owner characteristics or engine globals — so no owner is needed at all.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Property 3: recorded fatal location equals resolved location ──────────────
+// For any generated roll X in [1,100], resolve(X) gives the crit location; a fresh
+// tracker's recordFatalCrit(loc, magnitude) must append exactly one record whose
+// location equals that resolved location.
+// **Validates: Requirements 2.1, 2.2**
+
+TEST_CASE("PBT Property 3: recorded fatal location equals resolved location",
+          "[pbt][property][crit-hit-location]")
+{
+    rc::prop("recordFatalCrit(resolve(X), mag) => back().location == resolve(X)", []() {
+        // INCLUSIVE bounds: rc::gen::inRange(1, 100) yields [1, 100].
+        const int roll = *rc::gen::inRange(1, 100);
+        const HitLocation loc = HitLocationTable::resolve(roll);
+
+        // A magnitude representing a fatal blow; recordFatalCrit clamps to [1, MAX_MAGNITUDE].
+        const int magnitude = *rc::gen::inRange(1, InjuryTracker::FATAL_MAGNITUDE - 1);
+
+        InjuryTracker tracker;
+        tracker.recordFatalCrit(loc, magnitude);
+
+        // Exactly one record, and its location is the resolved (killing-blow) location.
+        RC_ASSERT(tracker.getRecords().size() == 1u);
+        RC_ASSERT(tracker.getRecords().back().location == loc);
+        RC_ASSERT(tracker.getRecords().back().location == HitLocationTable::resolve(roll));
+    });
+}
+
+// ─── Property 3: fatal record survives a save/load round-trip ──────────────────
+// After recordFatalCrit, save to a TCODZip temp file, load into a fresh tracker,
+// and assert the fatal record's location and (clamped) magnitude survive.
+// **Validates: Requirements 2.1, 2.2, 3.3**
+
+TEST_CASE("PBT Property 3: fatal record round-trips through save/load",
+          "[pbt][property][crit-hit-location]")
+{
+    rc::prop("recordFatalCrit then save/load preserves fatal location and magnitude", []() {
+        const int roll = *rc::gen::inRange(1, 100);
+        const HitLocation loc = HitLocationTable::resolve(roll);
+        // Use a value in [1,9]; recordFatalCrit clamps to [1, MAX_MAGNITUDE] = [1,9].
+        const int magnitude = *rc::gen::inRange(1, InjuryTracker::MAX_MAGNITUDE);
+
+        InjuryTracker original;
+        original.recordFatalCrit(loc, magnitude);
+        RC_ASSERT(original.getRecords().size() == 1u);
+
+        const char* tempFile = "__test_fatal_crit_roundtrip.dat";
+
+        {
+            TCODZip zip;
+            original.save(zip);
+            zip.saveToFile(tempFile);
+        }
+
+        InjuryTracker loaded;
+        {
+            TCODZip zip;
+            zip.loadFromFile(tempFile);
+            loaded.load(zip);
+        }
+
+        std::remove(tempFile);
+
+        // The fatal record survives with identical location and magnitude.
+        RC_ASSERT(loaded.getRecords().size() == 1u);
+        RC_ASSERT(loaded.getRecords().back().location == original.getRecords().back().location);
+        RC_ASSERT(loaded.getRecords().back().magnitude == original.getRecords().back().magnitude);
+        RC_ASSERT(loaded.getRecords().back().location == loc);
+        RC_ASSERT(loaded.getMagnitude() == original.getMagnitude());
+    });
+}
+
+// ─── Concrete unit test mirroring the reported bug ─────────────────────────────
+// The player reported a fatal LEFT_LEG (leg) crit death that showed only "Body".
+// With the fix, a fatal LEFT_LEG crit is recorded and getRecords().back().location
+// == HitLocation::LEFT_LEG, so the death screen can show "Left Leg", not lose it.
+// **Validates: Requirements 2.1, 2.2**
+
+TEST_CASE("Fatal LEFT_LEG crit is recorded and displays as Left Leg (reported-bug repro)",
+          "[crit-hit-location]")
+{
+    InjuryTracker tracker;
+    REQUIRE(tracker.getRecords().empty());
+
+    // A fatal leg crit — the exact scenario the player reported.
+    tracker.recordFatalCrit(HitLocation::LEFT_LEG, InjuryTracker::FATAL_MAGNITUDE);
+
+    // The killing blow's location is now recorded (not lost, not collapsed to Body).
+    REQUIRE(tracker.getRecords().size() == 1u);
+    CHECK(tracker.getRecords().back().location == HitLocation::LEFT_LEG);
+    CHECK(HitLocationTable::name(tracker.getRecords().back().location) == std::string("Left Leg"));
+    CHECK(tracker.hasInjuries() == true);
+    // Magnitude clamped to [1, MAX_MAGNITUDE].
+    CHECK(tracker.getRecords().back().magnitude == InjuryTracker::MAX_MAGNITUDE);
+    CHECK(tracker.getMagnitude() == InjuryTracker::MAX_MAGNITUDE);
 }
