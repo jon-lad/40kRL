@@ -154,6 +154,7 @@
     <ClCompile Include="test_help_system.cpp" />
     <ClCompile Include="test_status_effects.cpp" />
     <ClCompile Include="test_character_sheet.cpp" />
+    <ClCompile Include="test_character_name.cpp" />
     <ClCompile Include="test_high_score.cpp" />
     <ClCompile Include="test_high_score_store.cpp" />
     <ClCompile Include="test_npc_stat_blocks.cpp" />
@@ -185,6 +186,7 @@
     <ClCompile Include="..\Source\Openable.cpp" />
     <ClCompile Include="..\Source\DoorFactory.cpp" />
     <ClCompile Include="..\Source\CareerProgression.cpp" />
+    <ClCompile Include="..\Source\CharacterName.cpp" />
     <ClCompile Include="..\Source\CharacterSheet.cpp" />
     <ClCompile Include="..\Source\Paginator.cpp" />
     <ClCompile Include="..\Source\TabbedMenuState.cpp" />
@@ -217,6 +219,7 @@
     <ClInclude Include="..\Headers\Persistent.hpp" />
     <ClInclude Include="..\Headers\Pickable.hpp" />
     <ClInclude Include="..\Headers\Characteristics.hpp" />
+    <ClInclude Include="..\Headers\CharacterName.hpp" />
     <ClInclude Include="..\Headers\DiceRoller.hpp" />
     <ClInclude Include="..\Headers\HitLocation.hpp" />
     <ClInclude Include="..\Headers\CriticalEffects.hpp" />
