@@ -27,6 +27,37 @@ bool dodgeSucceeds(int roll, int dodgeTarget) {
 	return roll <= dodgeTarget;
 }
 
+// ─── Parry pure helpers (TDD-red stubs — real logic lands in task 10.1) ────
+
+int parryBonus(int parryRank, bool hasParrySkill) {
+	(void)parryRank;
+	(void)hasParrySkill;
+	return 0;
+}
+
+int parryQualityModifier(const std::vector<std::string>& qualities) {
+	(void)qualities;
+	return 0;
+}
+
+bool parryUnavailableFromQualities(const std::vector<std::string>& qualities) {
+	(void)qualities;
+	return false;
+}
+
+int computeParryTarget(int weaponSkill, int parryBonus, int qualityModifier) {
+	(void)weaponSkill;
+	(void)parryBonus;
+	(void)qualityModifier;
+	return 0;
+}
+
+bool parrySucceeds(int roll, int parryTarget) {
+	(void)roll;
+	(void)parryTarget;
+	return false;
+}
+
 // ─── Helper: determine whether actor is player-controlled ───────────────────
 
 static bool isPlayerControlled(Actor* actor) {

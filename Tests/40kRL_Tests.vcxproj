@@ -166,6 +166,7 @@
   <ItemGroup>
     <ClCompile Include="..\Source\Actor.cpp" />
     <ClCompile Include="..\Source\Ai.cpp" />
+    <ClCompile Include="..\Source\AiDecision.cpp" />
     <ClCompile Include="..\Source\Attacker.cpp" />
     <ClCompile Include="..\Source\Container.cpp" />
     <ClCompile Include="..\Source\Destructible.cpp" />

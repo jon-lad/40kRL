@@ -18,7 +18,10 @@ ROADMAP
 - [x] Complete tests for CharacterSheet (unit + property-based)
 - [x] NPC stat blocks (shared skills/talents/traits; Dodge skill + Weapon Training wired into combat; NPCs never gain XP)
 - [ ] Wire remaining NPC skills/talents into combat (only Dodge + Weapon Training active so far; Awareness, other skills, non-training talents, and traits are stored but inert; also Parry skill-rank bonus)
-- [ ] Add high score system
+  - [ ] Size-based wound thresholds (larger creatures absorb more wounds before critical effects)
+  - [ ] Surprise / initiative scheduler (turn-order effect of surprise beyond the flat to-hit bonus)
+  - [ ] Distinct knockdown source (a knockdown mechanic that the Sturdy immunity predicate can gate)
+- [x] Add high score system
 
 ## UI Overhaul
 

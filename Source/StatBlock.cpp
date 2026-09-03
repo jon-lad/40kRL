@@ -26,6 +26,39 @@ bool hasTalent(const Actor* actor, const std::string& talent) {
 	return actor->career->talents.count(talent) > 0;
 }
 
+// ─── Trait_Provider stubs (TDD red) ─────────────────────────────────────────
+// Trivial stub bodies so the project links; real logic lands in tasks 9.1/9.2.
+
+bool hasTrait(const Actor* /*actor*/, const std::string& /*name*/) {
+	return false;
+}
+
+int brutalChargeBonus(const Actor* /*actor*/) {
+	return 0;
+}
+
+bool isImmuneToKnockdown(const Actor* /*actor*/) {
+	return false;
+}
+
+SizeCategory getSizeCategory(const Actor* /*actor*/) {
+	return SizeCategory::Average;
+}
+
+int sizeToHitModifier(SizeCategory /*category*/) {
+	return 0;
+}
+
+// ─── Awareness surprise helper stubs (TDD red) ──────────────────────────────
+
+int surpriseAvoidanceTarget(int /*perception*/, int /*awarenessRank*/, bool /*hasAwareness*/) {
+	return 0;
+}
+
+bool surpriseAvoided(int /*roll*/, int /*surpriseTarget*/) {
+	return false;
+}
+
 // ─── Lua stat-block parsing (engine-free; driven by tests and Map.cpp) ──────
 
 void populateStatBlockFromLua(CareerProgression& career, const sol::table& entry) {
