@@ -50,11 +50,11 @@ void Attacker::clearModifiers() {
 	modifiers.clear();
 }
 
-void Attacker::attack(Actor* owner, Actor* target)
+void Attacker::attack(Actor* owner, Actor* target, bool isCharge)
 {
 	if (target->destructible && !target->destructible->isDead()) {
 		if (target->characteristics) {
-			resolveCharacterAttack(owner, target);
+			resolveCharacterAttack(owner, target, isCharge);
 		} else {
 			resolveDestructibleAttack(owner, target);
 		}

@@ -18,7 +18,10 @@ public:
 	explicit Attacker(float power, int skillValue = 40);
 
 	// Deals damage from owner to target and logs the result to the message log.
-	void attack(Actor* owner, Actor* target);
+	// isCharge is set ONLY by charge call sites (PlayerAi 'C', MonsterAi charge branch);
+	// it is threaded to resolveCharacterAttack so the Brutal Charge damage bonus applies.
+	// Standard melee attacks use the default (false) and are byte-identical to before.
+	void attack(Actor* owner, Actor* target, bool isCharge = false);
 
 	// Computes effective threshold: clamp(skillValue + sum(modifiers), 1, 99)
 	int computeThreshold() const;
