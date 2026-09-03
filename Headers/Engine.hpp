@@ -326,7 +326,12 @@ public:
 	// the in-memory leaderboard, and persists the leaderboard to highscores.dat.
 	// Guarded so at most one entry is recorded per run (Req 4.4). `cause` is the
 	// killing actor's name when known; empty for unknown/non-combat deaths.
-	void recordRunOutcome(const std::string& cause);
+	//
+	// `characterName` is the player's chosen name for the score entry. It must be
+	// captured BEFORE Destructible::die() overwrites player->name with the corpse
+	// name ("Your cadaver"); otherwise the leaderboard would record the corpse
+	// name. When empty, falls back to player->name for backwards compatibility.
+	void recordRunOutcome(const std::string& cause, const std::string& characterName = "");
 
 	// Changes depth and generates a new level. Direction determines whether depth increments or decrements.
 	void nextLevel(StairDirection direction);

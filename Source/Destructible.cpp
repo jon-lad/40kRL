@@ -173,11 +173,18 @@ PlayerDestructible::PlayerDestructible(float maxHp, float defense, std::string_v
 void PlayerDestructible::die(Actor* owner)
 {
 	engine.gui->message(Colors::damage, "You died!");
+
+	// Capture the player's chosen name BEFORE Destructible::die() overwrites it
+	// with the corpse name ("Your cadaver"). Otherwise the leaderboard would
+	// record the corpse name instead of the entered character name.
+	const std::string chosenName = owner ? owner->name : std::string{};
+
 	Destructible::die(owner);
 	engine.gameStatus = Engine::DEFEAT;
 
 	// Record the run outcome on player death (Req 4.1-4.3). The cause is the
 	// attacker's name threaded via engine.pendingCauseOfDeath_ by the combat
-	// pipeline; empty for non-combat deaths, yielding "Slain".
-	engine.recordRunOutcome(engine.pendingCauseOfDeath_);
+	// pipeline; empty for non-combat deaths, yielding "Slain". The chosen name
+	// is passed explicitly so the corpse rename above does not clobber it.
+	engine.recordRunOutcome(engine.pendingCauseOfDeath_, chosenName);
 }
