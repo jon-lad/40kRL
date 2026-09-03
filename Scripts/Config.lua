@@ -55,6 +55,9 @@ config = {
     wfcMinItems            = 3,
     wfcMaxItems            = 7,
 
+    -- Default region applied to levels generated without world-map context
+    defaultRegion = "Ork",
+
     -- Carrying capacity (max total weight the player can carry; 0 = unlimited)
     carryingCapacity = 50.0,
 

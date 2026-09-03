@@ -108,25 +108,37 @@ TEST_CASE("Map::load: pre-region snapshot without a region sentinel resolves to 
     const int mapWidth  = 80;
     const int mapHeight = 43;
 
-    // Build a pre-region snapshot by saving a Map through the CURRENT Map::save
-    // stream. A pre-region save is exactly one that ends after the existing
-    // sections with no trailing REGION_SENTINEL — which is what the stream below
-    // reproduces byte-for-byte (dimensions header + Map::save payload). This is
-    // the most robust way to emulate an old save without hand-encoding the layout.
+    // Build a genuine pre-region snapshot: the existing Map::save sections
+    // (ODOR + levelType + seed + tiles + currentScentValue + DIMS + dims) with
+    // NO trailing REGION_SENTINEL. We hand-encode the pre-region BSP stream here
+    // rather than reuse the CURRENT Map::save, because Map::save now always
+    // appends the region field (Task 5.4). This reproduces exactly what an old
+    // save (produced before region support existed) looks like on disk, so the
+    // load path must take the pre-region branch and resolve to Default_Region.
     const char* tempFile = "__test_region_backcompat_no_sentinel.sav";
     {
-        Map sourceMap(mapWidth, mapHeight);
-        sourceMap.init(false, LevelType::BSP);
-        // Deliberately assign a non-default region on the source so that if the
-        // region somehow leaked through, it would differ from the Default_Region
-        // and fail the assertion. The current (pre-region) save writes no region,
-        // so this value must NOT survive.
-        sourceMap.setRegionName("SentinelLeakCanary");
+        const int levelTypeInt = static_cast<int>(LevelType::BSP);
 
         TCODZip zip;
+        // Snapshot header (dimensions), matching serializeCurrentLevel().
         zip.putInt(mapWidth);
         zip.putInt(mapHeight);
-        sourceMap.save(zip); // pre-region save: no REGION_SENTINEL appended
+
+        // ── Pre-region Map::save payload (no REGION_SENTINEL at the end) ──
+        static constexpr int SAVE_VERSION_SENTINEL = 0x4F444F52; // "ODOR"
+        static constexpr int DIMS_SENTINEL         = 0x44494D53; // "DIMS"
+        zip.putInt(SAVE_VERSION_SENTINEL);
+        zip.putInt(levelTypeInt);
+        zip.putInt(0); // seed (any value; geometry is regenerated deterministically)
+        for (int i = 0; i < mapWidth * mapHeight; ++i) {
+            zip.putInt(0); // tile.explored
+            zip.putInt(0); // tile.scent
+        }
+        zip.putInt(0); // currentScentValue
+        zip.putInt(DIMS_SENTINEL);
+        zip.putInt(mapWidth);
+        zip.putInt(mapHeight);
+        // Deliberately NO region field appended — this is a pre-region save.
         zip.saveToFile(tempFile);
     }
 

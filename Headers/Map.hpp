@@ -9,6 +9,13 @@
 // Forward declaration — full definition in Headers/WfcGenerator.h (created by task 1.1)
 struct WfcTileset;
 
+// Sentinel appended at the very end of the Map::save stream to mark the presence
+// of the persisted region field. "RGNM" in ASCII. Because TCODZip::getInt()
+// returns 0 on an exhausted archive, this non-zero constant cannot be mistaken
+// for end-of-stream in a pre-region save. Namespace-scope so tests can reference
+// it directly (see Tests/test_region_persistence.cpp).
+inline constexpr int REGION_SENTINEL = 0x52474E4D; // "RGNM"
+
 // Identifies the generation algorithm used for a map level.
 enum class LevelType : int {
 	BSP     = 0, // Binary Space Partitioning (rooms + corridors)

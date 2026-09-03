@@ -472,6 +472,12 @@ void Map::save(TCODZip& zip)
 			zip.putInt(wfcTileIds[i]);
 		}
 	}
+
+	// Region field — appended at the very END of the stream (after ODOR/DIMS/WFCG)
+	// so it never disturbs the ordered reads of the existing sections. Guarded by
+	// REGION_SENTINEL so pre-region loaders and older saves stay compatible.
+	zip.putInt(REGION_SENTINEL);
+	zip.putString(regionName.c_str());
 }
 
 void Map::load(TCODZip& zip)
@@ -562,6 +568,20 @@ void Map::load(TCODZip& zip)
 				}
 			}
 		}
+	}
+
+	// Region field — read the trailing int appended at the end of the save stream.
+	// If it equals REGION_SENTINEL, the following string is the persisted region;
+	// an empty/malformed string resolves to the Default_Region (Req 8.5). Otherwise
+	// this is a pre-region save (getInt() returns 0 on an exhausted archive, or a
+	// non-sentinel value), so we assign the Default_Region and continue without
+	// aborting (Req 8.4).
+	int maybeRegion = zip.getInt();
+	if (maybeRegion == REGION_SENTINEL) {
+		const char* r = zip.getString();
+		regionName = (r && *r) ? std::string(r) : resolveDefaultRegion();
+	} else {
+		regionName = resolveDefaultRegion();
 	}
 }
 
