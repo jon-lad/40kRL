@@ -9,6 +9,7 @@
 #include "DiceRoller.hpp"
 #include "ReactionResolver.hpp"
 #include "StatusTrigger.hpp"
+#include "StatBlock.hpp"
 
 Attacker::Attacker(float power, int skillValue)
 	: power{ power }
@@ -126,7 +127,11 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 			profPenalty = proficiencyModifier(owner, *weaponItem->equippable->weaponGroup);
 		}
 	}
-	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty + aimBonus));
+
+	// ── Size to-hit modifier (target size category) ──
+	const int sizeMod = sizeToHitModifier(getSizeCategory(target));
+
+	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty + aimBonus + sizeMod));
 
 	// ── Roll d100 ──
 	const int roll = rollD100();

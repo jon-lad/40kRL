@@ -8,6 +8,7 @@
 #include "DiceRoller.hpp"
 #include "WeaponTypes.hpp"
 #include "ReactionResolver.hpp"
+#include "StatBlock.hpp"
 
 namespace {
 	int defaultRollD100() {
@@ -43,7 +44,24 @@ RangedResult resolveCharacterAttack(const RangedContext& ctx) {
 	}
 	// Aim bonus (from ActionBudget)
 	const int aimBonus = ctx.shooter->actionBudget ? ctx.shooter->actionBudget->getAimBonus() : 0;
-	const int effectiveBS = std::max(1, std::min(99, baseBS + modSum + aimBonus));
+
+	// ── Proficiency penalty (ranged Weapon Training) ──
+	// Derive the WeaponGroup from the equipped ranged weapon, exactly as the melee
+	// path (Attacker::resolveCharacterAttack) derives it from the equipped weapon.
+	// If no group is determinable, fall back to the untrained penalty (-20) that
+	// proficiencyModifier itself returns for no matching Weapon Training talent.
+	int profPenalty = -20; // untrained fallback when no group is determinable
+	if (ctx.shooter->equipment) {
+		Actor* weaponItem = ctx.shooter->equipment->getSlot(EquipmentSlot::WEAPON);
+		if (weaponItem && weaponItem->equippable && weaponItem->equippable->weaponGroup) {
+			profPenalty = proficiencyModifier(ctx.shooter, *weaponItem->equippable->weaponGroup);
+		}
+	}
+
+	// ── Size to-hit modifier (target size category) ──
+	const int sizeMod = sizeToHitModifier(getSizeCategory(ctx.target));
+
+	const int effectiveBS = std::max(1, std::min(99, baseBS + modSum + aimBonus + profPenalty + sizeMod));
 
 	// ── Roll d100 ──
 	const int roll = roll100();

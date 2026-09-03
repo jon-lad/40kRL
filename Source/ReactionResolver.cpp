@@ -14,6 +14,16 @@ bool hasEquippedMeleeWeapon(Actor* actor) {
 	return weapon->equippable->meleeStats.has_value();
 }
 
+// ─── Helper: read the equipped melee weapon's qualities (empty if none) ─────
+
+static std::vector<std::string> equippedMeleeWeaponQualities(Actor* actor) {
+	if (!actor->equipment) return {};
+	Actor* weapon = actor->equipment->getSlot(EquipmentSlot::WEAPON);
+	if (!weapon || !weapon->equippable) return {};
+	if (!weapon->equippable->meleeStats.has_value()) return {};
+	return weapon->equippable->meleeStats->qualities;
+}
+
 // ─── Dodge pure helpers (engine-independent, unit- and property-testable) ──
 
 int computeDodgeTarget(int agility, int dodgeRank, bool hasDodgeSkill) {
@@ -108,8 +118,12 @@ ReactionResult resolveReaction(Actor* target, Actor* attacker, bool isMelee) {
 	}
 
 	// 2. Determine available reactions
+	// Read the equipped melee weapon's qualities once; Unwieldy weapons cannot
+	// parry (parryUnavailableFromQualities), so they gate Parry availability.
+	std::vector<std::string> weaponQualities = equippedMeleeWeaponQualities(target);
 	bool canDodge = true; // always available
-	bool canParry = isMelee && hasEquippedMeleeWeapon(target);
+	bool canParry = isMelee && hasEquippedMeleeWeapon(target)
+		&& !parryUnavailableFromQualities(weaponQualities);
 
 	// 3. Pick reaction
 	ReactionChoice choice;
@@ -151,17 +165,18 @@ ReactionResult resolveReaction(Actor* target, Actor* attacker, bool isMelee) {
 	}
 
 	if (choice == ReactionChoice::PARRY) {
-		int targetWS = target->characteristics->get(CharId::WS);
-		if (roll <= targetWS) {
-			// 6. Log success
+		int targetWS      = target->characteristics->get(CharId::WS);
+		bool hasParrySkill = hasSkill(target, "Parry");
+		int parryRank     = hasParrySkill ? getSkillRank(target, "Parry") : 0;
+		int parryTarget   = computeParryTarget(targetWS,
+			parryBonus(parryRank, hasParrySkill),
+			parryQualityModifier(weaponQualities));
+		if (parrySucceeds(roll, parryTarget)) {
 			engine.gui->message(Colors::reactionEvent, "# parries the attack!", target->name);
-			// 7. Return NEGATED
 			return ReactionResult::NEGATED;
-		} else {
-			// 6. Log failure
-			engine.gui->message(Colors::reactionEvent, "# fails to parry.", target->name);
-			return ReactionResult::FAILED;
 		}
+		engine.gui->message(Colors::reactionEvent, "# fails to parry.", target->name);
+		return ReactionResult::FAILED;
 	}
 
 	return ReactionResult::NO_REACTION;
