@@ -79,14 +79,22 @@ int sizeToHitModifier(SizeCategory category) {
 	return 0;
 }
 
-// ─── Awareness surprise helper stubs (TDD red) ──────────────────────────────
+// ─── Awareness surprise helper (pure, engine-free) ──────────────────────────
+// The avoidance target is the perception characteristic adjusted by the
+// Awareness skill: +rank*10 when trained, or a flat -20 untrained penalty.
+// The result is clamped to the d100 target band [0,100].
 
-int surpriseAvoidanceTarget(int /*perception*/, int /*awarenessRank*/, bool /*hasAwareness*/) {
-	return 0;
+int surpriseAvoidanceTarget(int perception, int awarenessRank, bool hasAwareness) {
+	const int modifier = hasAwareness ? awarenessRank * 10 : -20;
+	return std::clamp(perception + modifier, 0, 100);
 }
 
-bool surpriseAvoided(int /*roll*/, int /*surpriseTarget*/) {
-	return false;
+// Roll resolution: a natural 1 always avoids surprise (not surprised), a
+// natural 100 is always surprised, otherwise the roll must be under the target.
+bool surpriseAvoided(int roll, int surpriseTarget) {
+	if (roll == 1) return true;
+	if (roll == 100) return false;
+	return roll <= surpriseTarget;
 }
 
 // ─── Lua stat-block parsing (engine-free; driven by tests and Map.cpp) ──────

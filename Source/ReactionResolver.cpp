@@ -27,35 +27,40 @@ bool dodgeSucceeds(int roll, int dodgeTarget) {
 	return roll <= dodgeTarget;
 }
 
-// ─── Parry pure helpers (TDD-red stubs — real logic lands in task 10.1) ────
+// ─── Parry pure helpers (engine-independent, unit- and property-testable) ──
 
 int parryBonus(int parryRank, bool hasParrySkill) {
-	(void)parryRank;
-	(void)hasParrySkill;
-	return 0;
+	// Trained: +10 per rank. Untrained: flat -20 penalty (never both).
+	return hasParrySkill ? (parryRank * 10) : -20;
 }
 
 int parryQualityModifier(const std::vector<std::string>& qualities) {
-	(void)qualities;
-	return 0;
+	// +10 per Balanced quality, -10 per Unbalanced quality; all other
+	// qualities (including an empty list) contribute nothing.
+	int modifier = 0;
+	for (const std::string& quality : qualities) {
+		if (quality == "Balanced") modifier += 10;
+		else if (quality == "Unbalanced") modifier -= 10;
+	}
+	return modifier;
 }
 
 bool parryUnavailableFromQualities(const std::vector<std::string>& qualities) {
-	(void)qualities;
+	// Unwieldy weapons cannot parry; takes precedence over any other quality.
+	for (const std::string& quality : qualities) {
+		if (quality == "Unwieldy") return true;
+	}
 	return false;
 }
 
 int computeParryTarget(int weaponSkill, int parryBonus, int qualityModifier) {
-	(void)weaponSkill;
-	(void)parryBonus;
-	(void)qualityModifier;
-	return 0;
+	return std::clamp(weaponSkill + parryBonus + qualityModifier, 0, 100);
 }
 
 bool parrySucceeds(int roll, int parryTarget) {
-	(void)roll;
-	(void)parryTarget;
-	return false;
+	if (roll == 1) return true;      // auto-success
+	if (roll == 100) return false;   // auto-fail
+	return roll <= parryTarget;
 }
 
 // ─── Helper: determine whether actor is player-controlled ───────────────────
