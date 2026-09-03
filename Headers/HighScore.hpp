@@ -83,3 +83,14 @@ DeathScoreView computeDeathScoreView(std::optional<int> lastEntryIndex,
 
 // Pure placement number: 1-based rank of the earned entry (entry index + 1).
 int placementNumber(int entryIndex);
+
+// ─── Score-name resolution seam (highscore-name-not-cadaver) ──────────────────
+//
+// Pure, engine-free helper choosing which name a run's ScoreEntry records.
+// On player death the actor's name is overwritten with the corpse name (e.g.
+// "Your cadaver") before the outcome is recorded, so recordRunOutcome must use
+// the chosen name captured before that rename. This function encodes the rule:
+//   - if chosenName is non-empty, use it (the player's entered character name)
+//   - otherwise fall back to liveActorName (backwards-compatible default)
+std::string resolveScoreName(const std::string& chosenName,
+                             const std::string& liveActorName);

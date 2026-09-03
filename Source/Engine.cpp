@@ -1112,7 +1112,7 @@ void Engine::renderCharacterSheet()
 		screenHeight / 2 - SHEET_HEIGHT / 2);
 }
 
-void Engine::recordRunOutcome(const std::string& cause)
+void Engine::recordRunOutcome(const std::string& cause, const std::string& characterName)
 {
 	// Record at most one entry per completed run (Req 4.4). If we've already
 	// recorded this run, do nothing.
@@ -1126,7 +1126,11 @@ void Engine::recordRunOutcome(const std::string& cause)
 	// Character identity and career-sourced fields. player and player->career
 	// may be null in test-isolation contexts, so guard before dereferencing.
 	if (player) {
-		entry.characterName = player->name;
+		// Prefer the explicitly-provided chosen name (captured before the corpse
+		// rename in PlayerDestructible::die). Fall back to the live actor name
+		// only when no explicit name was supplied. Rule lives in the pure seam
+		// resolveScoreName() so it is testable without the Engine.
+		entry.characterName = resolveScoreName(characterName, player->name);
 
 		if (player->career) {
 			const auto& career = *player->career;

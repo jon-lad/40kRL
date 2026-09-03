@@ -54,6 +54,17 @@ std::string formatOutcome(const std::string& cause)
 	return cause.empty() ? std::string("Slain") : ("Slain by " + cause);
 }
 
+// ─── Score-name resolution (highscore-name-not-cadaver) ───────────────────────
+//
+// Chooses which name a run's ScoreEntry records. On death the player actor's
+// name is replaced with the corpse name before the outcome is recorded, so the
+// chosen name captured beforehand takes precedence. Pure — no engine access.
+std::string resolveScoreName(const std::string& chosenName,
+                             const std::string& liveActorName)
+{
+	return chosenName.empty() ? liveActorName : chosenName;
+}
+
 // ─── Ranking (task 2.3) ──────────────────────────────────────────────────────
 //
 // Returns positive if a ranks strictly above b, negative if a ranks below b,

@@ -1008,3 +1008,49 @@ TEST_CASE("Death screen: page selection works with a single-entry-per-page pagin
         REQUIRE(pag.endIndex() == index + 1);
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// resolveScoreName — the score-entry name-selection rule
+// (highscore-name-not-cadaver)
+//
+// Bug: on death the player actor's name is overwritten with the corpse name
+// ("Your cadaver") before Engine::recordRunOutcome runs, so the leaderboard
+// recorded the corpse name instead of the entered character name. The fix
+// captures the chosen name before the rename and threads it through
+// resolveScoreName(), which prefers the chosen name over the live actor name.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+TEST_CASE("resolveScoreName: chosen name wins over the corpse/live actor name", "[high-score-system]")
+{
+    // The reported bug: the live actor name has already become the corpse name
+    // by the time the score is recorded. The chosen name captured beforehand
+    // must be used instead.
+    REQUIRE(resolveScoreName("Aria Sunhawk", "Your cadaver") == "Aria Sunhawk");
+    REQUIRE(resolveScoreName("Rogue Trader", "Your cadaver") == "Rogue Trader");
+}
+
+TEST_CASE("resolveScoreName: empty chosen name falls back to the live actor name", "[high-score-system]")
+{
+    // Backwards-compatible default: when no explicit chosen name is supplied
+    // (e.g. older/non-death call paths), fall back to the live actor name.
+    REQUIRE(resolveScoreName("", "Player") == "Player");
+    REQUIRE(resolveScoreName("", "") == "");
+}
+
+TEST_CASE("PBT: resolveScoreName prefers a non-empty chosen name for any inputs", "[pbt][property][high-score-system]")
+{
+    // For any pair of strings, a non-empty chosen name is always returned; an
+    // empty chosen name always defers to the live actor name. This guarantees
+    // the corpse name can never override the entered character name.
+    rc::check("resolveScoreName selection rule", []() {
+        const std::string chosen = *rc::gen::string(0, 16); // may be empty
+        const std::string live   = *rc::gen::string(0, 16); // may be empty
+
+        const std::string result = resolveScoreName(chosen, live);
+        if (chosen.empty()) {
+            RC_ASSERT(result == live);
+        } else {
+            RC_ASSERT(result == chosen);
+        }
+    });
+}
