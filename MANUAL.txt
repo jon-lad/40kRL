@@ -55,11 +55,21 @@ Mechanics
   NPC stat blocks
     Enemies carry their own skills, talents, and traits (defined in
     Enemies.lua) and are treated like the player in combat:
-      - Dodge skill improves an enemy's evasion against your attacks.
+      - Dodge and Parry skills contribute defensive reactions against
+        your attacks.
       - Weapon Training talents remove the unproficient penalty on
-        their attacks.
+        their attacks, for both melee and ranged.
+      - Traits drive real mechanics: Brutal Charge adds bonus charge
+        damage, Sturdy grants knockdown immunity, and Size adjusts the
+        to-hit roll against the target.
     Enemies never gain XP — they use fixed profiles in the style of
     the Rogue Trader bestiary.
+
+  Trait-driven monster AI
+    Some enemies react to the tide of battle:
+      - Cowardly enemies flee when badly wounded.
+      - Mob Rule enemies hold their ground when enough allies are
+        nearby.
 
   High-score leaderboard
     Every run is recorded when your character dies: character name,

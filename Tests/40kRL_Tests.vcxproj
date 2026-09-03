@@ -122,6 +122,7 @@
     <ClCompile Include="test_tile_targeting.cpp" />
     <ClCompile Include="test_inventory_equipment_ux.cpp" />
     <ClCompile Include="test_persistent_levels.cpp" />
+    <ClCompile Include="test_region_persistence.cpp" />
     <ClCompile Include="test_look_and_decorations.cpp" />
     <ClCompile Include="test_characteristics.cpp" />
     <ClCompile Include="test_dice_roller.cpp" />
@@ -162,6 +163,10 @@
     <ClCompile Include="test_crit_hit_location.cpp" />
     <ClCompile Include="test_turn_flow.cpp" />
     <ClCompile Include="test_npc_skills_talents.cpp" />
+    <ClCompile Include="test_region_derivation.cpp" />
+    <ClCompile Include="test_region_spawn_selection.cpp" />
+    <ClCompile Include="test_enemies_schema.cpp" />
+    <ClCompile Include="test_default_region.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
