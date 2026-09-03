@@ -795,3 +795,252 @@ TEST_CASE("Existing Dodge / melee-proficiency behaviour unchanged", "[npc-skills
         REQUIRE(proficiencyModifier(nullptr, WeaponGroup::BOLT) == -20);
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Wave 10 — Lua data-compatibility tests (Task 13.1 / 13.2)
+//
+// These exercise the ALREADY-IMPLEMENTED parser (populateStatBlockFromLua in
+// Source/StatBlock.cpp) and the Trait_Provider helpers against real / realistic
+// Lua data. No parser change is required — they assert the existing parser already
+// handles the wired trait vocabulary and that unrecognized/legacy traits load but
+// remain mechanically inert.
+//
+// Engine-free / headless: an in-memory sol::state is constructed per test; the
+// global Engine is never initialized. No engine.gui / engine.map / engine.player.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Task 13.1 — Lua parse compatibility and inert-trait handling ───────────────
+// Build an in-memory sol::state, construct a Lua enemy entry with skills, talents,
+// and traits (the five wired traits plus at least one unrecognized/legacy trait),
+// parse it via populateStatBlockFromLua, and assert:
+//   • wired traits stored unchanged (exact strings, order preserved);
+//   • skills/talents parsed correctly;
+//   • unrecognized traits still load (hasTrait true) but are mechanically inert
+//     (brutalChargeBonus/isImmuneToKnockdown/getSizeCategory ignore them).
+// Validates: Req 9.2, 9.3, 9.4, 9.6.
+TEST_CASE("Lua enemy entry parses wired traits unchanged and keeps legacy traits inert",
+          "[npc-skills-talents-wiring]") {
+    sol::state lua;
+    // No engine init; the parser only reads the entry table.
+    sol::table entry = lua.create_table();
+
+    // ── skills: name -> rank ──
+    sol::table skillsTbl = lua.create_table();
+    skillsTbl["Dodge"]     = 1;
+    skillsTbl["Awareness"] = 2;
+    skillsTbl["Parry"]     = 0;
+    entry["skills"] = skillsTbl;
+
+    // ── talents: 1-based array ──
+    sol::table talentsTbl = lua.create_table();
+    talentsTbl[1] = "Weapon Training (Primitive)";
+    talentsTbl[2] = "Weapon Training (SP)";
+    entry["talents"] = talentsTbl;
+
+    // ── traits: 1-based array, order preserved. Wired traits interleaved with two
+    //    unrecognized/legacy traits ("Fear (2)", "Unnatural Toughness"). ──
+    const std::vector<std::string> declaredTraits = {
+        "Brutal Charge",
+        "Sturdy",
+        "Fear (2)",            // legacy / unrecognized
+        "Size (Puny)",
+        "Mob Rule",
+        "Unnatural Toughness", // legacy / unrecognized
+        "Cowardly"
+    };
+    sol::table traitsTbl = lua.create_table();
+    for (size_t i = 0; i < declaredTraits.size(); ++i) {
+        traitsTbl[i + 1] = declaredTraits[i];
+    }
+    entry["traits"] = traitsTbl;
+
+    CareerProgression career;
+    // Existing parser — no change required. Must not throw.
+    REQUIRE_NOTHROW(populateStatBlockFromLua(career, entry));
+
+    SECTION("skills parse to the declared ranks") {
+        REQUIRE(career.skills.size() == 3);
+        CHECK(career.skills.at("Dodge") == 1);
+        CHECK(career.skills.at("Awareness") == 2);
+        CHECK(career.skills.at("Parry") == 0);
+    }
+
+    SECTION("talents parse to the declared set") {
+        REQUIRE(career.talents.size() == 2);
+        CHECK(career.talents.count("Weapon Training (Primitive)") == 1);
+        CHECK(career.talents.count("Weapon Training (SP)") == 1);
+    }
+
+    SECTION("traits are stored unchanged: exact strings, order preserved") {
+        // Byte-for-byte equality of the whole vector — proves both exact-string
+        // preservation and stable ordering (Req 9.3, 9.4).
+        REQUIRE(career.traits == declaredTraits);
+    }
+
+    SECTION("every declared trait — wired and legacy — is retrievable via hasTrait") {
+        Actor actor(0, 0, '@', "t", TCODColor(255, 255, 255));
+        actor.career = std::make_shared<CareerProgression>(career);
+
+        // Wired traits present.
+        CHECK(hasTrait(&actor, "Brutal Charge"));
+        CHECK(hasTrait(&actor, "Sturdy"));
+        CHECK(hasTrait(&actor, "Size (Puny)"));
+        CHECK(hasTrait(&actor, "Mob Rule"));
+        CHECK(hasTrait(&actor, "Cowardly"));
+
+        // Unrecognized/legacy traits ALSO loaded (Req 9.6 — they load, just inert).
+        CHECK(hasTrait(&actor, "Fear (2)"));
+        CHECK(hasTrait(&actor, "Unnatural Toughness"));
+
+        // Exact match only — a legacy trait is not confused for a wired one.
+        CHECK_FALSE(hasTrait(&actor, "Fear"));
+        CHECK_FALSE(hasTrait(&actor, "fear (2)"));
+    }
+
+    SECTION("wired traits are mechanically active on the parsed career") {
+        Actor actor(0, 0, '@', "t", TCODColor(255, 255, 255));
+        actor.career = std::make_shared<CareerProgression>(career);
+
+        CHECK(brutalChargeBonus(&actor) == 3);              // "Brutal Charge"
+        CHECK(isImmuneToKnockdown(&actor) == true);         // "Sturdy"
+        CHECK(getSizeCategory(&actor) == SizeCategory::Puny); // "Size (Puny)"
+    }
+
+    SECTION("legacy traits are mechanically inert — helpers ignore them") {
+        // A career carrying ONLY legacy/unrecognized traits: hasTrait sees them,
+        // but none of the mechanics helpers react.
+        CareerProgression legacyOnly;
+        legacyOnly.traits = { "Fear (2)", "Unnatural Toughness", "Size (Gigantic)" };
+        Actor actor(0, 0, '@', "t", TCODColor(255, 255, 255));
+        actor.career = std::make_shared<CareerProgression>(legacyOnly);
+
+        // Loaded (Req 9.6).
+        CHECK(hasTrait(&actor, "Fear (2)"));
+        CHECK(hasTrait(&actor, "Unnatural Toughness"));
+
+        // But inert: no wired mechanic fires.
+        CHECK(brutalChargeBonus(&actor) == 0);          // only reacts to "Brutal Charge"
+        CHECK(isImmuneToKnockdown(&actor) == false);    // only reacts to "Sturdy"
+        // "Size (Gigantic)" is not a valid category -> Average (+0).
+        CHECK(getSizeCategory(&actor) == SizeCategory::Average);
+        CHECK(sizeToHitModifier(getSizeCategory(&actor)) == 0);
+    }
+}
+
+// ─── Task 13.2 — Enemies.lua loads; every wired-trait enemy parses cleanly ──────
+// Load the actual Scripts/Enemies.lua into an in-memory sol::state (base + table
+// libs). The enemies table is `local`, exposed only via spawnEnemy(roll,x,y) which
+// calls addActor(x,y,entry) — exactly the production path (Source/Map.cpp). We
+// register a C++ addActor that collects each spawned entry, then drive spawnEnemy
+// across the full roll range [0,99] to gather every definition, and finally parse
+// each entry through populateStatBlockFromLua into a fresh CareerProgression
+// (no exception, no Lua error). Entries referencing the wired traits are asserted
+// to parse cleanly and expose their mechanics.
+// Validates: Req 9.5.
+TEST_CASE("Scripts/Enemies.lua loads and every wired-trait enemy parses without error",
+          "[npc-skills-talents-wiring]") {
+    // Path resolution: production (Source/Map.cpp) and the existing Equipment.lua
+    // integration test (Tests/test_weapon_types.cpp) both load with the CWD-relative
+    // path "Scripts/<file>.lua" — tests run from the repo root. Probe a couple of
+    // fallbacks so a differing CWD (e.g. x64/Debug) still resolves rather than hard
+    // failing.
+    const std::vector<std::string> candidatePaths = {
+        "Scripts/Enemies.lua",
+        "../../Scripts/Enemies.lua",   // if CWD == x64/Debug
+        "../Scripts/Enemies.lua"
+    };
+
+    std::string enemiesPath;
+    for (const auto& p : candidatePaths) {
+        if (std::FILE* f = std::fopen(p.c_str(), "r")) {
+            std::fclose(f);
+            enemiesPath = p;
+            break;
+        }
+    }
+
+    if (enemiesPath.empty()) {
+        // Prefer finding the correct path; if the CWD truly differs, skip cleanly
+        // rather than a hard path failure (per task guidance).
+        SKIP("Scripts/Enemies.lua not found relative to the test CWD; skipping the "
+             "on-disk load check. Run the test from the repo root to exercise it.");
+    }
+
+    INFO("Loaded Enemies.lua from: " << enemiesPath);
+
+    sol::state lua;
+    lua.open_libraries(sol::lib::base, sol::lib::table, sol::lib::string);
+
+    // Collect every entry the script hands to addActor (mirrors Map::addActor).
+    std::vector<sol::table> collectedEntries;
+    lua.set_function("addActor", [&](int /*x*/, int /*y*/, sol::table entry) {
+        collectedEntries.push_back(entry);
+    });
+
+    // Scripting the file must not raise a Lua error (Req 9.5 — load without error).
+    REQUIRE_NOTHROW(lua.script_file(enemiesPath));
+
+    sol::protected_function spawnEnemy = lua["spawnEnemy"];
+    REQUIRE(spawnEnemy.valid());
+
+    // Drive the full roll range so every cumulative-chance branch is spawned.
+    for (int roll = 0; roll < 100; ++roll) {
+        sol::protected_function_result r = spawnEnemy(roll, 0, 0);
+        REQUIRE(r.valid()); // no Lua runtime error during spawn
+    }
+
+    // At least the four Ork-faction templates (Gretchin/Ork/Shoota Boy/Nob) fire.
+    REQUIRE(collectedEntries.size() >= 4);
+
+    // Every collected entry parses into a fresh CareerProgression without throwing.
+    // Track which wired traits we actually saw across the data set.
+    bool sawBrutalCharge = false, sawSturdy = false, sawSize = false,
+         sawMobRule = false, sawCowardly = false;
+
+    for (const auto& entry : collectedEntries) {
+        CareerProgression career;
+        REQUIRE_NOTHROW(populateStatBlockFromLua(career, entry));
+
+        // Build an actor around the parsed career and confirm every stored trait is
+        // retrievable and that wired traits activate their mechanics cleanly.
+        Actor actor(0, 0, '@', "t", TCODColor(255, 255, 255));
+        actor.career = std::make_shared<CareerProgression>(career);
+
+        for (const std::string& trait : career.traits) {
+            // Whatever the parser stored is retrievable byte-for-byte (Req 9.4).
+            CHECK(hasTrait(&actor, trait));
+
+            if (trait == "Brutal Charge") {
+                sawBrutalCharge = true;
+                CHECK(brutalChargeBonus(&actor) == 3);
+            } else if (trait == "Sturdy") {
+                sawSturdy = true;
+                CHECK(isImmuneToKnockdown(&actor) == true);
+            } else if (trait == "Mob Rule") {
+                sawMobRule = true;
+            } else if (trait == "Cowardly") {
+                sawCowardly = true;
+            } else if (trait.rfind("Size (", 0) == 0) {
+                sawSize = true;
+                // Any parsed Size trait maps to a defined, clamped to-hit modifier.
+                const int mod = sizeToHitModifier(getSizeCategory(&actor));
+                CHECK(mod >= -30);
+                CHECK(mod <= 30);
+            }
+        }
+
+        // getSizeCategory is always defined (Average default) for any entry.
+        const int catIdx = static_cast<int>(getSizeCategory(&actor));
+        CHECK(catIdx >= static_cast<int>(SizeCategory::Puny));
+        CHECK(catIdx <= static_cast<int>(SizeCategory::Massive));
+    }
+
+    // The shipped Enemies.lua data references all five wired traits across its
+    // Ork-faction roster (Gretchin: Size (Puny)/Cowardly; Ork: Sturdy/Mob Rule;
+    // Shoota Boy: Sturdy; Nob: Sturdy/Brutal Charge).
+    CHECK(sawBrutalCharge);
+    CHECK(sawSturdy);
+    CHECK(sawSize);
+    CHECK(sawMobRule);
+    CHECK(sawCowardly);
+}
