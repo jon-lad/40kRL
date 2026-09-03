@@ -41,6 +41,11 @@ ROADMAP
 - [ ] Move AI to Lua so people can modify mob behaviour
 - [ ] Create AIs so NPCs look natural (patrol, idle, converse)
 - [ ] Create more location-appropriate enemies per biome/area
+- [x] Region-based NPC spawns (whole-level region derived from biome; per-region enemy chance tables in Enemies.lua)
+  - [ ] Region names distinct from race names (decouple region identity from the race that spawns there)
+  - [ ] Regions with weighted chances across multiple races or specific named NPCs
+  - [ ] Per-tile or per-area region granularity within a single level
+  - [ ] Neighbour-region fallback when a region has no matching enemy definitions
 
 ## Content — Lua Data
 
