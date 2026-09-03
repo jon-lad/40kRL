@@ -1011,6 +1011,7 @@ void Map::addMonster(int x, int y)
 {
 	TCODRandom* rng = TCODRandom::getInstance();
 	const int roll = rng->getInt(0, 100);
+	const std::string region = regionName.empty() ? resolveDefaultRegion() : regionName;
 
 	try {
 		sol::state lua;
@@ -1221,7 +1222,7 @@ void Map::addMonster(int x, int y)
 		};
 
 		lua.script_file("Scripts/Enemies.lua");
-		lua["spawnEnemy"](roll, x, y);
+		lua["spawnEnemy"](roll, x, y, region);
 
 	} catch (const sol::error& /*e*/) {
 		// Lua script failed — fall back to hard-coded spawn so the game still works.
