@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <string>
 
 // Forward declaration — full definition in Headers/WfcGenerator.h (created by task 1.1)
 struct WfcTileset;
@@ -36,6 +37,7 @@ private:
 	int height = 0;
 
 	LevelType levelType = LevelType::BSP;
+	std::string regionName; // whole-level region; empty until assigned, then treated as Default_Region
 	std::vector<TerrainType> terrainTypes; // only populated for OUTDOOR levels
 	std::vector<std::pair<int,int>> outdoorRegion; // largest connected ground component
 
@@ -119,6 +121,12 @@ public:
 
 	// Returns the WFC tile description at (x, y). Only valid for WFC levels.
 	std::string getWfcTileDescription(int x, int y) const;
+
+	// Whole-level region name (a Region_Name string). Assigned once at level
+	// creation and retained for the level's lifetime; every spawn on the level
+	// uses this single value (whole-level granularity).
+	const std::string& getRegionName() const { return regionName; }
+	void setRegionName(const std::string& region) { regionName = region; }
 
 protected:
 	mutable std::vector<Tile> tiles; // flat array indexed as x + y * width

@@ -41,6 +41,21 @@ struct WorldMapState {
 // The function is total: every float input maps to exactly one BiomeType.
 BiomeType classifyBiome(float noiseValue, float swampThreshold, float forestThreshold, float desertThreshold);
 
+// Compiled fallback Region_Name used when config.defaultRegion is absent/empty.
+// Guarantees resolveDefaultRegion() never returns an empty string (Requirement 2.3).
+inline constexpr const char* DEFAULT_REGION_FALLBACK = "Ork";
+
+// Total mapping: every BiomeType maps to exactly one non-empty Region_Name (a race
+// name in this iteration). This is the single point of BiomeType -> Region_Name
+// derivation (Requirement 9.3). All biomes currently map to "Ork" so spawning is
+// preserved everywhere (Requirement 7); later iterations expand this table.
+std::string regionForBiome(BiomeType biome);
+
+// Returns the configured Default_Region (config.defaultRegion in Scripts/Config.lua),
+// or the compiled fallback DEFAULT_REGION_FALLBACK when the value is absent/empty.
+// Never returns an empty string (Requirements 2.2, 2.3).
+std::string resolveDefaultRegion();
+
 // Forward declarations for sol types (avoids pulling sol2 into the header).
 namespace sol { class state; }
 

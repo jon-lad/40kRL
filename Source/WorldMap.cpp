@@ -4,6 +4,52 @@
 #include <algorithm>
 #include <cmath>
 
+std::string regionForBiome(BiomeType biome) {
+	// Single point of biome -> region derivation (Requirement 9.3). Total switch
+	// over all five BiomeType values; each yields a non-empty Region_Name. In this
+	// iteration every biome maps to "Ork" so existing spawning is preserved
+	// (Requirements 1.2, 1.3, 1.4, 7). No default case: the switch is exhaustive so
+	// adding a new BiomeType surfaces a compiler warning here.
+	switch (biome) {
+	case BiomeType::TOXIC_SWAMP: return "Ork";
+	case BiomeType::DEAD_FOREST: return "Ork";
+	case BiomeType::ASH_DESERT:  return "Ork";
+	case BiomeType::WASTELAND:   return "Ork";
+	case BiomeType::HIVE_CITY:   return "Ork";
+	}
+	// Unreachable for valid enum values; guarantees a non-empty result if an
+	// out-of-range value is cast into a BiomeType.
+	return DEFAULT_REGION_FALLBACK;
+}
+
+std::string resolveDefaultRegion() {
+	// Read config.defaultRegion from Scripts/Config.lua using the existing sol +
+	// get_or pattern. A fresh sol::state keeps this engine-isolated (no engine.*
+	// access) so unit tests can call it without an initialized Engine.
+	std::string region = DEFAULT_REGION_FALLBACK;
+
+	try {
+		sol::state lua;
+		lua.open_libraries(sol::lib::base, sol::lib::table);
+		lua.script_file("Scripts/Config.lua");
+
+		sol::table cfg = lua["config"];
+		if (cfg.valid()) {
+			region = cfg.get_or<std::string>("defaultRegion", DEFAULT_REGION_FALLBACK);
+		}
+	} catch (const sol::error&) {
+		// Config load/exec failed — fall back to the compiled default silently.
+		region = DEFAULT_REGION_FALLBACK;
+	}
+
+	// Absent/empty config value -> compiled fallback so the result is never empty.
+	if (region.empty()) {
+		region = DEFAULT_REGION_FALLBACK;
+	}
+
+	return region;
+}
+
 BiomeType classifyBiome(float noiseValue, float swampThreshold, float forestThreshold, float desertThreshold) {
 	if (noiseValue < swampThreshold) {
 		return BiomeType::TOXIC_SWAMP;

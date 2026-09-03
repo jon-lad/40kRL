@@ -1,17 +1,21 @@
 -- Enemies.lua
 -- Defines enemy templates used by Map::addMonster.
--- C++ calls: spawnEnemy(roll, x, y)
---   roll : int  (0-99 random roll)
---   x, y : int  (world position)
+-- C++ calls: spawnEnemy(roll, x, y, region)
+--   roll   : int    (0-100 random roll)
+--   x, y   : int    (world position)
+--   region : string (Region_Name naming the active level's region column)
 -- The function calls back into C++ via the injected addActor(x, y, entry) function,
 -- passing the entire enemy table entry so C++ can read all fields including equipment config.
 
 -- Enemy definitions table.
--- Fields: chance (cumulative %), glyph, name, color, hp, defense, corpse, xp, power, skill
+-- Fields: chance (per-region cumulative % table keyed by Region_Name), glyph, name,
+--         color, hp, defense, corpse, xp, power, skill
 -- Optional equipment fields: equipment (list of strings), dropChance (float), equipTier (table)
+-- The Ork column reproduces the previous flat distribution:
+--   Gretchin 50, Ork 75, Shoota Boy 90, Nob 100.
 local enemies = {
     {
-        chance  = 50,
+        chance  = { Ork = 50 },
         glyph   = string.byte("g"),
         name    = "Gretchin",
         color   = "desaturatedGreen",
@@ -30,7 +34,7 @@ local enemies = {
         traits  = { "Size (Puny)", "Cowardly" },
     },
     {
-        chance  = 75,
+        chance  = { Ork = 75 },
         glyph   = string.byte("o"),
         name    = "Ork",
         color   = "desaturatedGreen",
@@ -49,7 +53,7 @@ local enemies = {
         traits  = { "Sturdy", "Mob Rule" },
     },
     {
-        chance  = 90,
+        chance  = { Ork = 90 },
         glyph   = string.byte("o"),
         name    = "Shoota Boy",
         color   = "desaturatedGreen",
@@ -68,7 +72,7 @@ local enemies = {
         traits  = { "Sturdy" },
     },
     {
-        chance  = 100,
+        chance  = { Ork = 100 },
         glyph   = string.byte("N"),
         name    = "Nob",
         color   = "darkerGreen",
@@ -88,11 +92,13 @@ local enemies = {
     },
 }
 
-function spawnEnemy(roll, x, y)
+function spawnEnemy(roll, x, y, region)
     for _, e in ipairs(enemies) do
-        if roll < e.chance then
+        local threshold = e.chance[region]           -- nil if this entry has no column for region
+        if threshold ~= nil and roll < threshold then
             addActor(x, y, e)
             return
         end
     end
+    -- No matching entry for this region column -> spawn nothing, leaving the tile unoccupied.
 end
