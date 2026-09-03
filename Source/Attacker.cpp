@@ -100,7 +100,7 @@ void Attacker::load(TCODZip& zip) {
 	}
 }
 
-void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
+void Attacker::resolveCharacterAttack(Actor* owner, Actor* target, bool isCharge) {
 	// ── Determine if this attack should generate visible messages ──
 	const bool isPlayer = (owner == engine.player);
 	const bool visibleToPlayer = isPlayer || engine.map->isInFOV(owner->getX(), owner->getY());
@@ -197,8 +197,12 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 	// Calculate Toughness Bonus
 	const int tb = target->characteristics->bonus(CharId::T);
 
+	// Brutal Charge bonus — added ONLY on the charge path, before the floor.
+	// When not charging this is 0, so non-charge damage is byte-identical.
+	const int chargeBonus = isCharge ? brutalChargeBonus(owner) : 0;
+
 	// Calculate final damage
-	const int finalDamage = std::max(0, rawDamage - effectiveArmour - tb);
+	const int finalDamage = std::max(0, rawDamage - effectiveArmour - tb + chargeBonus);
 
 	// If no effective damage, log and return
 	if (finalDamage <= 0) {

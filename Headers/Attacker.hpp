@@ -45,6 +45,10 @@ private:
 	static int clampSkill(int value);
 	static int defaultRoll(); // uniform_int_distribution [1, 100]
 
-	void resolveCharacterAttack(Actor* owner, Actor* target);
+	// isCharge is set ONLY by the charge call site (see task 12.3). When true, the
+	// attacker's Brutal Charge bonus (brutalChargeBonus) is added to finalDamage
+	// before the std::max(0, …) floor. The standard melee path never sets it, so
+	// non-charge damage is byte-identical to prior behaviour.
+	void resolveCharacterAttack(Actor* owner, Actor* target, bool isCharge = false);
 	void resolveDestructibleAttack(Actor* owner, Actor* target);
 };
