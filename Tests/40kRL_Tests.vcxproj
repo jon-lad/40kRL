@@ -161,6 +161,7 @@
     <ClCompile Include="test_npc_stat_blocks.cpp" />
     <ClCompile Include="test_crit_hit_location.cpp" />
     <ClCompile Include="test_turn_flow.cpp" />
+    <ClCompile Include="test_npc_skills_talents.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
