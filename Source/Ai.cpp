@@ -1,8 +1,11 @@
 
 #include <memory>
 #include <list>
+#include <cstdlib>
 #include "main.hpp"
 #include "ChargeResolver.hpp"
+#include "AiDecision.hpp"
+#include "StatBlock.hpp"
 
 // ─── PlayerAi ────────────────────────────────────────────────────────────────
 
@@ -545,7 +548,8 @@ void PlayerAi::handleActionKey(Actor* owner, int ascii)
 		engine.map->computeFOV();
 		if (owner->attacker) {
 			owner->attacker->addModifier(20);
-			owner->attacker->attack(owner, target);
+			// isCharge=true so Brutal Charge damage applies on the charge path.
+			owner->attacker->attack(owner, target, true);
 			owner->attacker->removeModifier(20);
 		}
 		engine.gui->message(Colors::playerAction, "You charge!");
@@ -670,6 +674,50 @@ bool MonsterAi::selectAndExecuteAction(Actor* owner)
 	const int dx = engine.player->getX() - owner->getX();
 	const int dy = engine.player->getY() - owner->getY();
 	const float distance = sqrtf(static_cast<float>(dx * dx + dy * dy));
+	const bool adjacentToPlayer = distance < 2.0f;
+
+	// ── Trait-driven decision (Cowardly / Mob Rule) ──
+	// Count allied actors within MOB_RULE_RADIUS (Chebyshev distance) for Mob Rule
+	// emboldenment. Allies are living, non-player actors other than self that have an Ai
+	// (i.e. other monsters). engine.* reads are allowed here — this is the game-loop layer.
+	int nearbyAllies = 0;
+	for (auto& actorPtr : engine.actors) {
+		Actor* other = actorPtr.get();
+		if (other == owner || other == engine.player) continue;
+		if (!other->ai) continue;
+		if (!other->destructible || other->destructible->isDead()) continue;
+		const int cheby = std::max(std::abs(other->getX() - owner->getX()),
+			std::abs(other->getY() - owner->getY()));
+		if (cheby <= MOB_RULE_RADIUS) {
+			++nearbyAllies;
+		}
+	}
+
+	MonsterDecisionContext ctx;
+	ctx.isCowardly = hasTrait(owner, "Cowardly");
+	ctx.hasMobRule = hasTrait(owner, "Mob Rule");
+	ctx.currentWounds = owner->destructible
+		? static_cast<int>(owner->destructible->getWounds()) : 0;
+	ctx.maxWounds = owner->destructible
+		? static_cast<int>(owner->destructible->getMaxWounds()) : 0;
+	ctx.nearbyAllies = nearbyAllies;
+	ctx.adjacentToPlayer = adjacentToPlayer;
+
+	const MonsterIntent intent = decideMonsterAction(ctx);
+
+	// Flee: retreat from the player instead of engaging (1 AP, or 2 if movement halved).
+	if (intent == MonsterIntent::Flee) {
+		int fleeCost = 1;
+		if (owner->statusTracker && owner->statusTracker->isMovementHalved()) {
+			fleeCost = 2;
+		}
+		if (ap >= fleeCost) {
+			owner->actionBudget->spend(fleeCost);
+			moveAway(owner, engine.player->getX(), engine.player->getY());
+			return true;
+		}
+		return false; // can't afford to flee
+	}
 
 	// Adjacent to player — consider All-Out Attack (Full Action, 2 AP) or standard attack (1 AP)
 	if (distance < 2.0f && ap >= 1) {
@@ -705,10 +753,11 @@ bool MonsterAi::selectAndExecuteAction(Actor* owner)
 			if (engine.map->isInFOV(owner->getX(), owner->getY())) {
 				engine.gui->message(Colors::enemyAction, "The # charges!", owner->name);
 			}
-			// Resolve melee attack with +20 WS modifier
+			// Resolve melee attack with +20 WS modifier.
+			// isCharge=true so Brutal Charge damage applies on the charge path.
 			if (owner->attacker) {
 				owner->attacker->addModifier(20);
-				owner->attacker->attack(owner, engine.player);
+				owner->attacker->attack(owner, engine.player, true);
 				owner->attacker->removeModifier(20);
 			}
 			return true;
@@ -800,6 +849,54 @@ void MonsterAi::moveToward(Actor* owner, int targetX, int targetY)
 
 		owner->setX(scentNextX);
 		owner->setY(scentNextY);
+	}
+}
+
+void MonsterAi::moveAway(Actor* owner, int targetX, int targetY)
+{
+	// Mirror moveToward's direct-step logic but invert the direction: step directly
+	// away from the target. If the retreat step is blocked, pick the walkable neighbour
+	// that maximises Chebyshev distance from the target.
+	const int dx = targetX - owner->getX();
+	const int dy = targetY - owner->getY();
+	const float distance = sqrtf(static_cast<float>(dx * dx + dy * dy));
+	if (distance < 1.0f) return;
+
+	// Inverted step (negate the toward direction).
+	const int stepX = -static_cast<int>(std::round(dx / distance));
+	const int stepY = -static_cast<int>(std::round(dy / distance));
+	const int retreatX = owner->getX() + stepX;
+	const int retreatY = owner->getY() + stepY;
+
+	if (engine.map->canWalk(retreatX, retreatY)) {
+		owner->setX(retreatX);
+		owner->setY(retreatY);
+		return;
+	}
+
+	// Direct retreat blocked — search the 8 neighbours for the walkable cell that is
+	// farthest (Chebyshev) from the target.
+	static constexpr int neighbourDX[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
+	static constexpr int neighbourDY[8] = { -1,-1,-1,  0, 0,  1, 1, 1 };
+
+	int bestDist = std::max(std::abs(owner->getX() - targetX), std::abs(owner->getY() - targetY));
+	int bestNeighbour = -1;
+
+	for (int i = 0; i < 8; ++i) {
+		const int cellX = owner->getX() + neighbourDX[i];
+		const int cellY = owner->getY() + neighbourDY[i];
+		if (engine.map->canWalk(cellX, cellY)) {
+			const int cellDist = std::max(std::abs(cellX - targetX), std::abs(cellY - targetY));
+			if (cellDist > bestDist) {
+				bestDist = cellDist;
+				bestNeighbour = i;
+			}
+		}
+	}
+
+	if (bestNeighbour != -1) {
+		owner->setX(owner->getX() + neighbourDX[bestNeighbour]);
+		owner->setY(owner->getY() + neighbourDY[bestNeighbour]);
 	}
 }
 

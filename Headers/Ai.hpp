@@ -89,6 +89,11 @@ protected:
 	// Handles door opening along the path.
 	void moveToward(Actor* owner, int targetX, int targetY);
 
+	// Moves away from (targetX, targetY): steps in the inverted direction of moveToward.
+	// Used by the Flee intent (Cowardly trait). Falls back to a walkable neighbour that
+	// maximises distance from the target if the direct retreat step is blocked.
+	void moveAway(Actor* owner, int targetX, int targetY);
+
 	// Attacks if adjacent; moves toward (targetX, targetY) using FOV line-of-sight
 	// or scent tracking when the player is out of sight.
 	// Kept for backward compatibility (ConfusedMonsterAi, legacy path).

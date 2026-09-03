@@ -9,6 +9,7 @@
 #include "DiceRoller.hpp"
 #include "ReactionResolver.hpp"
 #include "StatusTrigger.hpp"
+#include "StatBlock.hpp"
 
 Attacker::Attacker(float power, int skillValue)
 	: power{ power }
@@ -49,11 +50,11 @@ void Attacker::clearModifiers() {
 	modifiers.clear();
 }
 
-void Attacker::attack(Actor* owner, Actor* target)
+void Attacker::attack(Actor* owner, Actor* target, bool isCharge)
 {
 	if (target->destructible && !target->destructible->isDead()) {
 		if (target->characteristics) {
-			resolveCharacterAttack(owner, target);
+			resolveCharacterAttack(owner, target, isCharge);
 		} else {
 			resolveDestructibleAttack(owner, target);
 		}
@@ -99,7 +100,7 @@ void Attacker::load(TCODZip& zip) {
 	}
 }
 
-void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
+void Attacker::resolveCharacterAttack(Actor* owner, Actor* target, bool isCharge) {
 	// ── Determine if this attack should generate visible messages ──
 	const bool isPlayer = (owner == engine.player);
 	const bool visibleToPlayer = isPlayer || engine.map->isInFOV(owner->getX(), owner->getY());
@@ -126,7 +127,11 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 			profPenalty = proficiencyModifier(owner, *weaponItem->equippable->weaponGroup);
 		}
 	}
-	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty + aimBonus));
+
+	// ── Size to-hit modifier (target size category) ──
+	const int sizeMod = sizeToHitModifier(getSizeCategory(target));
+
+	const int effectiveWS = std::max(1, std::min(99, baseWS + modSum + profPenalty + aimBonus + sizeMod));
 
 	// ── Roll d100 ──
 	const int roll = rollD100();
@@ -192,8 +197,12 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target) {
 	// Calculate Toughness Bonus
 	const int tb = target->characteristics->bonus(CharId::T);
 
+	// Brutal Charge bonus — added ONLY on the charge path, before the floor.
+	// When not charging this is 0, so non-charge damage is byte-identical.
+	const int chargeBonus = isCharge ? brutalChargeBonus(owner) : 0;
+
 	// Calculate final damage
-	const int finalDamage = std::max(0, rawDamage - effectiveArmour - tb);
+	const int finalDamage = std::max(0, rawDamage - effectiveArmour - tb + chargeBonus);
 
 	// If no effective damage, log and return
 	if (finalDamage <= 0) {

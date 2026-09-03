@@ -32,6 +32,50 @@ bool hasSkill(const Actor* actor, const std::string& skill);
 // Null-safe (nullptr -> false).
 bool hasTalent(const Actor* actor, const std::string& talent);
 
+// ─── Trait_Provider: pure, null-safe helpers over CareerProgression::traits ─
+// Extend the Skill_Provider seam. Every helper returns a defined neutral value
+// for a null actor or an actor with no career, and performs zero engine.* access.
+
+// Size categories (RT-Bestiary, Size Categories table).
+enum class SizeCategory : int {
+	Puny = 0,
+	Scrawny,
+	Average,
+	Hulking,
+	Enormous,
+	Massive
+};
+
+// Exact byte-for-byte match against CareerProgression::traits.
+// Null-safe: nullptr / no career / empty traits -> false. (Req 8.1, 9.1)
+bool hasTrait(const Actor* actor, const std::string& name);
+
+// +3 if actor has "Brutal Charge", else 0 (incl. null / no career). (Req 5.1)
+int brutalChargeBonus(const Actor* actor);
+
+// true iff actor has "Sturdy"; side-effect-free, idempotent. (Req 6.1, 6.2)
+bool isImmuneToKnockdown(const Actor* actor);
+
+// Parses "Size (<Category>)" trait; unknown / missing / null -> Average. (Req 7.1, 7.2, 7.6)
+SizeCategory getSizeCategory(const Actor* actor);
+
+// Maps size category to its to-hit modifier. (Req 7.3)
+int sizeToHitModifier(SizeCategory category);
+
+// ─── Awareness surprise helper (pure; dependency A1) ────────────────────────
+
+// RT-CoreMechanics §4 surprise bonus applied to a non-surprised attacker vs a
+// surprised target. Exposed for a future surprise round. (Req 3.7)
+inline constexpr int SURPRISE_ATTACK_BONUS = 30;
+
+// clamp(perception + awarenessModifier, 0, 100); awarenessModifier = rank*10 when
+// Awareness present, -20 when absent. Null-safe. (Req 3.1-3.4)
+int surpriseAvoidanceTarget(int perception, int awarenessRank, bool hasAwareness);
+
+// true = "not surprised", false = "surprised"; auto-1 not surprised, auto-100
+// surprised. (Req 3.5, 3.6)
+bool surpriseAvoided(int roll, int surpriseTarget);
+
 // Parses the optional skills / talents / traits tables from a Lua enemy entry into
 // the given CareerProgression. Factored out of Map.cpp addActor so it can be driven
 // by tests with an in-memory sol::state (engine-free).

@@ -18,7 +18,10 @@ public:
 	explicit Attacker(float power, int skillValue = 40);
 
 	// Deals damage from owner to target and logs the result to the message log.
-	void attack(Actor* owner, Actor* target);
+	// isCharge is set ONLY by charge call sites (PlayerAi 'C', MonsterAi charge branch);
+	// it is threaded to resolveCharacterAttack so the Brutal Charge damage bonus applies.
+	// Standard melee attacks use the default (false) and are byte-identical to before.
+	void attack(Actor* owner, Actor* target, bool isCharge = false);
 
 	// Computes effective threshold: clamp(skillValue + sum(modifiers), 1, 99)
 	int computeThreshold() const;
@@ -45,6 +48,10 @@ private:
 	static int clampSkill(int value);
 	static int defaultRoll(); // uniform_int_distribution [1, 100]
 
-	void resolveCharacterAttack(Actor* owner, Actor* target);
+	// isCharge is set ONLY by the charge call site (see task 12.3). When true, the
+	// attacker's Brutal Charge bonus (brutalChargeBonus) is added to finalDamage
+	// before the std::max(0, …) floor. The standard melee path never sets it, so
+	// non-charge damage is byte-identical to prior behaviour.
+	void resolveCharacterAttack(Actor* owner, Actor* target, bool isCharge = false);
 	void resolveDestructibleAttack(Actor* owner, Actor* target);
 };

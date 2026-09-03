@@ -161,11 +161,13 @@
     <ClCompile Include="test_npc_stat_blocks.cpp" />
     <ClCompile Include="test_crit_hit_location.cpp" />
     <ClCompile Include="test_turn_flow.cpp" />
+    <ClCompile Include="test_npc_skills_talents.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
     <ClCompile Include="..\Source\Actor.cpp" />
     <ClCompile Include="..\Source\Ai.cpp" />
+    <ClCompile Include="..\Source\AiDecision.cpp" />
     <ClCompile Include="..\Source\Attacker.cpp" />
     <ClCompile Include="..\Source\Container.cpp" />
     <ClCompile Include="..\Source\Destructible.cpp" />
