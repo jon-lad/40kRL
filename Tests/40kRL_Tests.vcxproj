@@ -167,6 +167,7 @@
     <ClCompile Include="test_region_spawn_selection.cpp" />
     <ClCompile Include="test_enemies_schema.cpp" />
     <ClCompile Include="test_default_region.cpp" />
+    <ClCompile Include="test_region_wiring.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
