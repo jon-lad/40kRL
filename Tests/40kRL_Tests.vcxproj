@@ -164,6 +164,7 @@
     <ClCompile Include="test_turn_flow.cpp" />
     <ClCompile Include="test_npc_skills_talents.cpp" />
     <ClCompile Include="test_region_derivation.cpp" />
+    <ClCompile Include="test_region_for_biome.cpp" />
     <ClCompile Include="test_region_spawn_selection.cpp" />
     <ClCompile Include="test_enemies_schema.cpp" />
     <ClCompile Include="test_default_region.cpp" />
@@ -172,6 +173,10 @@
     <ClCompile Include="test_bestiary_ork.cpp" />
     <ClCompile Include="test_bestiary_invariants.cpp" />
     <ClCompile Include="test_bestiary_colonist.cpp" />
+    <ClCompile Include="test_bestiary_names.cpp" />
+    <ClCompile Include="test_bestiary_hp.cpp" />
+    <ClCompile Include="test_bestiary_collections.cpp" />
+    <ClCompile Include="test_bestiary_roster.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
