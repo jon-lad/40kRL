@@ -1,0 +1,7 @@
+      . # # # .
+    # # # # # # #
+    # # X X X # #  <- X = Plasma Reactor Core (Dangerous hazardous tiles)
+    # L X X X L #  <- L Engineering consoles
+    # # X X X # #
+    # # # ± # # #
+      . # # # .
