@@ -3,6 +3,7 @@
 #include <sol/sol.hpp>
 #include <algorithm>
 #include <cmath>
+#include <unordered_set>
 
 std::string regionForBiome(BiomeType biome) {
 	// Single point of biome -> Faction_Region derivation (Requirement 9.3 / 6.3).
@@ -49,6 +50,59 @@ std::string resolveDefaultRegion() {
 	}
 
 	return region;
+}
+
+bool isValidRegionName(const std::string& name) {
+	// Membership check against the shared Region taxonomy plus the Universal_Tag. A
+	// static const set is built once and reused; the helper is engine-isolated (no
+	// engine.* access) so it is test-safe under the test-isolation steering rule.
+	static const std::unordered_set<std::string> validNames = {
+		// Region_Name values (races) — mirror the `region` keys in Scripts/Equipment.lua.
+		"Ork", "Eldar", "DarkEldar", "Necron", "Tau", "Tyranid",
+		"Kroot", "Chaos", "ImperialHuman", "Servitor",
+		// Universal_Tag — an entry keyed "Universal" is selectable in every region.
+		"Universal"
+	};
+	return validNames.find(name) != validNames.end();
+}
+
+RegionWeights parseRegionWeights(const sol::table& regionTable) {
+	// Mirror the documented loader-loop body (design Surface 2) but stay engine-isolated
+	// and non-throwing: each malformed pair is dropped independently so a single bad
+	// entry never aborts parsing. The ImperialHuman default is NOT applied here — that
+	// is applyRegionDefault()'s responsibility.
+	RegionWeights weights;
+
+	for (auto& kv : regionTable) {
+		// Non-string keys (numeric array indices, tables, etc.) -> ignore this pair.
+		sol::optional<std::string> key = kv.first.as<sol::optional<std::string>>();
+		if (!key) {
+			continue;
+		}
+
+		// Only accept keys that are a valid Region_Name or the Universal_Tag.
+		if (!isValidRegionName(*key)) {
+			continue;  // unrecognized key -> dropped for selection (Requirement 6.4)
+		}
+
+		// Accept only non-negative integer weights; missing / non-int / negative
+		// weights drop just this pair (Requirements 5.2, 6.4).
+		sol::optional<int> w = kv.second.as<sol::optional<int>>();
+		if (w && *w >= 0) {
+			weights[*key] = *w;
+		}
+	}
+
+	return weights;
+}
+
+void applyRegionDefault(RegionWeights& weights) {
+	// Field absent, or present-but-malformed with nothing usable, leaves an empty map:
+	// apply the documented { ImperialHuman = DEFAULT_REGION_WEIGHT } default (Reqs 5.3,
+	// 6.3). A non-empty map is left untouched (an explicit Universal entry stays as-is).
+	if (weights.empty()) {
+		weights = { { "ImperialHuman", DEFAULT_REGION_WEIGHT } };
+	}
 }
 
 BiomeType classifyBiome(float noiseValue, float swampThreshold, float forestThreshold, float desertThreshold) {

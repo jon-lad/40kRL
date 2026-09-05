@@ -169,6 +169,7 @@
     <ClCompile Include="Source\CriticalEffects.cpp" />
     <ClCompile Include="Source\RangedCombat.cpp" />
     <ClCompile Include="Source\WorldMap.cpp" />
+    <ClCompile Include="Source\EquipmentRegionSelect.cpp" />
     <ClCompile Include="Source\WfcGenerator.cpp" />
     <ClCompile Include="Source\Openable.cpp" />
     <ClCompile Include="Source\DoorFactory.cpp" />
@@ -218,6 +219,7 @@
     <ClInclude Include="Headers\CriticalEffects.hpp" />
     <ClInclude Include="Headers\RangedCombat.hpp" />
     <ClInclude Include="Headers\WorldMap.hpp" />
+    <ClInclude Include="Headers\EquipmentRegionSelect.hpp" />
     <ClInclude Include="Headers\WfcGenerator.hpp" />
     <ClInclude Include="Headers\Openable.hpp" />
     <ClInclude Include="Headers\DoorFactory.hpp" />
