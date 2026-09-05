@@ -1750,6 +1750,97 @@ local enemies = {
                     "Resistance (Psychic Techniques)" },
         traits  = { "Dark Pact", "Mutation" },
     },
+
+    -- ─────────────────────────────────────────────────────────────────────────
+    -- Servitor Faction_Region column (Bestiary §5.2 Servitors). 4 Troop entries,
+    -- cumulative chance strictly ascending in declaration order, terminal value 100.
+    -- Characteristics copied verbatim as the base integer: em-dash Fel/BS -> 0
+    -- (Req 2.2); Unnatural parentheticals (S/T "(8)") excluded from the stored
+    -- integer and recorded as `Unnatural X (xN)` traits (Req 2.3/2.4). hp = profile
+    -- Wounds (Req 3.1). Machine / Flyer / Size traits recorded as trait strings
+    -- (Req 3.3). Each (glyph, color) pair is distinct from every other entry across
+    -- the Bestiary, using colors defined in Headers/Colors.hpp (Req 1.12). Equipment
+    -- left empty for now; weapon/armour wiring is handled by tasks 12.3/12.4.
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    -- §5.2 — Battle Servitor (Charron-Pattern) (Troop): WS 30 BS 30 S 40(8) T 40(8) Ag 20 Int 20 Per 30 WP 40 Fel —, Wounds 15
+    {
+        chance  = { Servitor = 25 },
+        glyph   = string.byte("B"),
+        name    = "Battle Servitor (Charron-Pattern)",
+        color   = "metalGrey",
+        hp      = 15.0,
+        defense = 1.0,
+        corpse  = "wrecked Battle Servitor",
+        xp      = 40,
+        power   = 4.0,
+        skill   = 30,                    -- WS (servo-fists / heavy weapon platform; Fel em-dash -> 0)
+        ws = 30, bs = 30, s = 40, t = 40, ag = 20, int = 20, per = 30, wp = 40, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 0 },
+        talents = { "Two-Weapon Wielder" },
+        traits  = { "Armour Plated", "Auto-Stabilised", "Dark-Sight", "Flyer (2)",
+                    "Machine (4)", "Natural Weapon (Servo-Fists)", "Sturdy",
+                    "Unnatural Strength (x2)", "Unnatural Toughness (x2)" },
+    },
+
+    -- §5.2 — Grapplehawk (Falax-Pattern) (Troop): WS 40 BS — S 35 T 35 Ag 48 Int 18 Per 40 WP 30 Fel —, Wounds 8
+    {
+        chance  = { Servitor = 50 },
+        glyph   = string.byte("g"),
+        name    = "Grapplehawk (Falax-Pattern)",
+        color   = "metalGrey",
+        hp      = 8.0,
+        defense = 1.0,
+        corpse  = "wrecked Grapplehawk",
+        xp      = 30,
+        power   = 3.0,
+        skill   = 40,                    -- WS (Shock-pulse claws melee; BS/Fel em-dash -> 0)
+        ws = 40, bs = 0, s = 35, t = 35, ag = 48, int = 18, per = 40, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 1, Dodge = 0 },
+        talents = { "Fearless", "Swift Attack" },
+        traits  = { "Armour Plating", "Dark-Sight", "Flyer (20)", "Machine (4)",
+                    "Size (Scrawny)" },
+    },
+
+    -- §5.2 — Servitor Drone (Troop): WS 15 BS 15 S 50 T 40 Ag 15 Int 10 Per 20 WP 30 Fel 05, Wounds 10
+    {
+        chance  = { Servitor = 75 },
+        glyph   = string.byte("d"),
+        name    = "Servitor Drone",
+        color   = "metalGrey",
+        hp      = 10.0,
+        defense = 1.0,
+        corpse  = "wrecked Servitor Drone",
+        xp      = 20,
+        power   = 3.0,
+        skill   = 15,                    -- WS (Fist natural weapon melee)
+        ws = 15, bs = 15, s = 50, t = 40, ag = 15, int = 10, per = 20, wp = 30, fel = 5,
+        equipment = {},
+        skills  = { ["Trade (Any One)"] = 1 },
+        talents = {},
+        traits  = { "Machine (4)", "Natural Weapon (Fist)" },
+    },
+
+    -- §5.2 — Servo Skull (Troop): WS 15 BS 15 S 10 T 20 Ag 30 Int 15 Per 35 WP 20 Fel —, Wounds 4
+    {
+        chance  = { Servitor = 100 },
+        glyph   = string.byte("x"),
+        name    = "Servo Skull",
+        color   = "boneWhite",
+        hp      = 4.0,
+        defense = 0.0,
+        corpse  = "wrecked Servo Skull",
+        xp      = 10,
+        power   = 1.0,
+        skill   = 15,                    -- WS (unarmed; recon drone; Fel em-dash -> 0)
+        ws = 15, bs = 15, s = 10, t = 20, ag = 30, int = 15, per = 35, wp = 20, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 1, Concealment = 1, Dodge = 0, ["Silent Move"] = 1 },
+        talents = { "Fearless" },
+        traits  = { "Dark-Sight", "Flyer (6)", "Machine (2)", "Size (Puny)" },
+    },
 }
 
 function spawnEnemy(roll, x, y, region)
