@@ -288,10 +288,18 @@ TEST_CASE("PBT: Render order — same-layer same-tile actors preserve insertion 
                 a.name = "same_" + std::to_string(sameTileInserted);
                 sameTileInserted++;
             } else {
-                // Different layer or different tile
-                a.renderLayer = *rc::gen::inRange(0, 4);
-                a.tileX = *rc::gen::inRange(0, 159);
-                a.tileY = *rc::gen::inRange(0, 85);
+                // Noise actor: must NOT share the exact (renderLayer, tileX, tileY)
+                // triple of the tracked group, otherwise it would be counted among the
+                // "same tile + same layer" actors below and break the size/order
+                // assertions. Re-roll until at least one of {layer, tile} differs from
+                // the shared combo. (Previously these were generated freely, so a noise
+                // actor could randomly land on the shared tile+layer and cause an
+                // intermittent failure.)
+                do {
+                    a.renderLayer = *rc::gen::inRange(0, 4);
+                    a.tileX = *rc::gen::inRange(0, 159);
+                    a.tileY = *rc::gen::inRange(0, 85);
+                } while (a.renderLayer == sharedLayer && a.tileX == sharedX && a.tileY == sharedY);
                 a.name = "other_" + std::to_string(otherInserted);
                 otherInserted++;
             }

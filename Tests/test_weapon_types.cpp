@@ -459,8 +459,12 @@ TEST_CASE("PBT: Property 2 — Range acceptance boundary cases",
           "[pbt][property][weapon-types]")
 {
     rc::prop("isValidRange rejects zero and all negative integers", []() {
-        // Generate non-positive integers specifically
-        int n = *rc::gen::inRange(-10000, 1); // range is [-10000, 0]
+        // Generate non-positive integers specifically. NOTE: this project's
+        // rc::gen::inRange(a, b) uses INCLUSIVE bounds [a, b], so the upper bound
+        // must be 0 (not 1) to keep every generated value non-positive. Using 1 here
+        // previously let the generator emit 1 — a positive value for which
+        // isValidRange returns true — causing an intermittent failure.
+        int n = *rc::gen::inRange(-10000, 0); // inclusive range [-10000, 0]
         RC_ASSERT(!isValidRange(n));
     });
 }
