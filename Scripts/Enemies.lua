@@ -54,9 +54,9 @@
 --
 -- NOTE: The faction data entries are populated by subsequent tasks (Chaos, Eldar,
 -- DarkEldar, Necron, Ork reconciliation, Tau, Tyranid, ImperialHuman, Servitor,
--- Warp). The Ork column below is the legacy flat distribution retained until the
--- Ork reconciliation task rebuilds it from the bestiary IV.7 Troop set:
---   Gretchin 50, Ork 75, Shoota Boy 90, Nob 100.
+-- Warp). The Ork column has been rebuilt from the bestiary IV.7 Troop set plus the
+-- Ork Freebooter (§5.3); the legacy flat distribution (Gretchin/Ork/Shoota Boy/Nob)
+-- has been retired per the reconciliation table documented above the Ork column.
 local enemies = {
     -- ─────────────────────────────────────────────────────────────────────────
     -- Chaos Faction_Region column (Bestiary IV.1 Renegades/Heretics/Mutants +
@@ -674,84 +674,331 @@ local enemies = {
     },
 
     -- ─────────────────────────────────────────────────────────────────────────
-    -- Ork Faction_Region column — LEGACY flat distribution, rebuilt from the
-    -- bestiary IV.7 Troop set by task 6.2. Left unchanged here.
+    -- Ork Faction_Region column (Bestiary IV.7 Orks + Ork Freebooter §5.3).
+    -- REBUILT from the bestiary IV.7 Troop set (task 6.2): the legacy four-entry
+    -- flat distribution (Gretchin 50, Ork 75, Shoota Boy 90, Nob 100) is replaced.
+    -- Reconciliation of the legacy names:
+    --   * Gretchin  -> kept as a name; realigned to the IV.7 Gretchin profile.
+    --   * Ork       -> retired; folded into "Ork Boy" (the IV.7 rank-and-file).
+    --   * Shoota Boy -> retired; a shoota is an Ork Boy weapon option, folds into Ork Boy.
+    --   * Nob       -> retired; the bestiary Nob is Elite (out of scope). Troop-tier
+    --                  leadership is covered by Runtherd and Ork Freebooter.
+    -- 14 entries (13 IV.7 Troops + Ork Freebooter), cumulative chance strictly
+    -- ascending in declaration order, terminal value 100. Characteristics copied
+    -- verbatim as the base integer (BS "00" -> 0; Unnatural parentheticals excluded
+    -- from the stored integer and recorded as `Unnatural X (xN)` traits). hp =
+    -- profile Wounds. Each (glyph, color) pair is distinct from every other entry
+    -- across the Bestiary, using colors defined in Headers/Colors.hpp. Equipment
+    -- reuses existing Ork gear references (weapon/armour wiring reconciled by 12.4).
     -- ─────────────────────────────────────────────────────────────────────────
+
+    -- IV.7 — Snotling (Troop): WS 15 BS 00 S 10 T 10(2) Ag 35 Int 05 Per 20 WP 25 Fel 05, Wounds 4
     {
-        chance  = { Ork = 50 },
+        chance  = { Ork = 8 },
+        glyph   = string.byte("s"),
+        name    = "Snotling",
+        color   = "desaturatedGreen",
+        hp      = 4.0,
+        defense = 0.0,
+        corpse  = "squashed Snotling",
+        xp      = 8,
+        power   = 2.0,
+        skill   = 15,                    -- WS (Tiny Teeth melee; BS 00 -> 0)
+        ws = 15, bs = 0, s = 10, t = 10, ag = 35, int = 5, per = 20, wp = 25, fel = 5,
+        equipment = {},
+        skills  = { Athletics = 0, Stealth = 0 },
+        talents = { "Overlooked" },
+        traits  = { "Bestial (Flee)", "Natural Weapons (Tiny Teeth)", "Size (2)",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — Snotling Mob (Troop): WS 15 BS 00 S 10 T 10(2) Ag 35 Int 05 Per 20 WP 15 Fel 05, Wounds 14
+    {
+        chance  = { Ork = 14 },
+        glyph   = string.byte("S"),
+        name    = "Snotling Mob",
+        color   = "desaturatedGreen",
+        hp      = 14.0,
+        defense = 0.0,
+        corpse  = "scattered Snotling Mob",
+        xp      = 16,
+        power   = 2.0,
+        skill   = 15,                    -- WS (Tiny Teeth melee; BS 00 -> 0)
+        ws = 15, bs = 0, s = 10, t = 10, ag = 35, int = 5, per = 20, wp = 15, fel = 5,
+        equipment = {},
+        skills  = { Athletics = 0, Stealth = 0 },
+        talents = { "Furious Assault" },
+        traits  = { "Bestial (Flee)", "Natural Weapons (Tiny Teeth)", "Size (5)",
+                    "Swarm", "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — Gretchin (Troop): WS 15 BS 35 S 20 T 20(3) Ag 45 Int 35 Per 35 WP 20 Fel 25, Wounds 6
+    {
+        chance  = { Ork = 26 },
         glyph   = string.byte("g"),
         name    = "Gretchin",
         color   = "desaturatedGreen",
-        hp      = 15.0,
+        hp      = 6.0,
         defense = 0.0,
         corpse  = "dead Gretchin",
-        xp      = 15,
+        xp      = 12,
         power   = 2.0,
-        skill   = 25,
-        ws = 25, bs = 15, s = 20, t = 20, ag = 30, int = 15, per = 25, wp = 15, fel = 10,
-        equipment = { "Choppa" },
+        skill   = 35,                    -- BS (Grot Blasta pistol-primary)
+        ws = 15, bs = 35, s = 20, t = 20, ag = 45, int = 35, per = 35, wp = 20, fel = 25,
+        equipment = {},                  -- Grot Blasta not yet in Equipment.lua; wiring reconciled by 12.4
         dropChance = 0.3,
-        -- Choppa is weaponGroup "Primitive" (Equipment.lua) -> Weapon Training (Primitive).
-        skills  = { Dodge = 0, Awareness = 0 },
-        talents = { "Weapon Training (Primitive)" },
-        traits  = { "Size (Puny)", "Cowardly" },
+        skills  = { Awareness = 0, Athletics = 0, Dodge = 0, Stealth = 0 },
+        talents = { "Overlooked" },
+        traits  = { "Mob Rule", "Size (3)", "Unnatural Toughness (x3)" },
     },
+
+    -- IV.7 — Ork Boy (Troop): WS 35 BS 25 S 45 T 45(6) Ag 30 Int 20 Per 30 WP 25 Fel 20, Wounds 18
     {
-        chance  = { Ork = 75 },
+        chance  = { Ork = 45 },
         glyph   = string.byte("o"),
-        name    = "Ork",
+        name    = "Ork Boy",
         color   = "desaturatedGreen",
-        hp      = 20.0,
+        hp      = 18.0,
         defense = 0.0,
-        corpse  = "dead Ork",
-        xp      = 35,
-        power   = 3.0,
-        skill   = 35,
-        ws = 35, bs = 20, s = 40, t = 40, ag = 25, int = 15, per = 25, wp = 25, fel = 15,
-        equipTier = { common = 80, uncommon = 18, rare = 2 },
-        dropChance = 0.4,
-        -- Orks favour primitive choppas (common/uncommon melee are weaponGroup "Primitive").
-        skills  = { Dodge = 0 },
-        talents = { "Weapon Training (Primitive)" },
-        traits  = { "Sturdy", "Mob Rule" },
-    },
-    {
-        chance  = { Ork = 90 },
-        glyph   = string.byte("s"),
-        name    = "Shoota Boy",
-        color   = "desaturatedGreen",
-        hp      = 20.0,
-        defense = 0.0,
-        corpse  = "dead Shoota Boy",
+        corpse  = "dead Ork Boy",
         xp      = 40,
         power   = 3.0,
-        skill   = 35,
-        ws = 30, bs = 25, s = 35, t = 40, ag = 25, int = 15, per = 25, wp = 25, fel = 15,
-        equipment = { "Shoota" },
+        skill   = 35,                    -- WS (Choppa melee-primary)
+        ws = 35, bs = 25, s = 45, t = 45, ag = 30, int = 20, per = 30, wp = 25, fel = 20,
+        equipment = { "Choppa", "Slugga" },
         dropChance = 0.4,
-        -- Shoota is weaponGroup "SP" (Equipment.lua) -> Weapon Training (SP).
-        skills  = { Dodge = 0, Awareness = 0 },
-        talents = { "Weapon Training (SP)" },
-        traits  = { "Sturdy" },
+        equipTier = { common = 80, uncommon = 18, rare = 2 },
+        skills  = { Athletics = 1, Fortitude = 0, Intimidate = 0 },
+        talents = { "Bulging Biceps", "Furious Assault", "Hardy", "Iron Jaw",
+                    "Street Fighting", "Unarmed Warrior" },
+        traits  = { "Brutal Charge (1)", "Mob Rule", "Size (4)", "Sturdy",
+                    "Unnatural Toughness (x2)" },
     },
+
+    -- IV.7 — Burna Boy (Troop): WS 35 BS 25 S 45 T 45(6) Ag 30 Int 20 Per 30 WP 25 Fel 20, Wounds 18
+    {
+        chance  = { Ork = 52 },
+        glyph   = string.byte("b"),
+        name    = "Burna Boy",
+        color   = "darkOrange",
+        hp      = 18.0,
+        defense = 0.0,
+        corpse  = "charred Burna Boy",
+        xp      = 44,
+        power   = 3.0,
+        skill   = 35,                    -- WS (Burna melee-primary)
+        ws = 35, bs = 25, s = 45, t = 45, ag = 30, int = 20, per = 30, wp = 25, fel = 20,
+        equipment = {},                  -- Burna not yet in Equipment.lua; wiring reconciled by 12.4
+        dropChance = 0.4,
+        skills  = { Athletics = 1, Fortitude = 0, Intimidate = 0 },
+        talents = { "Bulging Biceps", "Furious Assault", "Hardy", "Hip Shooting",
+                    "Iron Jaw", "Pyromaniac", "Street Fighting", "Sure Strike",
+                    "Unarmed Warrior" },
+        traits  = { "Brutal Charge (1)", "Mob Rule", "Size (4)", "Sturdy",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — Tankbusta (Troop): WS 35 BS 25 S 45 T 45(6) Ag 30 Int 20 Per 30 WP 25 Fel 20, Wounds 18
+    {
+        chance  = { Ork = 59 },
+        glyph   = string.byte("k"),
+        name    = "Tankbusta",
+        color   = "darkOrange",
+        hp      = 18.0,
+        defense = 0.0,
+        corpse  = "dead Tankbusta",
+        xp      = 46,
+        power   = 3.0,
+        skill   = 35,                    -- WS (Choppa melee); Rokkit Launcha ranged option
+        ws = 35, bs = 25, s = 45, t = 45, ag = 30, int = 20, per = 30, wp = 25, fel = 20,
+        equipment = { "Choppa" },
+        dropChance = 0.4,
+        skills  = { Athletics = 1, Fortitude = 0, Intimidate = 0 },
+        talents = { "Bulging Biceps", "Furious Assault", "Hardy", "Iron Jaw",
+                    "Street Fighting", "Tank Hunter", "Unarmed Warrior" },
+        traits  = { "Brutal Charge (1)", "Mob Rule", "Size (4)", "Sturdy",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — Loota (Troop): WS 35 BS 25 S 45 T 45(6) Ag 30 Int 20 Per 30 WP 25 Fel 20, Wounds 18
+    {
+        chance  = { Ork = 66 },
+        glyph   = string.byte("l"),
+        name    = "Loota",
+        color   = "brown",
+        hp      = 18.0,
+        defense = 0.0,
+        corpse  = "dead Loota",
+        xp      = 46,
+        power   = 3.0,
+        skill   = 25,                    -- BS (Deffgun heavy ranged-primary)
+        ws = 35, bs = 25, s = 45, t = 45, ag = 30, int = 20, per = 30, wp = 25, fel = 20,
+        equipment = {},                  -- Deffgun not yet in Equipment.lua; wiring reconciled by 12.4
+        dropChance = 0.4,
+        skills  = { Athletics = 1, Commerce = 0, Fortitude = 0, Intimidate = 0, Stealth = 1 },
+        talents = { "Bulging Biceps", "Furious Assault", "Hammering Storm", "Hardy",
+                    "Iron Jaw", "Street Fighting", "Unarmed Warrior" },
+        traits  = { "Brutal Charge (1)", "Mob Rule", "Size (4)", "Sturdy",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — Storm Boy (Troop): WS 35 BS 25 S 45 T 45(6) Ag 35 Int 20 Per 30 WP 25 Fel 20, Wounds 18
+    {
+        chance  = { Ork = 72 },
+        glyph   = string.byte("z"),
+        name    = "Storm Boy",
+        color   = "desaturatedGreen",
+        hp      = 18.0,
+        defense = 0.0,
+        corpse  = "dead Storm Boy",
+        xp      = 44,
+        power   = 3.0,
+        skill   = 35,                    -- WS (Choppa melee-primary)
+        ws = 35, bs = 25, s = 45, t = 45, ag = 35, int = 20, per = 30, wp = 25, fel = 20,
+        equipment = { "Choppa", "Slugga" },
+        dropChance = 0.4,
+        skills  = { Athletics = 1, Fortitude = 0, Intimidate = 0, ["Operate (Aeronautica)"] = 0 },
+        talents = { "Berserk Charge", "Bulging Biceps", "Furious Assault", "Hardy",
+                    "Iron Jaw", "Raptor", "Street Fighting", "Unarmed Warrior" },
+        traits  = { "Brutal Charge (2)", "Mob Rule", "Size (4)", "Sturdy",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — Kommando (Troop): WS 35 BS 25 S 45 T 45(6) Ag 35 Int 20 Per 30 WP 25 Fel 20, Wounds 18
+    {
+        chance  = { Ork = 78 },
+        glyph   = string.byte("K"),
+        name    = "Kommando",
+        color   = "darkGreen",
+        hp      = 18.0,
+        defense = 0.0,
+        corpse  = "dead Kommando",
+        xp      = 48,
+        power   = 3.0,
+        skill   = 35,                    -- WS (Choppa melee-primary)
+        ws = 35, bs = 25, s = 45, t = 45, ag = 35, int = 20, per = 30, wp = 25, fel = 20,
+        equipment = { "Choppa", "Slugga" },
+        dropChance = 0.4,
+        skills  = { Athletics = 1, Intimidate = 0, Fortitude = 0, Stealth = 1, Survival = 1 },
+        talents = { "Ambush", "Bulging Biceps", "Deference for Darkness",
+                    "Furious Assault", "Hardy", "Iron Jaw", "Street Fighting",
+                    "Unarmed Warrior" },
+        traits  = { "Brutal Charge (1)", "Mob Rule", "Size (4)", "Sturdy",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — 'Ard Boy (Troop): WS 35 BS 25 S 45 T 45(6) Ag 30 Int 20 Per 30 WP 25 Fel 20, Wounds 18
+    {
+        chance  = { Ork = 84 },
+        glyph   = string.byte("a"),
+        name    = "'Ard Boy",
+        color   = "darkGreen",
+        hp      = 18.0,
+        defense = 1.0,
+        corpse  = "dead 'Ard Boy",
+        xp      = 48,
+        power   = 3.0,
+        skill   = 35,                    -- WS (Choppa melee-primary)
+        ws = 35, bs = 25, s = 45, t = 45, ag = 30, int = 20, per = 30, wp = 25, fel = 20,
+        equipment = { "Choppa", "Slugga", "Ork Armor" },
+        dropChance = 0.4,
+        skills  = { Athletics = 1, Fortitude = 0, Intimidate = 0, Parry = 0 },
+        talents = { "Ambidextrous", "Bulging Biceps", "Furious Assault", "Hardy",
+                    "Iron Jaw", "Shield Wall", "Street Fighting", "Unarmed Warrior" },
+        traits  = { "Brutal Charge (1)", "Mob Rule", "Size (4)", "Sturdy",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — Skar Boy (Troop): WS 45 BS 25 S 50 T 50(7) Ag 30 Int 20 Per 30 WP 25 Fel 20, Wounds 21
+    {
+        chance  = { Ork = 89 },
+        glyph   = string.byte("O"),
+        name    = "Skar Boy",
+        color   = "darkGreen",
+        hp      = 21.0,
+        defense = 0.0,
+        corpse  = "dead Skar Boy",
+        xp      = 55,
+        power   = 4.0,
+        skill   = 45,                    -- WS (Choppa melee-primary)
+        ws = 45, bs = 25, s = 50, t = 50, ag = 30, int = 20, per = 30, wp = 25, fel = 20,
+        equipment = { "Choppa", "Slugga" },
+        dropChance = 0.4,
+        skills  = { Athletics = 1, Fortitude = 1, Intimidate = 1 },
+        talents = { "Bulging Biceps", "Furious Assault", "Hardy", "Iron Jaw",
+                    "Litany Against Fear", "Street Fighting", "Unarmed Warrior" },
+        traits  = { "Brutal Charge (1)", "Mob Rule", "Size (4)", "Sturdy",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.7 — Runtherd (Troop): WS 35 BS 20 S 45(7) T 45(7) Ag 30 Int 25 Per 45 WP 25 Fel 20, Wounds 31
+    {
+        chance  = { Ork = 93 },
+        glyph   = string.byte("R"),
+        name    = "Runtherd",
+        color   = "brown",
+        hp      = 31.0,
+        defense = 1.0,
+        corpse  = "dead Runtherd",
+        xp      = 70,
+        power   = 4.0,
+        skill   = 35,                    -- WS (Grabba Stikk / Grot-Prod melee-primary)
+        ws = 35, bs = 20, s = 45, t = 45, ag = 30, int = 25, per = 45, wp = 25, fel = 20,
+        equipment = { "Slugga" },
+        dropChance = 0.5,
+        skills  = { Awareness = 1, Discipline = 0, Fortitude = 1, Intimidate = 2,
+                    Survival = 2, ["Trade (Squigherd, Storyteller)"] = 2 },
+        talents = { "Bulging Biceps", "Furious Assault", "Galvanizing Presence",
+                    "Hardy", "Iron Jaw", "Pity The Weak", "Street Fighting",
+                    "Surefoot Wayfinder", "Unarmed Warrior" },
+        traits  = { "Brutal Charge (2)", "Mob Rule", "Size (5)", "Sturdy",
+                    "Unnatural Strength (x3)", "Unnatural Toughness (x3)" },
+    },
+
+    -- IV.7 — Attack Squig (Troop): WS 40 BS 00 S 35 T 35(5) Ag 30 Int 10 Per 30 WP 30 Fel 00, Wounds 15
+    {
+        chance  = { Ork = 97 },
+        glyph   = string.byte("q"),
+        name    = "Attack Squig",
+        color   = "darkOrange",
+        hp      = 15.0,
+        defense = 0.0,
+        corpse  = "dead Attack Squig",
+        xp      = 32,
+        power   = 3.0,
+        skill   = 40,                    -- WS (Huge Jaws melee; BS 00 -> 0)
+        ws = 40, bs = 0, s = 35, t = 35, ag = 30, int = 10, per = 30, wp = 30, fel = 0,
+        equipment = {},                  -- Huge Jaws is a natural weapon (represented as a trait)
+        skills  = { Awareness = 1, Fortitude = 0, Survival = 1 },
+        talents = { "Berserk Charge", "Bloodlust", "Frenzy", "Swift Attack" },
+        traits  = { "Bestial (Frenzy)", "Deadly Natural Weapons (Huge Jaws)",
+                    "Size (4)", "Unnatural Toughness (x2)" },
+    },
+
+    -- §5.3 — Ork Freebooter (Troop): WS 45 BS 20 S 50(8) T 45 Ag 30 Int 26 Per 30 WP 28 Fel 22, Wounds 16
     {
         chance  = { Ork = 100 },
-        glyph   = string.byte("N"),
-        name    = "Nob",
-        color   = "darkerGreen",
-        hp      = 26.0,
+        glyph   = string.byte("F"),
+        name    = "Ork Freebooter",
+        color   = "gold",
+        hp      = 16.0,
         defense = 1.0,
-        corpse  = "Nob carcass",
-        xp      = 100,
+        corpse  = "dead Ork Freebooter",
+        xp      = 65,
         power   = 4.0,
-        skill   = 45,
-        ws = 45, bs = 25, s = 50, t = 50, ag = 30, int = 20, per = 30, wp = 35, fel = 25,
-        equipment = { "Big Choppa", "Ork Armor" },
+        skill   = 45,                    -- WS (Chain axe melee-primary)
+        ws = 45, bs = 20, s = 50, t = 45, ag = 30, int = 26, per = 30, wp = 28, fel = 22,
+        equipment = { "Shoota", "Ork Armor" },
         dropChance = 0.5,
-        -- Big Choppa is weaponGroup "Primitive" (Equipment.lua) -> Weapon Training (Primitive).
-        skills  = { Dodge = 1, Awareness = 1 },
-        talents = { "Weapon Training (Primitive)" },
-        traits  = { "Sturdy", "Brutal Charge" },
+        skills  = { Awareness = 0, Barter = 0, Intimidate = 0 },
+        talents = { "Basic Weapon Training (Primitive, SP)", "Bulging Biceps",
+                    "Common Lore (Ork)", "Crushing Blow", "Furious Assault", "Hardy",
+                    "Heavy Weapon Training (SP)", "Iron Jaw",
+                    "Melee Weapon Training (Chain, Primitive, Power)",
+                    "Pistol Weapon Training (Primitive, SP)",
+                    "Speak Language (Ork, Low Gothic)", "True Grit" },
+        traits  = { "Brutal Charge", "Mob Rule", "Resistance (Cold, Heat, Radiation)",
+                    "Sturdy", "Unnatural Toughness (x2)" },
     },
 }
 
