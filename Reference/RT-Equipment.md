@@ -185,22 +185,181 @@ or with an inline `†` footnote on rows whose origin differs from the section d
 
 ## Gear
 
-<!-- Populated in task 4.2 -->
+> Source: `RT Core Table 5-13` for the base profiles below. Per the Precedence Order
+> (Source A > Source B), where the same item also appears in Source A §6's "Clothing &
+> Personal Gear Summary" with a differing value, the Source A value is recorded and the
+> differing Source B value discarded; those rows carry an inline `‡` and cite `Liber Imperium §6`.
+> `†` Clothing and Adornment may have any appropriate Availability. There is always a way to
+> spend more on appearance, to find yet more exclusive fabrics, clothiers, and jewelers, and
+> otherwise display the ways that your wealth glitters more brightly than that of your rivals.
+
+| Name | Weight (kg) | Availability | Source |
+|---|---|---|---|
+| Backpack ‡ | 2 | Abundant | Liber Imperium §6 |
+| Cameleoline Cloak ‡ | 3 | Very Rare | Liber Imperium §6 |
+| Charm | — | Average | RT Core Table 5-13 |
+| Chrono ‡ | — | Plentiful | Liber Imperium §6 |
+| Clip Harness/Drop Harness ‡ | 2 | Common | Liber Imperium §6 |
+| Clothing and Adornment (Common) † | — | Abundant | RT Core Table 5-13 |
+| Clothing and Adornment (Merchant Guilder) † | — | Average | RT Core Table 5-13 |
+| Clothing and Adornment (Noble) † | — | Scarce | RT Core Table 5-13 |
+| Filtration Plugs | — | Common | RT Core Table 5-13 |
+| Night Cloak | 2 | Average | RT Core Table 5-13 |
+| Photo-visors/Photo-contacts | 0.5 | Scarce | RT Core Table 5-13 |
+| Preysense Goggles | 0.5 | Rare | RT Core Table 5-13 |
+| Rebreather | 1 | Scarce | RT Core Table 5-13 |
+| Recoil Gloves | 0.5 | Rare | RT Core Table 5-13 |
+| Respirator/Gas Mask | 0.5 | Average | RT Core Table 5-13 |
+| Shifting Fabric | — | Very Rare | RT Core Table 5-13 |
+| Survival Suit ‡ | 10 | Average | Liber Imperium §6 |
+| Synskin ‡ | 2 | Very Rare | Liber Imperium §6 |
+| Void Suit ‡ | 8 | Scarce | Liber Imperium §6 |
+| Void Suit (Selenite-pattern) ‡ | 25 | Very Rare | Liber Imperium §6 |
+
+**Footnote markers used above:**
+- `†` Clothing & Adornment may have any appropriate Availability (see section note).
+- `‡` Multi-source item — value recorded from Source A §6 "Clothing & Personal Gear Summary"
+  per the Precedence Order (Source A > Source B). Source A overrides applied: **Backpack**
+  (Plentiful → Abundant, 1 → 2 kg), **Cameleoline Cloak** (Rare → Very Rare, 0.5 → 3 kg),
+  **Chrono** (Abundant → Plentiful), **Clip/Drop Harness** ("Drop Harness" Common, 2 kg),
+  **Survival Suit** (Plentiful → Average, — → 10 kg), **Synskin** (Extremely Rare → Very Rare),
+  **Void Suit** (Plentiful → Scarce), **Void Suit (Selenite-pattern)** (Scarce → Very Rare).
 
 ---
 
 ## Tools
 
-<!-- Populated in task 4.2 -->
+> Source: `RT Core Table 5-15` for the base profiles below. Per the Precedence Order
+> (Source A > Source B), where the same item also appears in Source A §6's "Tools Summary"
+> with a differing Availability, the Source A value is recorded; those rows carry an inline `‡`
+> and cite `Liber Imperium §6`.
+
+| Name | Weight (kg) | Availability | Source |
+|---|---|---|---|
+| Almanac Astrae Divinitus | 4 | Extremely Rare | RT Core Table 5-15 |
+| Arms Coffer | 6 | Average | RT Core Table 5-15 |
+| Auspex/Scanner | 0.5 | Scarce | RT Core Table 5-15 |
+| Auto-quill | — | Scarce | RT Core Table 5-15 |
+| Calculance Array | 120 | Scarce | RT Core Table 5-15 |
+| Combi-tool | 1 | Rare | RT Core Table 5-15 |
+| Data-loom (Hadd-pattern) | 13 | Very Rare | RT Core Table 5-15 |
+| Data-slate | 0.5 | Common | RT Core Table 5-15 |
+| Demolition Charge | 1 | Scarce | RT Core Table 5-15 |
+| Diagnostor ‡ | 4 | Rare | Liber Imperium §6 |
+| Glow-globe/Lamp Pack | 0.5 | Abundant | RT Core Table 5-15 |
+| Grapnel ‡ | 2 | Common | Liber Imperium §6 |
+| Grapplehawk | — | Very Rare | RT Core Table 5-15 |
+| Grav Chute | 15 | Rare | RT Core Table 5-15 |
+| Jump Pack | 25 | Rare | RT Core Table 5-15 |
+| Lord-Captain's Baton | 1 | Very Rare | RT Core Table 5-15 |
+| Magboots | 2 | Rare | RT Core Table 5-15 |
+| Magnoculars | 0.5 | Average | RT Core Table 5-15 |
+| Manacles | 1 | Plentiful | RT Core Table 5-15 |
+| Mefonte's Orthodoxy | 2 | Scarce | RT Core Table 5-15 |
+| Melta-bomb | 12 | Very Rare | RT Core Table 5-15 |
+| Micro-bead | — | Average | RT Core Table 5-15 |
+| Multikey | — | Scarce | RT Core Table 5-15 |
+| Multicompass | 4 | Near Unique | RT Core Table 5-15 |
+| Navis Prima | 1 | Very Rare | RT Core Table 5-15 |
+| Pict Recorder ‡ | 1 | Average | Liber Imperium §6 |
+| Psy-focus ‡ | — | Average | Liber Imperium §6 |
+| Renumeration Engine | 7 | Very Rare | RT Core Table 5-15 |
+| Shipboard Emergency Kit | 6 | Common | RT Core Table 5-15 |
+| Screamer ‡ | 1.5 | Scarce | Liber Imperium §6 |
+| Servitor (Labor, Simple Monotask) | — | Scarce | RT Core Table 5-15 |
+| Servitor (Combat) | — | Rare | RT Core Table 5-15 |
+| Servitor (Complex Multitask) | — | Rare | RT Core Table 5-15 |
+| Servo-Skull | — | Scarce | RT Core Table 5-15 |
+| Stummer ‡ | 2 | Very Rare | Liber Imperium §6 |
+| Venom Ring | — | Very Rare | RT Core Table 5-15 |
+| Vox Caster | — | Scarce | RT Core Table 5-15 |
+
+**Footnote markers used above:**
+- `‡` Multi-source item — Availability recorded from Source A §6 "Tools Summary" per the
+  Precedence Order (Source A > Source B). Source A overrides applied: **Diagnostor**
+  (Very Rare → Rare), **Grapnel** ("Grapnel & Line" Average → Common), **Pict Recorder**
+  (Common → Average), **Psy-focus** ("Psy Focus" Rare → Average), **Screamer** (Average → Scarce),
+  **Stummer** (Average → Very Rare).
 
 ---
 
 ## Drugs & Consumables
 
-<!-- Populated in task 4.2 -->
+> Source: `RT Core Table 5-14` for the base profiles below. Per the Precedence Order
+> (Source A > Source B), where the same item also appears in Source A §6's "Drugs Summary"
+> or §6.6.1 "Consumables" with a differing Availability, the Source A value is recorded; those
+> rows carry an inline `‡` and cite `Liber Imperium §6`.
+
+| Name | Weight | Availability | Source |
+|---|---|---|---|
+| Amasec ‡ | — | Average | Liber Imperium §6 |
+| De-tox | — | Rare | RT Core Table 5-14 |
+| Frenzon ‡ | — | Rare | Liber Imperium §6 |
+| Injector | — | Plentiful | RT Core Table 5-14 |
+| Lho-sticks | — | Common | RT Core Table 5-14 |
+| Medikit | 2 kg | Common | RT Core Table 5-14 |
+| Medikit (Advanced) | 5 kg | Rare | RT Core Table 5-14 |
+| High Provender | — | Very Rare | RT Core Table 5-14 |
+| Obscura | — | Rare | RT Core Table 5-14 |
+| Ration Packs | — | Ubiquitous | RT Core Table 5-14 |
+| Recaf | — | Abundant | RT Core Table 5-14 |
+| Sacred Unguents | — | Very Rare | RT Core Table 5-14 |
+| Slaught ‡ | — | Very Rare | Liber Imperium §6 |
+| Stimm | — | Average | RT Core Table 5-14 |
+| Thosophist's Philtre | — | Very Rare | RT Core Table 5-14 |
+| Tranq | — | Abundant | RT Core Table 5-14 |
+
+**Footnote markers used above:**
+- `‡` Multi-source item — Availability recorded from Source A §6 per the Precedence Order
+  (Source A > Source B). Source A overrides applied: **Amasec** (Scarce → Average, §6.6.1),
+  **Frenzon** (Very Rare → Rare, Drugs Summary), **Slaught** (Scarce → Very Rare, Drugs Summary).
 
 ---
 
 ## Cybernetics
 
-<!-- Populated in task 4.2 -->
+> Source: `RT Core Table 5-16` for the base profiles below. Per the Precedence Order
+> (Source A > Source B), where the same item also appears in Source A §6.9's "Cybernetics
+> Summary" with a differing Availability, the Source A value is recorded; those rows carry an
+> inline `‡` and cite `Liber Imperium §6`.
+> `†` Some cybernetic systems are only provided to tech-adepts of the Adeptus Mechanicus —
+> though it is possible that skilled hereteks might risk the Machine Cult's wrath by implanting
+> crude versions of these systems in anyone willing to pay their price. Mechanicus-restricted
+> cybernetics: Ballistic/Manipulator/Medicae/Optical/Utility Mechadendrite.
+
+| Name | Availability | Source |
+|---|---|---|
+| Augur Array | Rare | RT Core Table 5-16 |
+| Augmented Senses | Rare | RT Core Table 5-16 |
+| Baleful Eye | Near Unique | RT Core Table 5-16 |
+| Ballistic Mechadendrite † | Very Rare | RT Core Table 5-16 |
+| Bionic Limb | Scarce | RT Core Table 5-16 |
+| Bionic Locomotion | Scarce | RT Core Table 5-16 |
+| Bionic Respiratory System | Rare | RT Core Table 5-16 |
+| Bionic Heart ‡ | Very Rare | Liber Imperium §6 |
+| Calculus Logi Upgrade | Very Rare | RT Core Table 5-16 |
+| Cortex Implants | Very Rare | RT Core Table 5-16 |
+| Cranial Armour | Scarce | RT Core Table 5-16 |
+| Cybernetic Senses | Rare | RT Core Table 5-16 |
+| Locator Matrix | Rare | RT Core Table 5-16 |
+| Manipulator Mechadendrite † | Very Rare | RT Core Table 5-16 |
+| Medicae Mechadendrite † | Very Rare | RT Core Table 5-16 |
+| Memorance Implant | Rare | RT Core Table 5-16 |
+| Mind Impulse Unit | Rare | RT Core Table 5-16 |
+| MIU Weapon Interface | Rare | RT Core Table 5-16 |
+| Optical Mechadendrite † | Very Rare | RT Core Table 5-16 |
+| Respiratory Filter Implant | Rare | RT Core Table 5-16 |
+| Scribe-tines | Scarce | RT Core Table 5-16 |
+| Subskin Armour | Very Rare | RT Core Table 5-16 |
+| Synthetic Muscle Grafts | Rare | RT Core Table 5-16 |
+| Utility Mechadendrite † | Very Rare | RT Core Table 5-16 |
+| Voidskin | Scarce | RT Core Table 5-16 |
+| Volitor Implant | Rare | RT Core Table 5-16 |
+| Vox Implant ‡ | Average | Liber Imperium §6 |
+
+**Footnote markers used above:**
+- `†` Mechanicus-restricted cybernetic (see section note): Ballistic, Manipulator, Medicae,
+  Optical, and Utility Mechadendrites are provided only to tech-adepts of the Adeptus Mechanicus.
+- `‡` Multi-source item — Availability recorded from Source A §6.9 "Cybernetics Summary" per the
+  Precedence Order (Source A > Source B). Source A overrides applied: **Bionic Heart**
+  (Rare → Very Rare), **Vox Implant** (Scarce → Average).
