@@ -20,6 +20,11 @@ upgrades, ammunition) live in `RT-Weapons.md` and are intentionally excluded her
 - **Overload**: A force field's overload range, preserved verbatim from the source
 - **Weight (kg)**: Item weight where the source provides it
 - **Availability**: Rarity/acquisition value where the source provides it
+- **Region**: Faction/region annotation — exactly one of `Ork`, `Eldar`, `DarkEldar`, `Necron`,
+  `Tau`, `Tyranid`, `Kroot`, `Chaos`, `ImperialHuman`, `Servitor`, or the `Universal` tag for
+  faction-agnostic/primitive/civilian items. Casing matches `Scripts/Enemies.lua` `chance` keys
+  and `regionForBiome` outputs. `Universal ††` marks a default-assigned Universal classification
+  where the faction is undeterminable from the source.
 - **—**: Value absent in the source (not applicable or not provided)
 - **†**: Footnote marker for a special rule or restriction spelled out beneath the table
 
@@ -54,56 +59,59 @@ or with an inline `†` footnote on rows whose origin differs from the section d
 
 ### Primitive Armour
 
-| Name | Covered (Locations) | AP | Weight (kg) | Availability |
-|---|---|---|---|---|
-| Robes ‡ | All | 0 | 4 | Plentiful (single) / Ŧ35 |
-| Heavy Leathers/Furs | Arms, Body, Legs | 2 | 7 | Common |
-| Grox Hide/Chainmail | Arms, Body, Legs | 3 | 15 | Common |
-| Chainmail ‡ | All | 3 | 4 (single) / 16 (full set) | Common (single) / Average (full set) |
-| Feudal World Plate | All | 5 | 30 | Scarce |
-| Burnscour Beast Hide | Body | 6 | 20 | Very Rare |
-| Xeno-Hide Pelts ‡ | Body | 6 | 10 | Very Rare |
+| Name | Covered (Locations) | AP | Weight (kg) | Availability | Region |
+|---|---|---|---|---|---|
+| Robes ‡ | All | 0 | 4 | Plentiful (single) / Ŧ35 | Universal |
+| Heavy Leathers/Furs | Arms, Body, Legs | 2 | 7 | Common | Universal |
+| Grox Hide/Chainmail | Arms, Body, Legs | 3 | 15 | Common | Universal |
+| Chainmail ‡ | All | 3 | 4 (single) / 16 (full set) | Common (single) / Average (full set) | Universal |
+| Feudal World Plate | All | 5 | 30 | Scarce | Universal |
+| Burnscour Beast Hide | Body | 6 | 20 | Very Rare | Universal |
+| Xeno-Hide Pelts ‡ | Body | 6 | 10 | Very Rare | Universal |
 
 ### Flak Armour
 
-| Name | Covered (Locations) | AP | Weight (kg) | Availability |
-|---|---|---|---|---|
-| Flak Helmet | Head | 2 | 2 | Average |
-| Flak Cloak | Arms, Body, Legs | 3 | 8 | Scarce |
-| Flak Coat | Arms, Body, Legs | 3 | 5 | Average |
-| Guard Flak Armour | All | 4 | 11 | Scarce |
-| Flak (full suit) † | All | 4 | 3 (single) / 12 (full set) | Average (single) / Scarce (full set) |
+| Name | Covered (Locations) | AP | Weight (kg) | Availability | Region |
+|---|---|---|---|---|---|
+| Flak Helmet | Head | 2 | 2 | Average | ImperialHuman |
+| Flak Cloak | Arms, Body, Legs | 3 | 8 | Scarce | ImperialHuman |
+| Flak Coat | Arms, Body, Legs | 3 | 5 | Average | ImperialHuman |
+| Guard Flak Armour | All | 4 | 11 | Scarce | ImperialHuman |
+| Flak (full suit) † | All | 4 | 3 (single) / 12 (full set) | Average (single) / Scarce (full set) | ImperialHuman |
 
 > `†` Flak Armour increases its AP by 2 when hit by Explosive type Damage. (Source A §6)
 
 ### Mesh Armour
 
-| Name | Covered (Locations) | AP | Weight (kg) | Availability |
-|---|---|---|---|---|
-| Mesh Cowl | Head | 3 | 0.5 | Rare |
-| Xeno Mesh | Arms, Body, Legs | 3 | 2 | Rare |
-| Mesh Combat Cloak | Arms, Body, Legs | 4 | 1.5 | Very Rare |
-| Mesh Vest | Body | 4 | 2 | Rare |
-| Mesh (full suit) ‡ | All | 4 | 0.5 (single) / 3 (full set) | Average (single) / Scarce (full set) |
+| Name | Covered (Locations) | AP | Weight (kg) | Availability | Region |
+|---|---|---|---|---|---|
+| Mesh Cowl | Head | 3 | 0.5 | Rare | ImperialHuman |
+| Xeno Mesh | Arms, Body, Legs | 3 | 2 | Rare | Universal †† |
+| Mesh Combat Cloak | Arms, Body, Legs | 4 | 1.5 | Very Rare | ImperialHuman |
+| Mesh Vest | Body | 4 | 2 | Rare | ImperialHuman |
+| Mesh (full suit) ‡ | All | 4 | 0.5 (single) / 3 (full set) | Average (single) / Scarce (full set) | ImperialHuman |
+
+> `††` Region default-assigned (faction undeterminable from source). Applies to **Xeno Mesh**
+> (generic "xeno" origin with no specific taxonomy faction).
 
 ### Carapace Armour
 
-| Name | Covered (Locations) | AP | Weight (kg) | Availability |
-|---|---|---|---|---|
-| Carapace Helm | Head | 4 | 2 | Rare |
-| Enforcer Light Carapace | All | 5 | 15 | Rare |
-| Light Carapace ‡ | All | 5 | 4 (single) / 16 (full set) | Scarce (single) / Rare (full set) |
-| Carapace Chestplate | Body | 6 | 7 | Rare |
-| Storm Trooper Carapace | All | 6 | 15 | Very Rare |
-| Heavy Carapace ‡ | All | 6 | 5 (single) / 20 (full set) | Rare (single) / Very Rare (full set) |
+| Name | Covered (Locations) | AP | Weight (kg) | Availability | Region |
+|---|---|---|---|---|---|
+| Carapace Helm | Head | 4 | 2 | Rare | ImperialHuman |
+| Enforcer Light Carapace | All | 5 | 15 | Rare | ImperialHuman |
+| Light Carapace ‡ | All | 5 | 4 (single) / 16 (full set) | Scarce (single) / Rare (full set) | ImperialHuman |
+| Carapace Chestplate | Body | 6 | 7 | Rare | ImperialHuman |
+| Storm Trooper Carapace | All | 6 | 15 | Very Rare | ImperialHuman |
+| Heavy Carapace ‡ | All | 6 | 5 (single) / 20 (full set) | Rare (single) / Very Rare (full set) | ImperialHuman |
 
 ### Other Armours
 
-| Name | Covered (Locations) | AP | Weight (kg) | Availability |
-|---|---|---|---|---|
-| Advanced Helmet Systems | — | — | — | Very Rare |
-| Armoured Bodyglove | Arms, Body, Legs | 3 | 5 | Rare |
-| Ballistic Cloak ‡§ | Arms, Body, Legs | +1 | 1 | Scarce / Ŧ275 |
+| Name | Covered (Locations) | AP | Weight (kg) | Availability | Region |
+|---|---|---|---|---|---|
+| Advanced Helmet Systems | — | — | — | Very Rare | ImperialHuman |
+| Armoured Bodyglove | Arms, Body, Legs | 3 | 5 | Rare | ImperialHuman |
+| Ballistic Cloak ‡§ | Arms, Body, Legs | +1 | 1 | Scarce / Ŧ275 | ImperialHuman |
 
 > `§` Ballistic Cloak: This may be worn over other armour, but must be custom fitted for one
 > type/suit of armour. When a Ballistic Cloak's Craftsmanship is raised it can only gain a bonus
@@ -111,11 +119,11 @@ or with an inline `†` footnote on rows whose origin differs from the section d
 
 ### Power Armour
 
-| Name | Covered (Locations) | AP | Weight (kg) | Availability |
-|---|---|---|---|---|
-| Light Power Armour | All | 7 | 40 | Very Rare |
-| Power Armour | All | 8 | 65 | Very Rare |
-| Terminator Armour ‡¶ | All | 14 | 400 | Unique / Ŧ100,000 |
+| Name | Covered (Locations) | AP | Weight (kg) | Availability | Region |
+|---|---|---|---|---|---|
+| Light Power Armour | All | 7 | 40 | Very Rare | ImperialHuman |
+| Power Armour | All | 8 | 65 | Very Rare | ImperialHuman |
+| Terminator Armour ‡¶ | All | 14 | 400 | Unique / Ŧ100,000 | ImperialHuman |
 
 > `¶` Terminator Armour counts as having a Force Field with a Protection Rating of 35 and an
 > Overload of 10, which changes accordingly with the armour's Craftsmanship as per Force Field
@@ -140,20 +148,20 @@ or with an inline `†` footnote on rows whose origin differs from the section d
 > dedicated force-field table, so every row here originates from Source A. Values (Protection
 > Rating, Overload, Weight/Size, Availability) are preserved verbatim from the source table.
 
-| Name | Protection Rating | Overload | Gear Slot | Weight/Size | Availability |
-|---|---|---|---|---|---|
-| Refractor Field | 30 | 10 | Neck or Waist | 2 kg / Size (1) | Very Rare / Ŧ15,000 |
-| Conversion Field | 50 | 10 | Neck or Waist | 1 kg / Size (1) | Extremely Rare / Ŧ20,000 |
-| Displacer Field ‖ | 55 | 10 | Waist | 2 kg / Size (1) | Near Unique / Ŧ50,000 |
-| Power Field (Personal) | 75 | 10 | Back | 50 kg / Size (3) | Near Unique / Ŧ12,000,000 |
-| Power Field (Emplacement) | 80 | 10 | — | 500 kg / Size (6) | Near Unique / Ŧ10,000,000 |
-| Field Wall Generator | 65 | 10 | — | 18 kg / Size (3) | Very Rare / Ŧ12,000 |
-| Rosarius ※ | 50 | 10 | Neck or Waist | 0.5 kg / Size (1) | Extremely Rare / Ŧ25,000 |
-| Icon of the Just | 55 | 10 | Neck or Waist | 0.5 kg / Size (1) | Near Unique / Ŧ45,000 |
-| Null Blocker | 60 | 10 | Neck or Waist | 0.5 kg / Size (1) | Very Rare / Ŧ20,000 |
-| Jokaerian Field | 70 | 10 | Neck or Waist | 0.5 kg / Size (1) | Near Unique / Ŧ50,000 |
-| Personal Flare Shield ✱ | 25/50 | 10 | Back | 3 kg / Size (2) | Extremely Rare / Ŧ100,000 |
-| Refraction Bracer ✚ | 30 | 10 | Wrist | 0.5 kg / Size (2) | Rare / Ŧ5,000 |
+| Name | Protection Rating | Overload | Gear Slot | Weight/Size | Availability | Region |
+|---|---|---|---|---|---|---|
+| Refractor Field | 30 | 10 | Neck or Waist | 2 kg / Size (1) | Very Rare / Ŧ15,000 | ImperialHuman |
+| Conversion Field | 50 | 10 | Neck or Waist | 1 kg / Size (1) | Extremely Rare / Ŧ20,000 | ImperialHuman |
+| Displacer Field ‖ | 55 | 10 | Waist | 2 kg / Size (1) | Near Unique / Ŧ50,000 | ImperialHuman |
+| Power Field (Personal) | 75 | 10 | Back | 50 kg / Size (3) | Near Unique / Ŧ12,000,000 | ImperialHuman |
+| Power Field (Emplacement) | 80 | 10 | — | 500 kg / Size (6) | Near Unique / Ŧ10,000,000 | ImperialHuman |
+| Field Wall Generator | 65 | 10 | — | 18 kg / Size (3) | Very Rare / Ŧ12,000 | ImperialHuman |
+| Rosarius ※ | 50 | 10 | Neck or Waist | 0.5 kg / Size (1) | Extremely Rare / Ŧ25,000 | ImperialHuman |
+| Icon of the Just | 55 | 10 | Neck or Waist | 0.5 kg / Size (1) | Near Unique / Ŧ45,000 | ImperialHuman |
+| Null Blocker | 60 | 10 | Neck or Waist | 0.5 kg / Size (1) | Very Rare / Ŧ20,000 | ImperialHuman |
+| Jokaerian Field | 70 | 10 | Neck or Waist | 0.5 kg / Size (1) | Near Unique / Ŧ50,000 | Universal †† |
+| Personal Flare Shield ✱ | 25/50 | 10 | Back | 3 kg / Size (2) | Extremely Rare / Ŧ100,000 | ImperialHuman |
+| Refraction Bracer ✚ | 30 | 10 | Wrist | 0.5 kg / Size (2) | Rare / Ŧ5,000 | ImperialHuman |
 
 **Force Field special rules (preserved verbatim from Source A §6):**
 
@@ -181,6 +189,10 @@ or with an inline `†` footnote on rows whose origin differs from the section d
   Points from exposure to the unnatural energies within the Warp. If the activation is unexpected,
   then the wearer cannot act for one round while he regains his sense of place.
 
+**Region marker used above:**
+- `††` Region default-assigned (faction undeterminable from source). Applies to the
+  **Jokaerian Field** (Jokaero-derived xenos tech with no taxonomy faction).
+
 ---
 
 ## Gear
@@ -193,28 +205,28 @@ or with an inline `†` footnote on rows whose origin differs from the section d
 > spend more on appearance, to find yet more exclusive fabrics, clothiers, and jewelers, and
 > otherwise display the ways that your wealth glitters more brightly than that of your rivals.
 
-| Name | Weight (kg) | Availability | Source |
-|---|---|---|---|
-| Backpack ‡ | 2 | Abundant | Liber Imperium §6 |
-| Cameleoline Cloak ‡ | 3 | Very Rare | Liber Imperium §6 |
-| Charm | — | Average | RT Core Table 5-13 |
-| Chrono ‡ | — | Plentiful | Liber Imperium §6 |
-| Clip Harness/Drop Harness ‡ | 2 | Common | Liber Imperium §6 |
-| Clothing and Adornment (Common) † | — | Abundant | RT Core Table 5-13 |
-| Clothing and Adornment (Merchant Guilder) † | — | Average | RT Core Table 5-13 |
-| Clothing and Adornment (Noble) † | — | Scarce | RT Core Table 5-13 |
-| Filtration Plugs | — | Common | RT Core Table 5-13 |
-| Night Cloak | 2 | Average | RT Core Table 5-13 |
-| Photo-visors/Photo-contacts | 0.5 | Scarce | RT Core Table 5-13 |
-| Preysense Goggles | 0.5 | Rare | RT Core Table 5-13 |
-| Rebreather | 1 | Scarce | RT Core Table 5-13 |
-| Recoil Gloves | 0.5 | Rare | RT Core Table 5-13 |
-| Respirator/Gas Mask | 0.5 | Average | RT Core Table 5-13 |
-| Shifting Fabric | — | Very Rare | RT Core Table 5-13 |
-| Survival Suit ‡ | 10 | Average | Liber Imperium §6 |
-| Synskin ‡ | 2 | Very Rare | Liber Imperium §6 |
-| Void Suit ‡ | 8 | Scarce | Liber Imperium §6 |
-| Void Suit (Selenite-pattern) ‡ | 25 | Very Rare | Liber Imperium §6 |
+| Name | Weight (kg) | Availability | Source | Region |
+|---|---|---|---|---|
+| Backpack ‡ | 2 | Abundant | Liber Imperium §6 | Universal |
+| Cameleoline Cloak ‡ | 3 | Very Rare | Liber Imperium §6 | ImperialHuman |
+| Charm | — | Average | RT Core Table 5-13 | Universal |
+| Chrono ‡ | — | Plentiful | Liber Imperium §6 | Universal |
+| Clip Harness/Drop Harness ‡ | 2 | Common | Liber Imperium §6 | Universal |
+| Clothing and Adornment (Common) † | — | Abundant | RT Core Table 5-13 | Universal |
+| Clothing and Adornment (Merchant Guilder) † | — | Average | RT Core Table 5-13 | Universal |
+| Clothing and Adornment (Noble) † | — | Scarce | RT Core Table 5-13 | Universal |
+| Filtration Plugs | — | Common | RT Core Table 5-13 | ImperialHuman |
+| Night Cloak | 2 | Average | RT Core Table 5-13 | Universal |
+| Photo-visors/Photo-contacts | 0.5 | Scarce | RT Core Table 5-13 | ImperialHuman |
+| Preysense Goggles | 0.5 | Rare | RT Core Table 5-13 | ImperialHuman |
+| Rebreather | 1 | Scarce | RT Core Table 5-13 | ImperialHuman |
+| Recoil Gloves | 0.5 | Rare | RT Core Table 5-13 | ImperialHuman |
+| Respirator/Gas Mask | 0.5 | Average | RT Core Table 5-13 | ImperialHuman |
+| Shifting Fabric | — | Very Rare | RT Core Table 5-13 | Universal |
+| Survival Suit ‡ | 10 | Average | Liber Imperium §6 | ImperialHuman |
+| Synskin ‡ | 2 | Very Rare | Liber Imperium §6 | ImperialHuman |
+| Void Suit ‡ | 8 | Scarce | Liber Imperium §6 | ImperialHuman |
+| Void Suit (Selenite-pattern) ‡ | 25 | Very Rare | Liber Imperium §6 | ImperialHuman |
 
 **Footnote markers used above:**
 - `†` Clothing & Adornment may have any appropriate Availability (see section note).
@@ -234,45 +246,45 @@ or with an inline `†` footnote on rows whose origin differs from the section d
 > with a differing Availability, the Source A value is recorded; those rows carry an inline `‡`
 > and cite `Liber Imperium §6`.
 
-| Name | Weight (kg) | Availability | Source |
-|---|---|---|---|
-| Almanac Astrae Divinitus | 4 | Extremely Rare | RT Core Table 5-15 |
-| Arms Coffer | 6 | Average | RT Core Table 5-15 |
-| Auspex/Scanner | 0.5 | Scarce | RT Core Table 5-15 |
-| Auto-quill | — | Scarce | RT Core Table 5-15 |
-| Calculance Array | 120 | Scarce | RT Core Table 5-15 |
-| Combi-tool | 1 | Rare | RT Core Table 5-15 |
-| Data-loom (Hadd-pattern) | 13 | Very Rare | RT Core Table 5-15 |
-| Data-slate | 0.5 | Common | RT Core Table 5-15 |
-| Demolition Charge | 1 | Scarce | RT Core Table 5-15 |
-| Diagnostor ‡ | 4 | Rare | Liber Imperium §6 |
-| Glow-globe/Lamp Pack | 0.5 | Abundant | RT Core Table 5-15 |
-| Grapnel ‡ | 2 | Common | Liber Imperium §6 |
-| Grapplehawk | — | Very Rare | RT Core Table 5-15 |
-| Grav Chute | 15 | Rare | RT Core Table 5-15 |
-| Jump Pack | 25 | Rare | RT Core Table 5-15 |
-| Lord-Captain's Baton | 1 | Very Rare | RT Core Table 5-15 |
-| Magboots | 2 | Rare | RT Core Table 5-15 |
-| Magnoculars | 0.5 | Average | RT Core Table 5-15 |
-| Manacles | 1 | Plentiful | RT Core Table 5-15 |
-| Mefonte's Orthodoxy | 2 | Scarce | RT Core Table 5-15 |
-| Melta-bomb | 12 | Very Rare | RT Core Table 5-15 |
-| Micro-bead | — | Average | RT Core Table 5-15 |
-| Multikey | — | Scarce | RT Core Table 5-15 |
-| Multicompass | 4 | Near Unique | RT Core Table 5-15 |
-| Navis Prima | 1 | Very Rare | RT Core Table 5-15 |
-| Pict Recorder ‡ | 1 | Average | Liber Imperium §6 |
-| Psy-focus ‡ | — | Average | Liber Imperium §6 |
-| Renumeration Engine | 7 | Very Rare | RT Core Table 5-15 |
-| Shipboard Emergency Kit | 6 | Common | RT Core Table 5-15 |
-| Screamer ‡ | 1.5 | Scarce | Liber Imperium §6 |
-| Servitor (Labor, Simple Monotask) | — | Scarce | RT Core Table 5-15 |
-| Servitor (Combat) | — | Rare | RT Core Table 5-15 |
-| Servitor (Complex Multitask) | — | Rare | RT Core Table 5-15 |
-| Servo-Skull | — | Scarce | RT Core Table 5-15 |
-| Stummer ‡ | 2 | Very Rare | Liber Imperium §6 |
-| Venom Ring | — | Very Rare | RT Core Table 5-15 |
-| Vox Caster | — | Scarce | RT Core Table 5-15 |
+| Name | Weight (kg) | Availability | Source | Region |
+|---|---|---|---|---|
+| Almanac Astrae Divinitus | 4 | Extremely Rare | RT Core Table 5-15 | ImperialHuman |
+| Arms Coffer | 6 | Average | RT Core Table 5-15 | ImperialHuman |
+| Auspex/Scanner | 0.5 | Scarce | RT Core Table 5-15 | ImperialHuman |
+| Auto-quill | — | Scarce | RT Core Table 5-15 | ImperialHuman |
+| Calculance Array | 120 | Scarce | RT Core Table 5-15 | ImperialHuman |
+| Combi-tool | 1 | Rare | RT Core Table 5-15 | ImperialHuman |
+| Data-loom (Hadd-pattern) | 13 | Very Rare | RT Core Table 5-15 | ImperialHuman |
+| Data-slate | 0.5 | Common | RT Core Table 5-15 | ImperialHuman |
+| Demolition Charge | 1 | Scarce | RT Core Table 5-15 | ImperialHuman |
+| Diagnostor ‡ | 4 | Rare | Liber Imperium §6 | ImperialHuman |
+| Glow-globe/Lamp Pack | 0.5 | Abundant | RT Core Table 5-15 | Universal |
+| Grapnel ‡ | 2 | Common | Liber Imperium §6 | Universal |
+| Grapplehawk | — | Very Rare | RT Core Table 5-15 | ImperialHuman |
+| Grav Chute | 15 | Rare | RT Core Table 5-15 | ImperialHuman |
+| Jump Pack | 25 | Rare | RT Core Table 5-15 | ImperialHuman |
+| Lord-Captain's Baton | 1 | Very Rare | RT Core Table 5-15 | ImperialHuman |
+| Magboots | 2 | Rare | RT Core Table 5-15 | ImperialHuman |
+| Magnoculars | 0.5 | Average | RT Core Table 5-15 | Universal |
+| Manacles | 1 | Plentiful | RT Core Table 5-15 | Universal |
+| Mefonte's Orthodoxy | 2 | Scarce | RT Core Table 5-15 | ImperialHuman |
+| Melta-bomb | 12 | Very Rare | RT Core Table 5-15 | ImperialHuman |
+| Micro-bead | — | Average | RT Core Table 5-15 | ImperialHuman |
+| Multikey | — | Scarce | RT Core Table 5-15 | ImperialHuman |
+| Multicompass | 4 | Near Unique | RT Core Table 5-15 | ImperialHuman |
+| Navis Prima | 1 | Very Rare | RT Core Table 5-15 | ImperialHuman |
+| Pict Recorder ‡ | 1 | Average | Liber Imperium §6 | ImperialHuman |
+| Psy-focus ‡ | — | Average | Liber Imperium §6 | ImperialHuman |
+| Renumeration Engine | 7 | Very Rare | RT Core Table 5-15 | ImperialHuman |
+| Shipboard Emergency Kit | 6 | Common | RT Core Table 5-15 | ImperialHuman |
+| Screamer ‡ | 1.5 | Scarce | Liber Imperium §6 | ImperialHuman |
+| Servitor (Labor, Simple Monotask) | — | Scarce | RT Core Table 5-15 | Servitor |
+| Servitor (Combat) | — | Rare | RT Core Table 5-15 | Servitor |
+| Servitor (Complex Multitask) | — | Rare | RT Core Table 5-15 | Servitor |
+| Servo-Skull | — | Scarce | RT Core Table 5-15 | Servitor |
+| Stummer ‡ | 2 | Very Rare | Liber Imperium §6 | ImperialHuman |
+| Venom Ring | — | Very Rare | RT Core Table 5-15 | Universal |
+| Vox Caster | — | Scarce | RT Core Table 5-15 | ImperialHuman |
 
 **Footnote markers used above:**
 - `‡` Multi-source item — Availability recorded from Source A §6 "Tools Summary" per the
@@ -290,24 +302,24 @@ or with an inline `†` footnote on rows whose origin differs from the section d
 > or §6.6.1 "Consumables" with a differing Availability, the Source A value is recorded; those
 > rows carry an inline `‡` and cite `Liber Imperium §6`.
 
-| Name | Weight | Availability | Source |
-|---|---|---|---|
-| Amasec ‡ | — | Average | Liber Imperium §6 |
-| De-tox | — | Rare | RT Core Table 5-14 |
-| Frenzon ‡ | — | Rare | Liber Imperium §6 |
-| Injector | — | Plentiful | RT Core Table 5-14 |
-| Lho-sticks | — | Common | RT Core Table 5-14 |
-| Medikit | 2 kg | Common | RT Core Table 5-14 |
-| Medikit (Advanced) | 5 kg | Rare | RT Core Table 5-14 |
-| High Provender | — | Very Rare | RT Core Table 5-14 |
-| Obscura | — | Rare | RT Core Table 5-14 |
-| Ration Packs | — | Ubiquitous | RT Core Table 5-14 |
-| Recaf | — | Abundant | RT Core Table 5-14 |
-| Sacred Unguents | — | Very Rare | RT Core Table 5-14 |
-| Slaught ‡ | — | Very Rare | Liber Imperium §6 |
-| Stimm | — | Average | RT Core Table 5-14 |
-| Thosophist's Philtre | — | Very Rare | RT Core Table 5-14 |
-| Tranq | — | Abundant | RT Core Table 5-14 |
+| Name | Weight | Availability | Source | Region |
+|---|---|---|---|---|
+| Amasec ‡ | — | Average | Liber Imperium §6 | Universal |
+| De-tox | — | Rare | RT Core Table 5-14 | ImperialHuman |
+| Frenzon ‡ | — | Rare | Liber Imperium §6 | ImperialHuman |
+| Injector | — | Plentiful | RT Core Table 5-14 | ImperialHuman |
+| Lho-sticks | — | Common | RT Core Table 5-14 | Universal |
+| Medikit | 2 kg | Common | RT Core Table 5-14 | ImperialHuman |
+| Medikit (Advanced) | 5 kg | Rare | RT Core Table 5-14 | ImperialHuman |
+| High Provender | — | Very Rare | RT Core Table 5-14 | Universal |
+| Obscura | — | Rare | RT Core Table 5-14 | Universal |
+| Ration Packs | — | Ubiquitous | RT Core Table 5-14 | Universal |
+| Recaf | — | Abundant | RT Core Table 5-14 | Universal |
+| Sacred Unguents | — | Very Rare | RT Core Table 5-14 | ImperialHuman |
+| Slaught ‡ | — | Very Rare | Liber Imperium §6 | ImperialHuman |
+| Stimm | — | Average | RT Core Table 5-14 | ImperialHuman |
+| Thosophist's Philtre | — | Very Rare | RT Core Table 5-14 | ImperialHuman |
+| Tranq | — | Abundant | RT Core Table 5-14 | Universal |
 
 **Footnote markers used above:**
 - `‡` Multi-source item — Availability recorded from Source A §6 per the Precedence Order
@@ -327,35 +339,35 @@ or with an inline `†` footnote on rows whose origin differs from the section d
 > crude versions of these systems in anyone willing to pay their price. Mechanicus-restricted
 > cybernetics: Ballistic/Manipulator/Medicae/Optical/Utility Mechadendrite.
 
-| Name | Availability | Source |
-|---|---|---|
-| Augur Array | Rare | RT Core Table 5-16 |
-| Augmented Senses | Rare | RT Core Table 5-16 |
-| Baleful Eye | Near Unique | RT Core Table 5-16 |
-| Ballistic Mechadendrite † | Very Rare | RT Core Table 5-16 |
-| Bionic Limb | Scarce | RT Core Table 5-16 |
-| Bionic Locomotion | Scarce | RT Core Table 5-16 |
-| Bionic Respiratory System | Rare | RT Core Table 5-16 |
-| Bionic Heart ‡ | Very Rare | Liber Imperium §6 |
-| Calculus Logi Upgrade | Very Rare | RT Core Table 5-16 |
-| Cortex Implants | Very Rare | RT Core Table 5-16 |
-| Cranial Armour | Scarce | RT Core Table 5-16 |
-| Cybernetic Senses | Rare | RT Core Table 5-16 |
-| Locator Matrix | Rare | RT Core Table 5-16 |
-| Manipulator Mechadendrite † | Very Rare | RT Core Table 5-16 |
-| Medicae Mechadendrite † | Very Rare | RT Core Table 5-16 |
-| Memorance Implant | Rare | RT Core Table 5-16 |
-| Mind Impulse Unit | Rare | RT Core Table 5-16 |
-| MIU Weapon Interface | Rare | RT Core Table 5-16 |
-| Optical Mechadendrite † | Very Rare | RT Core Table 5-16 |
-| Respiratory Filter Implant | Rare | RT Core Table 5-16 |
-| Scribe-tines | Scarce | RT Core Table 5-16 |
-| Subskin Armour | Very Rare | RT Core Table 5-16 |
-| Synthetic Muscle Grafts | Rare | RT Core Table 5-16 |
-| Utility Mechadendrite † | Very Rare | RT Core Table 5-16 |
-| Voidskin | Scarce | RT Core Table 5-16 |
-| Volitor Implant | Rare | RT Core Table 5-16 |
-| Vox Implant ‡ | Average | Liber Imperium §6 |
+| Name | Availability | Source | Region |
+|---|---|---|---|
+| Augur Array | Rare | RT Core Table 5-16 | ImperialHuman |
+| Augmented Senses | Rare | RT Core Table 5-16 | ImperialHuman |
+| Baleful Eye | Near Unique | RT Core Table 5-16 | ImperialHuman |
+| Ballistic Mechadendrite † | Very Rare | RT Core Table 5-16 | ImperialHuman |
+| Bionic Limb | Scarce | RT Core Table 5-16 | ImperialHuman |
+| Bionic Locomotion | Scarce | RT Core Table 5-16 | ImperialHuman |
+| Bionic Respiratory System | Rare | RT Core Table 5-16 | ImperialHuman |
+| Bionic Heart ‡ | Very Rare | Liber Imperium §6 | ImperialHuman |
+| Calculus Logi Upgrade | Very Rare | RT Core Table 5-16 | ImperialHuman |
+| Cortex Implants | Very Rare | RT Core Table 5-16 | ImperialHuman |
+| Cranial Armour | Scarce | RT Core Table 5-16 | ImperialHuman |
+| Cybernetic Senses | Rare | RT Core Table 5-16 | ImperialHuman |
+| Locator Matrix | Rare | RT Core Table 5-16 | ImperialHuman |
+| Manipulator Mechadendrite † | Very Rare | RT Core Table 5-16 | ImperialHuman |
+| Medicae Mechadendrite † | Very Rare | RT Core Table 5-16 | ImperialHuman |
+| Memorance Implant | Rare | RT Core Table 5-16 | ImperialHuman |
+| Mind Impulse Unit | Rare | RT Core Table 5-16 | ImperialHuman |
+| MIU Weapon Interface | Rare | RT Core Table 5-16 | ImperialHuman |
+| Optical Mechadendrite † | Very Rare | RT Core Table 5-16 | ImperialHuman |
+| Respiratory Filter Implant | Rare | RT Core Table 5-16 | ImperialHuman |
+| Scribe-tines | Scarce | RT Core Table 5-16 | ImperialHuman |
+| Subskin Armour | Very Rare | RT Core Table 5-16 | ImperialHuman |
+| Synthetic Muscle Grafts | Rare | RT Core Table 5-16 | ImperialHuman |
+| Utility Mechadendrite † | Very Rare | RT Core Table 5-16 | ImperialHuman |
+| Voidskin | Scarce | RT Core Table 5-16 | ImperialHuman |
+| Volitor Implant | Rare | RT Core Table 5-16 | ImperialHuman |
+| Vox Implant ‡ | Average | Liber Imperium §6 | ImperialHuman |
 
 **Footnote markers used above:**
 - `†` Mechanicus-restricted cybernetic (see section note): Ballistic, Manipulator, Medicae,
