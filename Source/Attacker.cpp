@@ -60,7 +60,9 @@ void Attacker::attack(Actor* owner, Actor* target, bool isCharge)
 		}
 	} else {
 		const bool isPlayer = (owner == engine.player);
-		const bool visibleToPlayer = isPlayer || engine.map->isInFOV(owner->getX(), owner->getY());
+		const bool visibleToPlayer =
+			(isPlayer || (engine.map && engine.map->isInFOV(owner->getX(), owner->getY())))
+			&& engine.gui != nullptr;
 		if (visibleToPlayer) {
 			engine.gui->message(Colors::uiText, "# attacks # in vain.",
 				owner->name, target->name);
@@ -102,8 +104,14 @@ void Attacker::load(TCODZip& zip) {
 
 void Attacker::resolveCharacterAttack(Actor* owner, Actor* target, bool isCharge) {
 	// ── Determine if this attack should generate visible messages ──
+	// Engine-safety (test-isolation steering): engine.map / engine.gui are null in
+	// the headless test binary. Treat a missing map as "not visible" so FOV is never
+	// queried on a null map, and gate every engine.gui->message(...) on visibility
+	// AND a live gui. Combat resolution (rolls, damage, crits) is unaffected.
 	const bool isPlayer = (owner == engine.player);
-	const bool visibleToPlayer = isPlayer || engine.map->isInFOV(owner->getX(), owner->getY());
+	const bool visibleToPlayer =
+		(isPlayer || (engine.map && engine.map->isInFOV(owner->getX(), owner->getY())))
+		&& engine.gui != nullptr;
 	const TCODColor actionColor = isPlayer ? Colors::playerAction : Colors::enemyAction;
 
 	// ── Attack declaration (suppress if attacker is outside FOV) ──
@@ -314,8 +322,12 @@ void Attacker::resolveCharacterAttack(Actor* owner, Actor* target, bool isCharge
 
 void Attacker::resolveDestructibleAttack(Actor* owner, Actor* target) {
 	// ── Determine visibility for FOV-gated messaging ──
+	// Engine-safety (test-isolation steering): guard the null map/gui in headless
+	// tests exactly as resolveCharacterAttack does; combat resolution is unaffected.
 	const bool isPlayer = (owner == engine.player);
-	const bool visibleToPlayer = isPlayer || engine.map->isInFOV(owner->getX(), owner->getY());
+	const bool visibleToPlayer =
+		(isPlayer || (engine.map && engine.map->isInFOV(owner->getX(), owner->getY())))
+		&& engine.gui != nullptr;
 
 	// ── Get weapon MeleeStats ──
 	MeleeStats weaponStats{ DiceSpec{1, 5}, 0, {} }; // default unarmed

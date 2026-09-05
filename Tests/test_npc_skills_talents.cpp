@@ -983,14 +983,24 @@ TEST_CASE("Scripts/Enemies.lua loads and every wired-trait enemy parses without 
     sol::protected_function spawnEnemy = lua["spawnEnemy"];
     REQUIRE(spawnEnemy.valid());
 
-    // Drive the full roll range so every cumulative-chance branch is spawned.
-    for (int roll = 0; roll < 100; ++roll) {
-        sol::protected_function_result r = spawnEnemy(roll, 0, 0);
-        REQUIRE(r.valid()); // no Lua runtime error during spawn
+    // spawnEnemy(roll, x, y, region) selects an entry from the requested faction's
+    // Region_Name column (e.chance[region]); an entry is only selectable in its own
+    // faction's region. Drive the full roll range across every faction column so
+    // every cumulative-chance branch in every column is spawned.
+    const std::vector<std::string> factionRegions = {
+        "Chaos", "Eldar", "DarkEldar", "Necron", "Ork",
+        "Tau", "Tyranid", "ImperialHuman", "Servitor", "Warp"
+    };
+    for (const auto& region : factionRegions) {
+        for (int roll = 0; roll < 100; ++roll) {
+            sol::protected_function_result r = spawnEnemy(roll, 0, 0, region);
+            REQUIRE(r.valid()); // no Lua runtime error during spawn
+        }
     }
 
-    // At least the four Ork-faction templates (Gretchin/Ork/Shoota Boy/Nob) fire.
-    REQUIRE(collectedEntries.size() >= 4);
+    // Every faction column contributes at least one entry, so the full sweep across
+    // ten regions collects the whole shipped roster.
+    REQUIRE(collectedEntries.size() >= 10);
 
     // Every collected entry parses into a fresh CareerProgression without throwing.
     // Track which wired traits we actually saw across the data set.
@@ -1035,12 +1045,14 @@ TEST_CASE("Scripts/Enemies.lua loads and every wired-trait enemy parses without 
         CHECK(catIdx <= static_cast<int>(SizeCategory::Massive));
     }
 
-    // The shipped Enemies.lua data references all five wired traits across its
-    // Ork-faction roster (Gretchin: Size (Puny)/Cowardly; Ork: Sturdy/Mob Rule;
-    // Shoota Boy: Sturdy; Nob: Sturdy/Brutal Charge).
+    // The shipped Enemies.lua data references the wired traits across its faction
+    // roster (e.g. Gretchin: Mob Rule/Size (3); Ork Boy: Sturdy/Mob Rule/Brutal
+    // Charge). Cowardly is a defined+wired trait (validated by the isolated unit
+    // tests above) but the authoritative RT bestiary assigns it to no Troop-tier
+    // profile in scope, so it is intentionally not asserted as present in the data.
     CHECK(sawBrutalCharge);
     CHECK(sawSturdy);
     CHECK(sawSize);
     CHECK(sawMobRule);
-    CHECK(sawCowardly);
+    (void)sawCowardly; // wired + unit-tested; not present in the shipped roster
 }
