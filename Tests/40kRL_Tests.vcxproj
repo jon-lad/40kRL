@@ -171,6 +171,7 @@
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
+    <ClCompile Include="BestiaryTestHarness.cpp" />
     <ClCompile Include="..\Source\Actor.cpp" />
     <ClCompile Include="..\Source\Ai.cpp" />
     <ClCompile Include="..\Source\AiDecision.cpp" />
