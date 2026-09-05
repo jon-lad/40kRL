@@ -122,6 +122,7 @@
     <ClCompile Include="test_tile_targeting.cpp" />
     <ClCompile Include="test_inventory_equipment_ux.cpp" />
     <ClCompile Include="test_persistent_levels.cpp" />
+    <ClCompile Include="test_region_persistence.cpp" />
     <ClCompile Include="test_look_and_decorations.cpp" />
     <ClCompile Include="test_characteristics.cpp" />
     <ClCompile Include="test_dice_roller.cpp" />
@@ -162,9 +163,28 @@
     <ClCompile Include="test_crit_hit_location.cpp" />
     <ClCompile Include="test_turn_flow.cpp" />
     <ClCompile Include="test_npc_skills_talents.cpp" />
+    <ClCompile Include="test_region_derivation.cpp" />
+    <ClCompile Include="test_region_for_biome.cpp" />
+    <ClCompile Include="test_region_spawn_selection.cpp" />
+    <ClCompile Include="test_enemies_schema.cpp" />
+    <ClCompile Include="test_default_region.cpp" />
+    <ClCompile Include="test_region_wiring.cpp" />
+    <ClCompile Include="test_bestiary_data.cpp" />
+    <ClCompile Include="test_bestiary_ork.cpp" />
+    <ClCompile Include="test_bestiary_invariants.cpp" />
+    <ClCompile Include="test_bestiary_colonist.cpp" />
+    <ClCompile Include="test_bestiary_names.cpp" />
+    <ClCompile Include="test_bestiary_hp.cpp" />
+    <ClCompile Include="test_bestiary_collections.cpp" />
+    <ClCompile Include="test_bestiary_roster.cpp" />
+    <ClCompile Include="test_bestiary_equipment.cpp" />
+    <ClCompile Include="test_bestiary_equipment_schema.cpp" />
+    <ClCompile Include="test_bestiary_unknown_region.cpp" />
+    <ClCompile Include="test_bestiary_appearance.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
+    <ClCompile Include="BestiaryTestHarness.cpp" />
     <ClCompile Include="..\Source\Actor.cpp" />
     <ClCompile Include="..\Source\Ai.cpp" />
     <ClCompile Include="..\Source\AiDecision.cpp" />

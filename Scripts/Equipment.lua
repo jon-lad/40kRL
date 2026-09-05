@@ -334,4 +334,73 @@ equipment = {
             qualities = {"Power Field", "Unwieldy"},
         },
     },
+
+    -- ===== New Bestiary Equipment (bestiary-npcs feature) =====
+    -- Weapons/armour referenced by the new Enemy_Entries. Reference profiles
+    -- cited from Reference/RT-Bestiary.md; parsing per design.md §5.
+
+    -- Lasgun — Hired Gun profile: 1d10+3 E; Pen 0; Basic 30m; S/3/-; Clip 60;
+    -- Reload Full; Reliable. (design.md §5 example)
+    {
+        name    = "Lasgun",
+        glyph   = "}",
+        color   = "lightRed",
+        slot    = "weapon",
+        weight  = 4.0,
+        tier    = "common",
+        sizeClass   = "Basic",
+        weaponGroup = "Las",
+        damageType  = "E",
+        melee = {
+            damageDice = "1d5",
+            penetration = 0,
+            qualities = {},
+        },
+        ranged = {
+            damageDice  = "1d10+3",
+            penetration = 0,
+            range       = 30,
+            rateOfFire  = 3,
+            clipSize    = 60,
+            reloadTime  = 1,
+        },
+    },
+
+    -- Eldar Chainsword — Eldar Guardian profile (RT-Bestiary IV.4 Troop):
+    -- 1d10+5 R; Pen 2; Melee; Balanced, Razor Sharp, Tearing.
+    {
+        name    = "Eldar Chainsword",
+        glyph   = "/",
+        color   = "lightBlue",
+        slot    = "weapon",
+        weight  = 3.0,
+        tier    = "uncommon",
+        sizeClass   = "Melee",
+        weaponGroup = "Primitive",
+        damageType  = "R",
+        melee = {
+            damageDice = "1d10+5",
+            penetration = 2,
+            qualities = {"Balanced", "Razor Sharp", "Tearing"},
+        },
+    },
+
+    -- Light Flak Coat — Hired Gun profile: Arms 2, Body 2, Legs 2.
+    -- (design.md §5 example; head uncited -> 0)
+    {
+        name    = "Light Flak Coat",
+        glyph   = "[",
+        color   = "lighterOrange",
+        slot    = "body",
+        weight  = 6.0,
+        tier    = "common",
+        armourLocations = {
+            head     = 0,
+            body     = 2,
+            leftArm  = 2,
+            rightArm = 2,
+            leftLeg  = 2,
+            rightLeg = 2,
+        },
+    },
 }

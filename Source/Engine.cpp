@@ -454,6 +454,11 @@ void Engine::nextLevel(StairDirection direction)
 		// Generate new map — createRoom() sets stair positions during BSP generation.
 		map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 		map->init(true, isOutdoor ? LevelType::OUTDOOR : LevelType::BSP);
+		// Region assignment (Requirements 1.2, 1.3, 1.6). This vertical-traversal
+		// path has no world-map tile biome in scope (dungeon depth change, not entry
+		// from a world tile), so the entering biome is not yet plumbed here. Fall
+		// back to the configured default region until biome context is available.
+		map->setRegionName(resolveDefaultRegion());
 	}
 
 	// ─── Player placement at arrival stair ───────────────────────────────────
@@ -2719,6 +2724,9 @@ void Engine::updateWorldMap()
 					// Generate WFC hive city level.
 					map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 					map->init(true, LevelType::WFC);
+					// Assign region from the destination world-map tile biome
+					// (in scope as `biome`, guaranteed HIVE_CITY here) (Requirement 1.3).
+					map->setRegionName(regionForBiome(biome));
 
 					// ─── Phase 5: Place player at stairsUp (or fallback) ──────────
 					if (stairsUp) {
@@ -3464,6 +3472,9 @@ void Engine::init()
 
 	map = std::make_unique<Map>(MAP_WIDTH, MAP_HEIGHT);
 	map->init(true, LevelType::BSP);
+	// Initial level is generated without world-map biome context, so assign the
+	// configured default region (Requirements 1.6, 2.1).
+	map->setRegionName(resolveDefaultRegion());
 	camera = std::make_unique<Camera>(layout::VIEWPORT_X, 0, layout::VIEWPORT_WIDTH, layout::VIEWPORT_HEIGHT,
 		map->getWidth(), map->getHeight());
 

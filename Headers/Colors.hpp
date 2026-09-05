@@ -43,6 +43,22 @@ namespace Colors {
     constexpr TCODColor brown{150, 100, 50};         // hab-unit / rusty metal tones
     constexpr TCODColor gold{255, 215, 0};           // chapel / ornamental trim
 
+    // ─── Faction / NPC palette (bestiary-npcs) ──────────────────────────
+    // Extra distinct hues so every NPC can carry a unique (glyph, color)
+    // pair while staying faction-themed. See colorFromName below.
+    constexpr TCODColor crimson{178, 34, 52};        // Tyranid / blood tones
+    constexpr TCODColor purple{128, 0, 128};         // Warp / daemonic
+    constexpr TCODColor metalGrey{160, 160, 170};    // Necron / servitor metal
+    constexpr TCODColor lightCyan{128, 255, 255};    // Tau / energy
+    constexpr TCODColor darkGreen{0, 100, 0};        // xenos flora / Kroot
+    constexpr TCODColor pink{255, 105, 180};         // Harlequin / Dark Eldar accent
+    constexpr TCODColor teal{0, 128, 128};           // Eldar wraithbone accent
+    constexpr TCODColor tan{210, 180, 140};          // Kroot hide / bone
+    constexpr TCODColor magenta{255, 0, 255};        // Slaanesh / warp accent
+    constexpr TCODColor steelBlue{70, 130, 180};     // Eldar / Tau armour
+    constexpr TCODColor boneWhite{227, 218, 190};    // Necron / bone
+    constexpr TCODColor darkOrange{200, 90, 0};      // Ork specialist / fire
+
     // ─── Doors ──────────────────────────────────────────────────────────
     constexpr TCODColor doorClosed{150, 100, 50};    // closed door (brown/wood tone)
     constexpr TCODColor doorOpen{100, 65, 30};       // open door (darker brown)
@@ -90,6 +106,18 @@ namespace Colors {
         if (name == "cyan")             return cyan;
         if (name == "brown")            return brown;
         if (name == "gold")             return gold;
+        if (name == "crimson")          return crimson;
+        if (name == "purple")           return purple;
+        if (name == "metalGrey")        return metalGrey;
+        if (name == "lightCyan")        return lightCyan;
+        if (name == "darkGreen")        return darkGreen;
+        if (name == "pink")             return pink;
+        if (name == "teal")             return teal;
+        if (name == "tan")              return tan;
+        if (name == "magenta")          return magenta;
+        if (name == "steelBlue")        return steelBlue;
+        if (name == "boneWhite")        return boneWhite;
+        if (name == "darkOrange")       return darkOrange;
         return black;
     }
 }

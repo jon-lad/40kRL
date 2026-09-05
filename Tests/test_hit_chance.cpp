@@ -288,10 +288,16 @@ TEST_CASE("PBT: miss path does not crash for any actor names", "[hit-chance][pbt
         auto targetChars = std::make_unique<Characteristics>(30);
         target.characteristics = std::shared_ptr<Characteristics>(targetChars.release());
 
+        // Capture the target's actual starting HP. Destructible stores internal HP as
+        // (maxHp + CRIT_BUFFER), so a "100 wound" monster starts at 110 internal HP;
+        // asserting a hard-coded 100 here is stale. The invariant under test is that a
+        // guaranteed miss (roll 100 > any clamped WS) leaves HP untouched.
+        const float hpBefore = targetDest.hp;
+
         // Should not crash — miss path logs message and returns
         attacker.attack(&owner, &target);
 
         // Verify no damage was dealt (confirming miss path taken)
-        RC_ASSERT(targetDest.hp == 100.0f);
+        RC_ASSERT(targetDest.hp == hpBefore);
     });
 }

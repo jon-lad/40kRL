@@ -26,6 +26,7 @@ class Actor;
 #include "StatusEffectTracker.hpp"
 #include "Actor.hpp"
 #include "Map.hpp"
+#include "WorldMap.hpp"
 #include "SkillBarEntry.hpp"
 #include "Gui.hpp"
 #include "Engine.hpp"

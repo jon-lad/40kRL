@@ -4,9 +4,17 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <string>
 
 // Forward declaration — full definition in Headers/WfcGenerator.h (created by task 1.1)
 struct WfcTileset;
+
+// Sentinel appended at the very end of the Map::save stream to mark the presence
+// of the persisted region field. "RGNM" in ASCII. Because TCODZip::getInt()
+// returns 0 on an exhausted archive, this non-zero constant cannot be mistaken
+// for end-of-stream in a pre-region save. Namespace-scope so tests can reference
+// it directly (see Tests/test_region_persistence.cpp).
+inline constexpr int REGION_SENTINEL = 0x52474E4D; // "RGNM"
 
 // Identifies the generation algorithm used for a map level.
 enum class LevelType : int {
@@ -36,6 +44,7 @@ private:
 	int height = 0;
 
 	LevelType levelType = LevelType::BSP;
+	std::string regionName; // whole-level region; empty until assigned, then treated as Default_Region
 	std::vector<TerrainType> terrainTypes; // only populated for OUTDOOR levels
 	std::vector<std::pair<int,int>> outdoorRegion; // largest connected ground component
 
@@ -119,6 +128,12 @@ public:
 
 	// Returns the WFC tile description at (x, y). Only valid for WFC levels.
 	std::string getWfcTileDescription(int x, int y) const;
+
+	// Whole-level region name (a Region_Name string). Assigned once at level
+	// creation and retained for the level's lifetime; every spawn on the level
+	// uses this single value (whole-level granularity).
+	const std::string& getRegionName() const { return regionName; }
+	void setRegionName(const std::string& region) { regionName = region; }
 
 protected:
 	mutable std::vector<Tile> tiles; // flat array indexed as x + y * width
