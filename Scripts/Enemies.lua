@@ -1000,6 +1000,207 @@ local enemies = {
         traits  = { "Brutal Charge", "Mob Rule", "Resistance (Cold, Heat, Radiation)",
                     "Sturdy", "Unnatural Toughness (x2)" },
     },
+
+    -- ─────────────────────────────────────────────────────────────────────────
+    -- Tau Faction_Region column (Bestiary IV.8 Tau/Kroot/Vespid + Kroot Mercenary
+    -- §5.3). 8 Troop entries, cumulative chance strictly ascending in declaration
+    -- order, terminal value 100. Characteristics copied verbatim as the base integer
+    -- (BS/Fel "00" -> 0; Unnatural parentheticals excluded from the stored integer
+    -- and recorded as `Unnatural X (xN)` traits). hp = profile Wounds. Size and
+    -- Flyer traits are recorded as trait strings (Req 3.3). Each (glyph, color) pair
+    -- is distinct from every other entry across the Bestiary, using colors defined
+    -- in Headers/Colors.hpp. Equipment left empty for now; weapon/armour wiring is
+    -- handled by tasks 12.3/12.4.
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    -- IV.8 — Fire Warrior (Troop): WS 25 BS 40 S 30 T 30 Ag 35 Int 30 Per 20 WP 30 Fel 30, Wounds 9
+    {
+        chance  = { Tau = 22 },
+        glyph   = string.byte("t"),
+        name    = "Fire Warrior",
+        color   = "lightCyan",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Fire Warrior",
+        xp      = 30,
+        power   = 3.0,
+        skill   = 40,                    -- BS (Pulse Rifle ranged-primary)
+        ws = 25, bs = 40, s = 30, t = 30, ag = 35, int = 30, per = 20, wp = 30, fel = 30,
+        equipment = {},
+        skills  = { Athletics = 1, Awareness = 1, Discipline = 0, Dodge = 1,
+                    Fortitude = 0, ["Linguistics (Tau)"] = 0, Medicae = 0,
+                    ["Navigate (Surface)"] = 0, ["Operate (Surface)"] = 0,
+                    ["Tactics (Assault Doctrine, Defensive Doctrine)"] = 0,
+                    ["Tech-Use"] = 0 },
+        talents = { "Deadeye Shot", "Hammering Storm", "Improve Cover",
+                    "Litany Against Fear", "Nowhere to Hide", "Rapid Reload",
+                    "Weapon Drill (Pulse)" },
+        traits  = { "Size (4)" },
+    },
+
+    -- IV.8 — Pathfinder (Troop): WS 25 BS 45 S 30 T 30 Ag 40 Int 35 Per 30 WP 30 Fel 30, Wounds 9
+    {
+        chance  = { Tau = 38 },
+        glyph   = string.byte("p"),
+        name    = "Pathfinder",
+        color   = "steelBlue",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Pathfinder",
+        xp      = 36,
+        power   = 3.0,
+        skill   = 45,                    -- BS (Pulse Carbine / Rail Rifle ranged-primary)
+        ws = 25, bs = 45, s = 30, t = 30, ag = 40, int = 35, per = 30, wp = 30, fel = 30,
+        equipment = {},
+        skills  = { Athletics = 1, Awareness = 2, Discipline = 1, Dodge = 1,
+                    Fortitude = 0, ["Linguistics (Tau)"] = 0, Medicae = 0,
+                    ["Navigate (Surface)"] = 1, ["Operate (Surface)"] = 0,
+                    Stealth = 1, Survival = 1, ["Tactics (Reconnaissance)"] = 0,
+                    ["Tech-Use"] = 0 },
+        talents = { "Combat Formation", "Deference For Darkness", "Litany Against Fear",
+                    "Rapid Reload", "Surefoot Wayfinder" },
+        traits  = { "Size (4)" },
+    },
+
+    -- IV.8 — Kroot Carnivore (Troop): WS 40 BS 35 S 45(6) T 40 Ag 45 Int 25 Per 45(6) WP 30 Fel 20, Wounds 12
+    {
+        chance  = { Tau = 55 },
+        glyph   = string.byte("K"),
+        name    = "Kroot Carnivore",
+        color   = "tan",
+        hp      = 12.0,
+        defense = 1.0,
+        corpse  = "dead Kroot Carnivore",
+        xp      = 44,
+        power   = 4.0,
+        skill   = 40,                    -- WS (Kroot Rifle melee attachment / Beak melee-primary)
+        ws = 40, bs = 35, s = 45, t = 40, ag = 45, int = 25, per = 45, wp = 30, fel = 20,
+        equipment = {},
+        skills  = { Acrobatics = 0, Athletics = 1, Awareness = 1, Commerce = 0,
+                    Dodge = 1, Fortitude = 0,
+                    ["Linguistics (Low Gothic, Kroot, Tau)"] = 0, Stealth = 2,
+                    Survival = 2 },
+        talents = { "Furious Assault", "Leap Up", "Leaping Dodge", "Leaping Strike",
+                    "Lightning Reflexes", "Resistance (Fear)", "Swift Attack" },
+        traits  = { "Eaters of the Dead", "Hyperactive Nyumen Organ",
+                    "Natural Weapons (Beak)", "Unnatural Strength (x2)",
+                    "Unnatural Perception (x2)" },
+    },
+
+    -- IV.8 — Kroot Hound (Troop): WS 40 BS 00 S 40(6) T 30 Ag 40 Int 20 Per 45 WP 30 Fel 00, Wounds 9
+    {
+        chance  = { Tau = 68 },
+        glyph   = string.byte("h"),
+        name    = "Kroot Hound",
+        color   = "darkGreen",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Kroot Hound",
+        xp      = 30,
+        power   = 3.0,
+        skill   = 40,                    -- WS (Beak melee; BS 00 -> 0)
+        ws = 40, bs = 0, s = 40, t = 30, ag = 40, int = 20, per = 45, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Athletics = 1, Awareness = 2, Dodge = 1, Fortitude = 0,
+                    Stealth = 1, Survival = 2 },
+        talents = { "Berserk Charge", "Double Team", "Heightened Senses (Sight, Sound)",
+                    "Sprint" },
+        traits  = { "Bestial (Flee)", "Deadly Natural Weapons (Beak)",
+                    "Eaters of the Dead", "Hyperactive Nyumen Organ", "Quadruped",
+                    "Size (4)", "Unnatural Strength (x2)" },
+    },
+
+    -- IV.8 — Vespid Stingwing (Troop): WS 35 BS 45 S 30 T 45 Ag 50 Int 25 Per 30 WP 30 Fel 15, Wounds 12
+    {
+        chance  = { Tau = 80 },
+        glyph   = string.byte("v"),
+        name    = "Vespid Stingwing",
+        color   = "cyan",
+        hp      = 12.0,
+        defense = 1.0,
+        corpse  = "dead Vespid Stingwing",
+        xp      = 42,
+        power   = 3.0,
+        skill   = 45,                    -- BS (Neutron Blaster ranged-primary)
+        ws = 35, bs = 45, s = 30, t = 45, ag = 50, int = 25, per = 30, wp = 30, fel = 15,
+        equipment = {},
+        skills  = { Acrobatics = 1, Awareness = 0, Dodge = 1,
+                    ["Linguistics (Vespid)"] = 0, Survival = 0 },
+        talents = { "Catfall", "Chem-Geld", "Hard Target", "Leaping Dodge",
+                    "Lightning Reflexes" },
+        traits  = { "Dark-Sight", "Deadly Natural Weapons (Claws)", "Flyer (10)",
+                    "Natural Armour (3)", "Unnatural Senses (30)" },
+    },
+
+    -- §5.3 — Kroot Mercenary (Troop): WS 42 BS 33 S 35(8) T 40 Ag 44 Int 25 Per 44(6) WP 30 Fel 18, Wounds 12
+    {
+        chance  = { Tau = 90 },
+        glyph   = string.byte("k"),
+        name    = "Kroot Mercenary",
+        color   = "tan",
+        hp      = 12.0,
+        defense = 1.0,
+        corpse  = "dead Kroot Mercenary",
+        xp      = 48,
+        power   = 4.0,
+        skill   = 42,                    -- WS (Kroot Rifle melee / Beak melee-primary)
+        ws = 42, bs = 33, s = 35, t = 40, ag = 44, int = 25, per = 44, wp = 30, fel = 18,
+        equipment = {},
+        skills  = { Acrobatics = 0, Awareness = 0, Barter = 0, Climb = 1,
+                    Concealment = 2, Dodge = 1, ["Silent Move"] = 2,
+                    ["Speak Language (Low Gothic, Kroot)"] = 0, Tracking = 1,
+                    Survival = 2 },
+        talents = { "Basic Weapon Training (SP, Primitive)", "Furious Attack",
+                    "Leap Up", "Lightning Reflexes", "Melee Weapon Training (Primitive)",
+                    "Resistance (Fear)", "Sprint", "Swift Attack" },
+        traits  = { "Natural Weapons (Beak)", "Unnatural Perception (x2)",
+                    "Unnatural Strength (x2)" },
+    },
+
+    -- IV.8 — Earth Caste Engineer (Troop): WS 20 BS 25 S 30 T 30 Ag 25 Int 40 Per 30 WP 30 Fel 25, Wounds 9
+    {
+        chance  = { Tau = 96 },
+        glyph   = string.byte("e"),
+        name    = "Earth Caste Engineer",
+        color   = "boneWhite",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Earth Caste Engineer",
+        xp      = 26,
+        power   = 2.0,
+        skill   = 25,                    -- BS (Pulse Pistol) / Int-focused support
+        ws = 20, bs = 25, s = 30, t = 30, ag = 25, int = 40, per = 30, wp = 30, fel = 25,
+        equipment = {},
+        skills  = { Athletics = 2, Fortitude = 1, Logic = 1, ["Navigate (Surface)"] = 0,
+                    ["Operate (Surface)"] = 1, Scrutiny = 0,
+                    ["Trade (Armourer, Technomat)"] = 2, ["Tech-Use"] = 2 },
+        talents = { "Labourer", "Talented (Tech-Use)", "Technical Knock", "Tireless" },
+        traits  = { "Size (4)" },
+    },
+
+    -- IV.8 — Water Caste Diplomat (Troop): WS 05 BS 10 S 20 T 20 Ag 25 Int 35 Per 40 WP 45 Fel 50, Wounds 6
+    {
+        chance  = { Tau = 100 },
+        glyph   = string.byte("w"),
+        name    = "Water Caste Diplomat",
+        color   = "teal",
+        hp      = 6.0,
+        defense = 0.0,
+        corpse  = "dead Water Caste Diplomat",
+        xp      = 20,
+        power   = 1.0,
+        skill   = 5,                     -- WS (unarmed; no weapons carried)
+        ws = 5, bs = 10, s = 20, t = 20, ag = 25, int = 35, per = 40, wp = 45, fel = 50,
+        equipment = {},
+        skills  = { Awareness = 1, Charm = 2, Command = 1, Commerce = 3, Deceive = 2,
+                    Discipline = 1, Inquiry = 1, ["Linguistics (Tau, Low Gothic)"] = 1,
+                    Scrutiny = 1 },
+        talents = { "Air of Authority (1)", "Ear to the Ground", "Hard Bargain",
+                    "Keen Intuition", "Lexographer", "Operative Conditioning",
+                    "Orthoproxy", "Persuasive Charm", "Polyglot",
+                    "Talented (Commerce, Inquiry)", "Whispers" },
+        traits  = { "Size (4)" },
+    },
 }
 
 function spawnEnemy(roll, x, y, region)
