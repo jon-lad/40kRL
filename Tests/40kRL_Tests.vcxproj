@@ -168,6 +168,10 @@
     <ClCompile Include="test_enemies_schema.cpp" />
     <ClCompile Include="test_default_region.cpp" />
     <ClCompile Include="test_region_wiring.cpp" />
+    <ClCompile Include="test_bestiary_data.cpp" />
+    <ClCompile Include="test_bestiary_ork.cpp" />
+    <ClCompile Include="test_bestiary_invariants.cpp" />
+    <ClCompile Include="test_bestiary_colonist.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
