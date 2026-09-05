@@ -1841,6 +1841,41 @@ local enemies = {
         talents = { "Fearless" },
         traits  = { "Dark-Sight", "Flyer (6)", "Machine (2)", "Size (Puny)" },
     },
+
+    -- ─────────────────────────────────────────────────────────────────────────
+    -- Warp Faction_Region column (Bestiary §5.4 Denizens of the Warp). This column
+    -- has a SINGLE entry, so its lone cumulative chance value is exactly 100
+    -- (Req 7.3). Characteristics copied verbatim as the base integer: em-dash BS/Fel
+    -- -> 0 (Req 2.2); the S "(8)" and Ag "(8)" parentheticals are Unnatural bonuses,
+    -- excluded from the stored integer (Req 2.4) and recorded as `Unnatural X (xN)`
+    -- traits (Req 2.3). hp = profile Wounds (Req 3.1). Daemonic / Fear / Flyer traits
+    -- recorded as trait strings (Req 3.3). The (glyph, color) pair 'P'/pink is
+    -- distinct from every other entry across the Bestiary, using the `pink` color
+    -- defined in Headers/Colors.hpp (Req 1.12). Equipment left empty for now;
+    -- weapon/armour wiring is handled by tasks 12.3/12.4.
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    -- §5.4 — Warp Predator (Ebon Geist) (Troop): WS 36 BS — S 36(8) T 40 Ag 45(8) Int 14 Per 45 WP 42 Fel —, Wounds 18
+    {
+        chance  = { Warp = 100 },        -- sole Warp entry -> terminal value 100 (Req 7.3)
+        glyph   = string.byte("P"),
+        name    = "Warp Predator (Ebon Geist)",
+        color   = "pink",
+        hp      = 18.0,                  -- Wounds 18
+        defense = 1.0,
+        corpse  = "banished Ebon Geist",
+        xp      = 44,
+        power   = 3.0,
+        skill   = 36,                    -- WS (Chill Talons melee; BS em-dash -> 0)
+        ws = 36, bs = 0, s = 36, t = 40, ag = 45, int = 14, per = 45, wp = 42, fel = 0,
+        equipment = {},
+        skills  = { Concealment = 2, Dodge = 0, Psyniscience = 0, ["Silent Move"] = 2 },
+        talents = { "Heightened Senses (All)", "Lightning Attack", "Swift Attack" },
+        traits  = { "Consume Life", "Daemonic (8)", "Daemonic Presence", "Dark-Sight",
+                    "Fear (2)", "Flyer (12)", "From Beyond", "Hard Target", "Phase",
+                    "Toxic", "Unnatural Agility (x2)", "Unnatural Speed (x2)",
+                    "Warp Instability" },
+    },
 }
 
 function spawnEnemy(roll, x, y, region)
