@@ -267,3 +267,111 @@ Manipulator/Medicae/Optical/Utility Mechadendrite) preserved verbatim (Req 7.7).
 **Single-source values recorded as-is (absence ≠ conflict, Req 3.5):** all weight/availability added
 from Source B where Existing lacked them; all Existing curated Qualities (Felling(4), Concussive,
 Storm, Reliable, etc.) retained where Source B omitted them.
+
+---
+
+## CORRECTION LOG — Task 2.1 re-run (defect fix from review 2.4)
+
+**Defect:** The original Section 2 / 3 above assumed Source A §6 contained *no* ranged/melee
+weapon stat lines except the three named conflicts (Inferno Pistol, Multi-Melta, Heavy Bolter).
+This was WRONG. Source A §6 contains **full Weapon Profile tables for every family**:
+
+- Las Weapon Profiles (§6.2.1, LI lines ~1261–1336 and ~1337–1389)
+- Solid Projectile Weapon Profiles (§6.2.2, LI lines ~1454–1690)
+- Bolt Weapon Profiles (§6.2.3, LI lines ~1874–1912)
+- Flame Weapon Profiles (§6.2.4, LI lines ~2116–2175)
+- Melta Weapon Profiles (§6.2.5, LI lines ~2244–2280)
+- Plasma Weapon Profiles (§6.2.6, LI lines ~2387–2455)
+- Launcher Weapon Profiles (§6.2.7, LI lines ~2509–2600; Damage varies by ammo → no numeric override)
+- Low-Tech Ranged Weapon Profiles (§6.2.9, LI lines ~3050–3110; Bow/Crossbow override)
+- Exotic Ranged Weapon Profiles (§6.2.10, LI lines ~3222–3480; distinct Mechanicus set, no overlap)
+- Chain Weapon Profiles (§6.2.11, LI lines ~3660–3690)
+- Power Weapon Profiles (§6.2.12, LI lines ~3775–3826)
+- Shock Weapon Profiles (§6.2.13, LI lines ~3831–3898)
+- Force Weapon Profiles (§6.2.14, LI lines ~3934–3964; no Existing/Source-B counterparts → not added)
+- Low-Tech Melee Weapon Profiles (§6.2.15, LI lines ~4020–4078)
+- Exotic Melee Weapon Profiles (§6.2.16, LI lines ~4160+; distinct set, no overlap)
+
+**Precedence Order A > B > Existing re-applied field-by-field.** Corrected winning values now in
+`Reference/RT-Weapons.md`:
+
+### Las (Source A wins)
+- Laspistol: +Variable quality, 2 kg, Average
+- Lasgun: RoF **S/2/3**, Reload **Full**, +Variable
+- Long-Las: Class **Heavy**, **Felling(2)** (was Felling(4)), +Deadly, +Variable, 5 kg (Reliable kept from Existing)
+- Hot-Shot Laspistol/Lasgun: +Variable, weights 4/6 kg, Rare
+- Lascannon: Proven(3) + Reliable (kept), 55 kg
+- Multi-Laser: 35 kg, Very Rare
+
+### Solid Projectile (Source A wins)
+- Stub Automatic: +Reliable, Reload Full, 2 kg, Common
+- Stub Revolver: 2 Full, 2 kg
+- Autopistol: RoF **S/3/6**, Full, 2 kg, Average
+- Autogun: RoF **S/3/10**, Full, 5 kg
+- Combat Shotgun (= A "Automatic Shotgun"): +Reliable, Full, 5 kg, Scarce
+- Pump Shotgun (= A "Shotgun"): 2 Full, 5 kg, Average
+- Heavy Stubber: **Clip 80**, +Reliable, 30 kg, Rare
+- Autocannon: **Clip 15**, Reload Full, 40 kg, Very Rare
+- Hand Cannon: Availability Scarce
+- Shotgun Pistol (= A "Shotpistol"): 15m, 1d10+3 I, Clip 4, 2 Full, 3 kg, Average
+
+### Bolt (Source A wins)
+- Bolt Pistol: 4 kg, Very Rare
+- Boltgun: RoF **S/2/3**
+- Heavy Bolter: Reload **Full** (Damage 1d10+8 X already named-conflict)
+- Storm Bolter: Damage **1d10+4 X**, Pen **2**, 10 kg
+
+### Plasma (Source A wins)
+- Pen **8** family-wide; Qualities **Maximal, Overheat**
+- Plasma Gun: Clip **40**, Reload **5 Full**
+
+### Melta (Source A wins)
+- Inferno Pistol: 3 kg, Near Unique
+- Meltagun: 2d10+10 E, Pen 12, Clip 5, Full, 15 kg, Very Rare (verified — matches reviewer fix)
+- Multi-Melta: Reload **Full**, Availability **Extremely Rare**
+
+### Flame (Source A wins)
+- Hand Flamer: 4 kg
+- Heavy Flamer: 1d10+5 E, 45 kg, Rare (verified — matches reviewer fix)
+
+### Primitive Ranged (Source A wins for Bow/Crossbow)
+- Bow: SBx5m, S/2/-, 1d10+1 R, Primitive(6)
+- Crossbow: 1d10+2 R, Clip 8, Primitive(7)
+
+### Chain (Source A wins)
+- Chain Axe: +Felling(1), +Two-Handed, Scarce
+- Eviscerator: 2d10+2(+SB) R, Pen 8, +Vengeful(9), 15 kg, Very Rare
+
+### Power (Source A wins)
+- Power Axe: Pen **6**, +Felling(1), +Two-Handed
+- Power Maul (= A "Power Maul (High)"): Concussive(0) (not (1)), +Unbalanced, Shocking removed, 4 kg
+- Power Fist: Pen **8**, Extremely Rare
+- Thunder Hammer: 2d10+SBx2+4 E, Concussive(2), +Two-Handed, 16 kg, Near Unique
+- Lightning Claw: +Proven(4) (Razor Sharp removed), 30 kg, Extremely Rare
+- Power Maul (Low): +Unbalanced, 4 kg
+
+### Shock (Source A wins)
+- Shock Glove (= A "Shock Gauntlets"): 1 kg, Scarce
+
+### Low-Tech Melee (Source A wins)
+- Knife: quality **Piercing** (not Primitive)
+- Sword: Primitive(7); Staff: Primitive(6) + Two-Handed
+- Great Weapon: Pen 2, Proven(2), Two-Handed, 2d10 I/R, Average
+- Axe: Pen 2, Felling(1), 4 kg, Common
+- Spear: +Piercing, +Reach, +Two-Handed
+- Warhammer: 1d10+2, Pen 2, Concussive(1), Primitive(8), Two-Handed, Unwieldy, 5 kg
+- Improvised: 1d10 I/R, Primitive(7)
+
+### Not overridden (Source A has no overlapping entry)
+- Exotic Ranged (xenos: Shuriken/Kroot/Ork/Needle/Digi) — Source A exotic is a distinct Mechanicus set
+- Exotic Melee (Ork weapons, Fractal Blade, Ghost Sword, Harlequin's Kiss) — Source A exotic melee is a distinct set
+- Launchers — Source A entries vary by ammo (no numeric override)
+- Grenades, Weapon Upgrades (5-9), Ammunition (5-10/5-11) — no Source A numeric equivalent
+- Shield (Primitive melee) — no Source A profile
+
+### Deliberately NOT added (scope: reconcile existing families, not import all of Source A)
+- Force Weapons (§6.2.14): a Source A-only family with no Existing or Source B counterpart in the
+  current file; adding a whole new Force section is new content beyond precedence reconciliation.
+- Numerous Source A-only weapons (Meltablaster, Meltabeamer, Melta Lance, Chainflail, Chainglaive,
+  Power Greatsword/Greataxe/etc., Arc/Volkite/Radium/Phosphor families) — out of scope for this
+  reconciliation pass; may be captured by a future coverage-expansion task if desired.
