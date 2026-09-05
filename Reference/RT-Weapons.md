@@ -96,13 +96,13 @@ Name | Class | Range | RoF (S/B/A) | Damage | Pen | Clip | Reload | Qualities | 
 
 ## Melta Weapons
 
-> Source: rows reconciled from Existing Target and RT Core Table 5-4. Inferno Pistol Pen and Multi-Melta Damage are named conflicts resolved to Source A (Liber Imperium §6) and set in task 2.2. Meltagun (not a named conflict) takes Source B Damage/Pen per Precedence (B > Existing). Existing curated Melta quality retained where Source B omitted it. NEW rows cite RT Core Table 5-4.
+> Source: rows reconciled from Existing Target and RT Core Table 5-4. Inferno Pistol Pen (12) and Multi-Melta Damage (2d10+16 E) are named conflicts resolved to Source A (Liber Imperium §6). Inferno Pistol Damage is also overwritten to the Source A value (2d10+10 E) as a precedence consequence (A > Existing). Meltagun (not a named conflict) takes Source B Damage/Pen per Precedence (B > Existing). Existing curated Melta quality retained where Source B omitted it. NEW rows cite RT Core Table 5-4.
 
 | Name | Class | Range | RoF | Damage | Pen | Clip | Reload | Qualities | Weight (kg) | Availability | Source |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Inferno Pistol | Pistol | 10m | S/-/- | 2d10+4 E | 12 | 3 | Full | Melta | 2.5 | Very Rare | Existing + RT Core Table 5-4 (Damage/Pen: Liber Imperium §6, task 2.2) |
+| Inferno Pistol | Pistol | 10m | S/-/- | 2d10+10 E | 12 | 3 | Full | Melta | 2.5 | Very Rare | Existing + RT Core Table 5-4 (Damage/Pen: Liber Imperium §6) |
 | Meltagun | Basic | 20m | S/-/- | 2d10+8 E | 13 | 5 | 2 Full | Melta | 40 | Rare | RT Core Table 5-4 + Existing |
-| Multi-Melta | Heavy | 60m | S/-/- | 2d10+8 E | 12 | 12 | 2 Full | Blast(1), Melta | 40 | Very Rare | Existing + RT Core Table 5-4 (Damage/Pen: Liber Imperium §6, task 2.2) |
+| Multi-Melta | Heavy | 60m | S/-/- | 2d10+16 E | 12 | 12 | 2 Full | Blast(1), Melta | 40 | Very Rare | Existing + RT Core Table 5-4 (Damage: Liber Imperium §6) |
 | Meltagun (Mezoa) | Basic | 20m | S/-/- | 2d10+8 E | 13 | 10 | 3 Full | — | 46 | Rare | RT Core Table 5-4 |
 | Thermal Lance (Mars) | Heavy | 10m | S/-/- | 2d10+10 E | 12 | 2 | 2 Full | Accurate | 40 | Rare | RT Core Table 5-4 |
 
