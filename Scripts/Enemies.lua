@@ -468,6 +468,140 @@ local enemies = {
     },
 
     -- ─────────────────────────────────────────────────────────────────────────
+    -- DarkEldar Faction_Region column (Bestiary IV.5 Harlequins & Dark Eldar).
+    -- 5 Troop entries, cumulative chance strictly ascending in declaration order,
+    -- terminal value 100. Characteristics copied verbatim as the base integer
+    -- (em-dash / "00" -> 0; Unnatural parentheticals excluded from the stored
+    -- integer and recorded as `Unnatural X (xN)` traits). hp = profile Wounds.
+    -- Each (glyph, color) pair is distinct from every other entry across the
+    -- Bestiary, using colors defined in Headers/Colors.hpp. Equipment left empty
+    -- for now; weapon/armour wiring is handled by tasks 12.3/12.4.
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    -- IV.5 — Kabalite (Troop): WS 40 BS 40 S 30 T 35 Ag 55(8) Int 35 Per 40 WP 35 Fel 45, Wounds 9
+    {
+        chance  = { DarkEldar = 30 },
+        glyph   = string.byte("k"),
+        name    = "Kabalite",
+        color   = "violet",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Kabalite",
+        xp      = 34,
+        power   = 3.0,
+        skill   = 40,                    -- BS (Splinter Rifle ranged-primary)
+        ws = 40, bs = 40, s = 30, t = 35, ag = 55, int = 35, per = 40, wp = 35, fel = 45,
+        equipment = {},
+        skills  = { Acrobatics = 1, Awareness = 1, Deceive = 1, Dodge = 1,
+                    Interrogation = 0, Intimidate = 1, ["Linguistics (Aeldari)"] = 0,
+                    ["Navigate (Interior, Webway)"] = 0,
+                    ["Operate (Aeronautica, Surface)"] = 1, Parry = 0, Scrutiny = 0,
+                    Stealth = 1 },
+        talents = { "Catfall", "Hard Target", "Jaded", "Leap Up",
+                    "Lightning Reflexes", "Quick Draw" },
+        traits  = { "Dark-Sight", "Unnatural Agility (x3)" },
+    },
+
+    -- IV.5 — Wych (Troop): WS 45 BS 40 S 30 T 35 Ag 55(8) Int 35 Per 45 WP 30 Fel 45, Wounds 9
+    -- NOTE: the tasks.md line flags Wych as a Wounds-0 profile to floor to hp >= 1,
+    -- but Reference/RT-Bestiary.md §IV.5 prints Wounds 9 for this profile, so hp = 9.
+    -- (The Wounds-0 "values appear omitted" note belongs to the Khymera/Sslyth Elite
+    -- profiles, which are out of scope. hp is floored to >= 1 regardless.)
+    {
+        chance  = { DarkEldar = 55 },
+        glyph   = string.byte("y"),
+        name    = "Wych",
+        color   = "darkRed",
+        hp      = 9.0,                   -- Wounds 9 (>= 1 per floor rule)
+        defense = 1.0,
+        corpse  = "dead Wych",
+        xp      = 36,
+        power   = 3.0,
+        skill   = 45,                    -- WS (melee/dueling-primary)
+        ws = 45, bs = 40, s = 30, t = 35, ag = 55, int = 35, per = 45, wp = 30, fel = 45,
+        equipment = {},
+        skills  = { Acrobatics = 1, Athletics = 1, Awareness = 1, Charm = 1,
+                    Deceive = 0, Dodge = 2, Intimidate = 0,
+                    ["Linguistics (Aeldari)"] = 0, Parry = 1, Stealth = 1 },
+        talents = { "Ambidextrous", "Assassin Strike", "Catfall", "Leap Up",
+                    "Sprint", "Swift Attack", "Two-Weapon Wielder (Melee and Ranged)" },
+        traits  = { "Dark-Sight", "Unnatural Agility (x3)" },
+    },
+
+    -- IV.5 — Hellion (Troop): WS 45 BS 45 S 30 T 35 Ag 60(9) Int 35 Per 40 WP 30 Fel 30, Wounds 9
+    {
+        chance  = { DarkEldar = 75 },
+        glyph   = string.byte("H"),
+        name    = "Hellion",
+        color   = "lighterOrange",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Hellion",
+        xp      = 40,
+        power   = 3.0,
+        skill   = 45,                    -- WS (Hellglaive melee-primary)
+        ws = 45, bs = 45, s = 30, t = 35, ag = 60, int = 35, per = 40, wp = 30, fel = 30,
+        equipment = {},
+        skills  = { Acrobatics = 2, Awareness = 1, Deceive = 1, Dodge = 1,
+                    Interrogation = 0, ["Linguistics (Aeldari)"] = 0,
+                    ["Navigate (Interior, Webway)"] = 0,
+                    ["Operate (Aeronautica, Surface)"] = 1, Parry = 0, Stealth = 1 },
+        talents = { "Assassin Strike", "Catfall", "Furious Assault", "Hard Target",
+                    "Hip Shooting", "Jaded", "Leap Up", "Lightning Reflexes",
+                    "Quick Draw" },
+        -- Skyboard grants Hoverer (AgB x2) -> represented as Flyer while mounted.
+        traits  = { "Dark-Sight", "Power Through Pain (Perseverance)",
+                    "Unnatural Agility (x3)", "Flyer (18)" },
+    },
+
+    -- IV.5 — Razorwing Flock (Troop): WS 47 BS — S 30 T 30 Ag 50 Int 30 Per 40 WP 20 Fel —, Wounds 6/29 (individual/swarm; individual used)
+    {
+        chance  = { DarkEldar = 90 },
+        glyph   = string.byte("v"),
+        name    = "Razorwing Flock",
+        color   = "lightGrey",
+        hp      = 6.0,                   -- Wounds 6 (individual profile)
+        defense = 0.0,
+        corpse  = "razorwing remains",
+        xp      = 24,
+        power   = 3.0,
+        skill   = 47,                    -- WS (Beaks & Wings melee; BS em-dash -> 0)
+        ws = 47, bs = 0, s = 30, t = 30, ag = 50, int = 30, per = 40, wp = 20, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 0, Dodge = 1 },
+        talents = { "Frenzy", "Furious Assault", "Lightning Attack",
+                    "Lightning Reflexes", "Raptor", "Step Aside", "Swift Attack" },
+        traits  = { "Bestial (Frenzy)", "Deadly Natural Weapons (Beaks, Wings)",
+                    "Flyer (10)", "Natural Armour (2)", "Size (Swarm)", "Swarm" },
+    },
+
+    -- IV.5 — Ariadne Helspider (Troop): WS 40 BS 30 S 50 T 40 Ag 50(6) Int 10 Per 45 WP 30 Fel —, Wounds 8
+    {
+        chance  = { DarkEldar = 100 },
+        glyph   = string.byte("a"),
+        name    = "Ariadne Helspider",
+        color   = "darkGrey",
+        hp      = 8.0,
+        defense = 1.0,
+        corpse  = "dead Ariadne Helspider",
+        xp      = 44,
+        power   = 4.0,
+        skill   = 40,                    -- WS (Time-Rending Mandible melee-primary)
+        ws = 40, bs = 30, s = 50, t = 40, ag = 50, int = 10, per = 45, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Acrobatics = 2, Athletics = 3, Awareness = 0, Dodge = 1,
+                    Psyniscience = 2, Stealth = 2 },
+        talents = { "Ambush", "Assassin Strike", "Heightened Senses (Sight)",
+                    "Leaping Strike", "Lightning Reflexes", "Step Aside", "Sure Strike",
+                    "Talented (Athletics)", "Warp Sense" },
+        traits  = { "Bestial (Flee)", "Dark-Sight",
+                    "Deadly Natural Weapons (Time-Rending Mandibles, Webbing)",
+                    "From Beyond", "Multiple Arms", "Natural Armour (4)", "Quadruped",
+                    "Regeneration (2)", "Size (3)", "Strange Physiology",
+                    "Unnatural Agility (x6)", "Unnatural Senses (20)", "Warp Weapons" },
+    },
+
+    -- ─────────────────────────────────────────────────────────────────────────
     -- Ork Faction_Region column — LEGACY flat distribution, rebuilt from the
     -- bestiary IV.7 Troop set by task 6.2. Left unchanged here.
     -- ─────────────────────────────────────────────────────────────────────────
