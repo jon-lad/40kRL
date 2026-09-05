@@ -133,9 +133,9 @@ local enemies = {
     -- IV.1 — Mutant Wretch (Troop): WS 30 BS 20 S 20 T 25 Ag 35 Int 20 Per 40 WP 25 Fel 15, Wounds 6
     {
         chance  = { Chaos = 42 },
-        glyph   = string.byte("m"),
+        glyph   = string.byte("w"),
         name    = "Mutant Wretch",
-        color   = "darkRed",
+        color   = "brown",
         hp      = 6.0,
         defense = 0.0,
         corpse  = "dead Mutant Wretch",

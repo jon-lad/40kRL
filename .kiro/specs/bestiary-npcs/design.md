@@ -458,6 +458,12 @@ These properties suit property-based testing because the loaded bestiary data an
 
 **Validates: Requirements 3.4, 5.3**
 
+### Property 9: Glyph/color pairs are distinct across the Bestiary
+
+*For any* two distinct `Enemy_Entry` records, the pair `(glyph, color)` differs — no two NPCs share both the same glyph and the same color. Equivalently, the set of `(glyph, color)` pairs has the same cardinality as the roster. This keeps every NPC visually distinguishable on the map (two entries may share a glyph if their colors differ, or share a color if their glyphs differ, but never both).
+
+**Validates: Requirements 5.4**
+
 ### Reflection and consolidation
 
 The initial analysis produced candidate properties that were consolidated:
@@ -501,6 +507,7 @@ Each correctness property maps to a single RapidCheck property test, tagged `Fea
 - **P6** — generate random non-faction strings; assert region resolution returns `"Ork"` and `spawnEnemy` does not throw.
 - **P7** — for every entry, assert `hp >= 1`.
 - **P8** — for every entry, assert `skills`/`talents`/`traits` are present tables.
+- **P9** — for every pair of distinct entries, assert the `(glyph, color)` pairs differ (or assert the set of `(glyph, color)` pairs has the same cardinality as the roster).
 
 RapidCheck `inRange` is inclusive in this project, so roll generators use `inRange(0, 100)` and column-index generators use `inRange(0, n - 1)`.
 

@@ -66,6 +66,7 @@ This feature is data-and-mapping only: it uses the existing enemy schema, the ex
 9. THE Enemy_Script SHALL define one Enemy_Entry each for the twelve Tyranid Troop_Profiles cited in `Reference/RT-Bestiary.md` section IV.9: Late Generation Hybrid, Early Generation Hybrid, Ripper, Ripper Swarm, Hormagaunt, Termagant, Mucolid Spore, Mieotic Spore, Biovore, Pyrovore, Gargoyle, and Mycetic Spore.
 10. THE Enemy_Script SHALL define one Enemy_Entry each for the thirteen Chapter V Troop_Profiles cited in `Reference/RT-Bestiary.md` sections 5.1 through 5.4: Colonist, Mutant Outcast, Oathsworn Bodyguard, Renegade, Warp Witch, Battle Servitor (Charron-Pattern), Grapplehawk (Falax-Pattern), Servitor Drone, Servo Skull, Eldar Corsair, Ork Freebooter, Kroot Mercenary, and Warp Predator (Ebon Geist).
 11. THE Enemy_Script SHALL give each Enemy_Entry a unique `name` value across the entire Bestiary.
+12. THE Enemy_Script SHALL give each Enemy_Entry a visually distinct appearance from every other Enemy_Entry, such that no two Enemy_Entries share the same combination of `glyph` and `color`; each `color` string SHALL name a color defined in `Headers/Colors.hpp` (resolvable by `colorFromName`).
 
 ### Requirement 2: Characteristic Mapping
 
@@ -110,6 +111,7 @@ This feature is data-and-mapping only: it uses the existing enemy schema, the ex
 1. THE Enemy_Script SHALL define each new Enemy_Entry with the fields `glyph`, `name`, `color`, `hp`, `defense`, `corpse`, `xp`, `power`, `skill`, `ws`, `bs`, `s`, `t`, `ag`, `int`, `per`, `wp`, `fel`, and a per-region `chance` table.
 2. WHERE an Enemy_Entry carries equipment, THE Enemy_Script SHALL populate the `equipment` list, the `dropChance` value, and the `equipTier` table using the same field forms as the existing Ork enemy set.
 3. WHERE an Enemy_Entry declares `skills`, `talents`, or `traits`, THE Enemy_Script SHALL use the same field forms as the existing Ork enemy set: `skills` as a name-to-rank table, `talents` and `traits` as string lists.
+4. THE Enemy_Script SHALL give every Enemy_Entry a `(glyph, color)` pair that is distinct from that of every other Enemy_Entry across the entire Bestiary, so that no two NPCs render with both the same glyph and the same color, using only `color` names defined in `Headers/Colors.hpp`.
 
 ### Requirement 6: Faction Spawn Regions
 
