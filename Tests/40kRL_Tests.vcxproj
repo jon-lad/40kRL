@@ -181,6 +181,7 @@
     <ClCompile Include="test_bestiary_equipment_schema.cpp" />
     <ClCompile Include="test_bestiary_unknown_region.cpp" />
     <ClCompile Include="test_bestiary_appearance.cpp" />
+    <ClCompile Include="test_equipment_region_loading.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
