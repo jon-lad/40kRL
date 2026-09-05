@@ -3377,6 +3377,17 @@ void Engine::init()
 				tmpl.weaponGroup   = weaponGroup;
 				tmpl.damageType    = damageType;
 
+				// Parse optional region weighting table into regionWeights. Absent or
+				// fully-malformed field falls back to { ImperialHuman = 100 } via the
+				// shared free helpers (equipment-region-assignment).
+				sol::optional<sol::table> regionTable = entry["region"];
+				RegionWeights regionWeights;
+				if (regionTable) {
+					regionWeights = parseRegionWeights(*regionTable);
+				}
+				applyRegionDefault(regionWeights);   // absent/fully-malformed -> { ImperialHuman = 100 }
+				tmpl.regionWeights = regionWeights;
+
 				equipmentTemplates.push_back(tmpl);
 			}
 		}
