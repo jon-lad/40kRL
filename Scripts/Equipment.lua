@@ -20,6 +20,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = 5,
         tier    = "common",
+        region  = { Universal = 100 },  -- primitive/civilian knife (RT-Weapons Primitive)
         sizeClass   = "Melee",
         weaponGroup = "Primitive",
         damageType  = "R",
@@ -41,6 +42,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = 0,
         tier    = "uncommon",
+        region  = { ImperialHuman = 100 },  -- RT-Weapons Chain: ImperialHuman
         sizeClass   = "Melee",
         weaponGroup = "Primitive",
         damageType  = "R",
@@ -62,6 +64,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = 10,
         tier    = "rare",
+        region  = { ImperialHuman = 100 },  -- RT-Weapons Power: ImperialHuman
         sizeClass   = "Melee",
         weaponGroup = "Primitive",
         damageType  = "E",
@@ -83,6 +86,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = 0,
         tier    = "common",
+        region  = { ImperialHuman = 100 },  -- RT-Weapons Las: ImperialHuman
         sizeClass   = "Pistol",
         weaponGroup = "Las",
         damageType  = "E",
@@ -112,6 +116,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = 0,
         tier    = "uncommon",
+        region  = { Universal = 100 },  -- RT-Weapons SP: Autogun is Universal
         sizeClass   = "Basic",
         weaponGroup = "SP",
         damageType  = "I",
@@ -141,6 +146,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = -5,
         tier    = "uncommon",
+        region  = { ImperialHuman = 100 },  -- RT-Equipment Flak Armour: ImperialHuman
         armourLocations = {
             head     = 0,
             body     = 3,
@@ -162,6 +168,7 @@ equipment = {
         maxHp   = 5.0,
         skill   = -2,
         tier    = "uncommon",
+        region  = { ImperialHuman = 100 },  -- RT-Equipment Carapace: ImperialHuman
         armourLocations = {
             head     = 4,
             body     = 0,
@@ -187,6 +194,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = -5,
         tier    = "common",
+        region  = { Ork = 100 },  -- RT-Weapons Exotic/Xenos: Choppa (Ork)
         sizeClass   = "Melee",
         weaponGroup = "Primitive",
         damageType  = "R",
@@ -208,6 +216,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = 0,
         tier    = "common",
+        region  = { Ork = 100 },  -- RT-Weapons SP: Ork Slugga
         sizeClass   = "Pistol",
         weaponGroup = "SP",
         damageType  = "I",
@@ -237,6 +246,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = -3,
         tier    = "common",
+        region  = { Ork = 100 },  -- Ork gear (xenos faction)
     },
 
     -- Uncommon tier: better Ork gear, moderate stats
@@ -252,6 +262,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = 5,
         tier    = "uncommon",
+        region  = { Ork = 100 },  -- RT-Weapons SP: Ork Shoota
         sizeClass   = "Basic",
         weaponGroup = "SP",
         damageType  = "I",
@@ -281,6 +292,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = -8,
         tier    = "uncommon",
+        region  = { Ork = 100 },  -- RT-Weapons Exotic/Xenos: Big Choppa (Ork)
         sizeClass   = "Melee",
         weaponGroup = "Primitive",
         damageType  = "I",
@@ -302,6 +314,7 @@ equipment = {
         maxHp   = 3.0,
         skill   = -8,
         tier    = "uncommon",
+        region  = { Ork = 100 },  -- Ork gear (xenos faction)
         armourLocations = {
             head     = 0,
             body     = 2,
@@ -325,6 +338,7 @@ equipment = {
         maxHp   = 0.0,
         skill   = -10,
         tier    = "rare",
+        region  = { Ork = 100 },  -- RT-Weapons Exotic/Xenos: Power Klaw (Ork)
         sizeClass   = "Melee",
         weaponGroup = "Exotic",
         damageType  = "I",
@@ -348,6 +362,8 @@ equipment = {
         slot    = "weapon",
         weight  = 4.0,
         tier    = "common",
+        -- NOTE: region intentionally omitted to exercise the ImperialHuman
+        -- default at load (Lasgun is ImperialHuman per RT-Weapons Las).
         sizeClass   = "Basic",
         weaponGroup = "Las",
         damageType  = "E",
@@ -375,6 +391,7 @@ equipment = {
         slot    = "weapon",
         weight  = 3.0,
         tier    = "uncommon",
+        region  = { Eldar = 100 },  -- Eldar Guardian weapon (xenos faction)
         sizeClass   = "Melee",
         weaponGroup = "Primitive",
         damageType  = "R",
@@ -394,6 +411,7 @@ equipment = {
         slot    = "body",
         weight  = 6.0,
         tier    = "common",
+        region  = { ImperialHuman = 100 },  -- RT-Equipment Flak Armour: ImperialHuman
         armourLocations = {
             head     = 0,
             body     = 2,

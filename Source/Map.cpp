@@ -13,6 +13,7 @@
 #include "CP437.hpp"
 #include "CareerProgression.hpp"
 #include "StatBlock.hpp"
+#include "EquipmentRegionSelect.hpp"
 
 static constexpr int ROOM_MAX_SIZE     = 12;
 static constexpr int ROOM_MIN_SIZE     = 6;
@@ -1019,7 +1020,7 @@ void Map::addMonster(int x, int y)
 
 		// Inject C++ callback that Lua calls to actually create the actor.
 		// Receives (x, y, entry_table) so C++ can read all fields including equipment config.
-		lua["addActor"] = [](int ax, int ay, sol::table entry)
+		lua["addActor"] = [&region](int ax, int ay, sol::table entry)
 		{
 			// ── Core enemy fields ──
 			std::string name      = entry.get_or(std::string("name"), std::string(""));
@@ -1169,9 +1170,10 @@ void Map::addMonster(int x, int y)
 					// For each slot, use the helper to pick a template based on tier weights
 					for (int slotIdx = 0; slotIdx < static_cast<int>(EquipmentSlot::COUNT); ++slotIdx) {
 						EquipmentSlot targetSlot = static_cast<EquipmentSlot>(slotIdx);
-						// Task 7.7 will refine this to pass the level's actual getRegionName();
-						// for now pass the configured default region to keep the build green.
-						const EquipmentTemplate* selected = engine.selectEquipmentByTier(targetSlot, cfg.tierWeights, resolveDefaultRegion());
+						// Resolve equipment under the level's actual Region_Name (same shared
+						// source the NPC spawn used above), falling back to the configured
+						// default region when this level has no region set.
+						const EquipmentTemplate* selected = engine.selectEquipmentByTier(targetSlot, cfg.tierWeights, region);
 						if (selected) {
 							resolvedTemplates.push_back(selected);
 						}
@@ -1254,24 +1256,42 @@ void Map::addItem(int x, int y)
 
 	// 25% chance to spawn equipment if templates are available
 	if (!engine.equipmentTemplates.empty() && rng != nullptr && rng->getInt(0, 99) < 25) {
-		int templateIndex = rng->getInt(0, static_cast<int>(engine.equipmentTemplates.size()) - 1);
-		const auto& tmpl = engine.equipmentTemplates[templateIndex];
+		// Region-scope the ground drop (Req 7.1): build a candidate pool of all
+		// equipment templates and pick one via the region-eligibility selection so only
+		// region-appropriate loot drops. Resolve the level's Region_Name from the single
+		// shared source (getRegionName()), falling back to the configured default region.
+		std::vector<const EquipmentTemplate*> pool;
+		pool.reserve(engine.equipmentTemplates.size());
+		for (const auto& t : engine.equipmentTemplates) {
+			pool.push_back(&t);
+		}
+		const std::string region = regionName.empty() ? resolveDefaultRegion() : regionName;
+		const int total = regionEligibleTotal(pool, region);
+		const EquipmentTemplate* selected = (total > 0)
+			? selectRegionEligible(pool, region, TCODRandom::getInstance()->getInt(0, total - 1))
+			: nullptr;
 
-		auto item = std::make_unique<Actor>(x, y, tmpl.glyph, tmpl.name, tmpl.color);
-		item->blocks = false;
-		item->pickable = std::make_shared<Pickable>(nullptr, nullptr);
-		item->pickable->weight = tmpl.weight;
-		item->pickable->value = tmpl.value;
-		item->equippable = std::make_shared<Equippable>(tmpl.slot, tmpl.modifiers, tmpl.weight, tmpl.value);
-		item->equippable->meleeStats = tmpl.meleeStats;
-		item->equippable->armourProfile = tmpl.armourProfile;
-		item->equippable->rangedStats = tmpl.rangedStats;
-		item->equippable->sizeClass = tmpl.sizeClass;
-		item->equippable->weaponGroup = tmpl.weaponGroup;
-		item->equippable->damageType = tmpl.damageType;
-		item->assignRenderLayer();
-		engine.actors.emplace_front(std::move(item));
-		return;
+		// Only spawn equipment when a region-eligible template was chosen; otherwise fall
+		// through to the non-equipment item logic below.
+		if (selected != nullptr) {
+			const auto& tmpl = *selected;
+
+			auto item = std::make_unique<Actor>(x, y, tmpl.glyph, tmpl.name, tmpl.color);
+			item->blocks = false;
+			item->pickable = std::make_shared<Pickable>(nullptr, nullptr);
+			item->pickable->weight = tmpl.weight;
+			item->pickable->value = tmpl.value;
+			item->equippable = std::make_shared<Equippable>(tmpl.slot, tmpl.modifiers, tmpl.weight, tmpl.value);
+			item->equippable->meleeStats = tmpl.meleeStats;
+			item->equippable->armourProfile = tmpl.armourProfile;
+			item->equippable->rangedStats = tmpl.rangedStats;
+			item->equippable->sizeClass = tmpl.sizeClass;
+			item->equippable->weaponGroup = tmpl.weaponGroup;
+			item->equippable->damageType = tmpl.damageType;
+			item->assignRenderLayer();
+			engine.actors.emplace_front(std::move(item));
+			return;
+		}
 	}
 
 	const int   roll = rng->getInt(0, 100);
