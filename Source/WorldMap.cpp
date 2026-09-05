@@ -5,20 +5,21 @@
 #include <cmath>
 
 std::string regionForBiome(BiomeType biome) {
-	// Single point of biome -> region derivation (Requirement 9.3). Total switch
-	// over all five BiomeType values; each yields a non-empty Region_Name. In this
-	// iteration every biome maps to "Ork" so existing spawning is preserved
-	// (Requirements 1.2, 1.3, 1.4, 7). No default case: the switch is exhaustive so
+	// Single point of biome -> Faction_Region derivation (Requirement 9.3 / 6.3).
+	// Total switch over all five BiomeType values; each yields a non-empty, defined
+	// Faction_Region key that exists as a column in Enemies.lua (Requirements 6.5,
+	// 6.6). Region_Name values are plain strings decoupled from the C++/Lua spawn
+	// boundary (Requirement 10.4). No default case: the switch is exhaustive so
 	// adding a new BiomeType surfaces a compiler warning here.
 	switch (biome) {
-	case BiomeType::TOXIC_SWAMP: return "Ork";
-	case BiomeType::DEAD_FOREST: return "Ork";
+	case BiomeType::TOXIC_SWAMP: return "Chaos";
+	case BiomeType::DEAD_FOREST: return "Eldar";
 	case BiomeType::ASH_DESERT:  return "Ork";
-	case BiomeType::WASTELAND:   return "Ork";
-	case BiomeType::HIVE_CITY:   return "Ork";
+	case BiomeType::WASTELAND:   return "Servitor";
+	case BiomeType::HIVE_CITY:   return "ImperialHuman";
 	}
-	// Unreachable for valid enum values; guarantees a non-empty result if an
-	// out-of-range value is cast into a BiomeType.
+	// Unreachable for valid enum values; guarantees a defined, non-empty result if an
+	// out-of-range value is cast into a BiomeType (Requirement 6.6).
 	return DEFAULT_REGION_FALLBACK;
 }
 
