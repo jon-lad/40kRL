@@ -1201,6 +1201,274 @@ local enemies = {
                     "Talented (Commerce, Inquiry)", "Whispers" },
         traits  = { "Size (4)" },
     },
+
+    -- ─────────────────────────────────────────────────────────────────────────
+    -- Tyranid Faction_Region column (Bestiary IV.9 Tyranids §13.8). 12 Troop
+    -- entries, cumulative chance strictly ascending in declaration order, terminal
+    -- value 100. Characteristics copied verbatim as the base integer (BS/Fel "00"
+    -- em-dash -> 0 per Req 2.2; Unnatural parentheticals excluded from the stored
+    -- integer and recorded as `Unnatural X (xN)` traits per Req 2.3/2.4). hp =
+    -- profile Wounds (Req 3.1). Size and Flyer traits are recorded as trait strings
+    -- (Req 3.3). Each (glyph, color) pair is distinct from every other entry across
+    -- the Bestiary, using colors defined in Headers/Colors.hpp (Req 1.12). Tyranids
+    -- fight with natural bio-weapons, so equipment = {} on every entry (weapon/armour
+    -- wiring reconciled by tasks 12.3/12.4).
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    -- IV.9 §13.8.1 — Late Generation Hybrid (Troop): WS 40 BS 30 S 30 T 30 Ag 35(5) Int 25 Per 40 WP 25 Fel 30, Wounds 9
+    {
+        chance  = { Tyranid = 10 },
+        glyph   = string.byte("y"),
+        name    = "Late Generation Hybrid",
+        color   = "crimson",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Late Generation Hybrid",
+        xp      = 30,
+        power   = 3.0,
+        skill   = 40,                    -- WS (Chainsword/Monoknife melee-primary)
+        ws = 40, bs = 30, s = 30, t = 30, ag = 35, int = 25, per = 40, wp = 25, fel = 30,
+        equipment = {},
+        skills  = { Acrobatics = 1, Athletics = 0, Awareness = 0, Deceive = 1,
+                    Discipline = 0, Dodge = 0, Stealth = 1, Survival = 0 },
+        talents = { "Ambidextrous", "Double Team", "Hard Target", "Leap Up",
+                    "Lightning Reflexes", "Swift Attack", "Unarmed Warrior" },
+        traits  = { "Dark-Sight", "Mindlinked", "Size (4)", "Tyranid",
+                    "Unnatural Agility (x2)" },
+    },
+
+    -- IV.9 §13.8.1 — Early Generation Hybrid (Troop): WS 50 BS 30 S 35(5) T 35(5) Ag 40(6) Int 25 Per 50 WP 35 Fel 30, Wounds 9
+    {
+        chance  = { Tyranid = 16 },
+        glyph   = string.byte("Y"),
+        name    = "Early Generation Hybrid",
+        color   = "crimson",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Early Generation Hybrid",
+        xp      = 40,
+        power   = 3.0,
+        skill   = 50,                    -- WS (Rending Claw / Bio-Weapons melee-primary)
+        ws = 50, bs = 30, s = 35, t = 35, ag = 40, int = 25, per = 50, wp = 35, fel = 30,
+        equipment = {},
+        skills  = { Acrobatics = 1, Athletics = 1, Awareness = 1, Discipline = 0,
+                    Dodge = 1, Fortitude = 0, Stealth = 1, Survival = 1 },
+        talents = { "Ambidextrous", "Assassin Strike", "Double Team", "Hard Target",
+                    "Leap Up", "Lightning Reflexes", "Litany Against Fear", "Sprint",
+                    "Swift Attack" },
+        traits  = { "Dark-Sight", "Deadly Natural Weapons (Bio-Weapons)", "Fear (1)",
+                    "Mindlinked", "Multiple Arms", "Natural Armour (2)", "Size (4)",
+                    "Tyranid", "Unnatural Strength (x2)", "Unnatural Toughness (x2)",
+                    "Unnatural Agility (x2)" },
+    },
+
+    -- IV.9 §13.8.4 — Ripper (Troop): WS 25 BS 00 S 20 T 15 Ag 40 Int 10 Per 30 WP 30 Fel 00, Wounds 2
+    {
+        chance  = { Tyranid = 26 },
+        glyph   = string.byte("r"),
+        name    = "Ripper",
+        color   = "crimson",
+        hp      = 2.0,
+        defense = 0.0,
+        corpse  = "crushed Ripper",
+        xp      = 6,
+        power   = 2.0,
+        skill   = 25,                    -- WS (Mandibles melee; BS 00 -> 0)
+        ws = 25, bs = 0, s = 20, t = 15, ag = 40, int = 10, per = 30, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Athletics = 0, Awareness = 0, Stealth = 0, Survival = 0 },
+        talents = { "Heightened Senses (Smell)" },
+        traits  = { "Burrower (1)", "Deadly Natural Weapons (Mandibles)", "Dark-Sight",
+                    "Natural Armour (2)", "Size (2)",
+                    "Tyranid (Instinctive Behaviour [Feed])" },
+    },
+
+    -- IV.9 §13.8.4 — Ripper Swarm (Troop): WS 25 BS 00 S 20 T 15 Ag 40 Int 10 Per 30 WP 30 Fel 00, Wounds 13
+    {
+        chance  = { Tyranid = 34 },
+        glyph   = string.byte("r"),
+        name    = "Ripper Swarm",
+        color   = "purple",
+        hp      = 13.0,
+        defense = 0.0,
+        corpse  = "scattered Ripper Swarm",
+        xp      = 24,
+        power   = 2.0,
+        skill   = 25,                    -- WS (Mandibles melee; BS 00 -> 0)
+        ws = 25, bs = 0, s = 20, t = 15, ag = 40, int = 10, per = 30, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Athletics = 0, Awareness = 0, Stealth = 0, Survival = 0 },
+        talents = { "Furious Assault", "Heightened Senses (Smell)" },
+        traits  = { "Burrower (4)", "Deadly Natural Weapons (Mandibles)", "Dark-Sight",
+                    "Natural Armour (2)", "Size (5)", "Swarm",
+                    "Tyranid (Instinctive Behaviour [Feed])" },
+    },
+
+    -- IV.9 §13.8.4 — Hormagaunt (Troop): WS 45 BS 20 S 35 T 30 Ag 55 Int 10 Per 40 WP 30 Fel 00, Wounds 9
+    {
+        chance  = { Tyranid = 50 },
+        glyph   = string.byte("h"),
+        name    = "Hormagaunt",
+        color   = "crimson",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Hormagaunt",
+        xp      = 28,
+        power   = 3.0,
+        skill   = 45,                    -- WS (Scything Talons melee-primary)
+        ws = 45, bs = 20, s = 35, t = 30, ag = 55, int = 10, per = 40, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Acrobatics = 2, Awareness = 0, Dodge = 1, Stealth = 0 },
+        talents = { "Leap Up", "Leaping Strike", "Swift Attack" },
+        traits  = { "Dark-Sight", "Deadly Natural Weapons (Bio-Weapons)",
+                    "Natural Armour (3)", "Tyranid (Instinctive Behaviour [Feed])" },
+    },
+
+    -- IV.9 §13.8.4 — Termagant (Troop): WS 30 BS 35 S 30 T 30 Ag 40 Int 10 Per 40 WP 30 Fel 00, Wounds 9
+    {
+        chance  = { Tyranid = 64 },
+        glyph   = string.byte("t"),
+        name    = "Termagant",
+        color   = "crimson",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Termagant",
+        xp      = 26,
+        power   = 3.0,
+        skill   = 35,                    -- BS (Fleshborer ranged-primary)
+        ws = 30, bs = 35, s = 30, t = 30, ag = 40, int = 10, per = 40, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Athletics = 0, Dodge = 0, Stealth = 0 },
+        talents = { "Leap Up" },
+        traits  = { "Dark-Sight", "Deadly Natural Weapons (Bio-Weapons)",
+                    "Natural Armour (3)", "Tyranid (Instinctive Behaviour [Lurk])" },
+    },
+
+    -- IV.9 §13.8.7 — Mucolid Spore (Troop): WS 00 BS 00 S 05 T 45 Ag 10 Int 00 Per 40 WP 10 Fel 00, Wounds 32
+    {
+        chance  = { Tyranid = 70 },
+        glyph   = string.byte("o"),
+        name    = "Mucolid Spore",
+        color   = "purple",
+        hp      = 32.0,
+        defense = 0.0,
+        corpse  = "burst Mucolid Spore",
+        xp      = 30,
+        power   = 2.0,
+        skill   = 40,                    -- Per (detonation; WS/BS 00 -> 0, uses senses)
+        ws = 0, bs = 0, s = 5, t = 45, ag = 10, int = 0, per = 40, wp = 10, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 2 },
+        talents = { "Sprint" },
+        traits  = { "Blind", "Flyer (3)", "From Beyond", "Natural Armour (2)",
+                    "Size (6)", "Tyranid", "Unnatural Senses (40)" },
+    },
+
+    -- IV.9 §13.8.7 — Mieotic Spore (Troop): WS 00 BS 00 S 15 T 35 Ag 15 Int 00 Per 45 WP 10 Fel 00, Wounds 19
+    {
+        chance  = { Tyranid = 76 },
+        glyph   = string.byte("o"),
+        name    = "Mieotic Spore",
+        color   = "magenta",
+        hp      = 19.0,
+        defense = 0.0,
+        corpse  = "burst Mieotic Spore",
+        xp      = 24,
+        power   = 2.0,
+        skill   = 45,                    -- Per (detonation; WS/BS 00 -> 0, uses senses)
+        ws = 0, bs = 0, s = 15, t = 35, ag = 15, int = 0, per = 45, wp = 10, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 2 },
+        talents = { "Sprint" },
+        traits  = { "Blind", "From Beyond", "Hoverer (4)", "Natural Armour (2)",
+                    "Size (5)", "Tyranid", "Unnatural Senses (45)" },
+    },
+
+    -- IV.9 §13.8.8 — Biovore (Troop): WS 35 BS 40 S 40(6) T 40(6) Ag 25 Int 15 Per 45 WP 30 Fel 00, Wounds 28
+    {
+        chance  = { Tyranid = 82 },
+        glyph   = string.byte("b"),
+        name    = "Biovore",
+        color   = "crimson",
+        hp      = 28.0,
+        defense = 0.0,
+        corpse  = "dead Biovore",
+        xp      = 56,
+        power   = 4.0,
+        skill   = 40,                    -- BS (Spore Mine Launcher ranged-primary)
+        ws = 35, bs = 40, s = 40, t = 40, ag = 25, int = 15, per = 45, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Athletics = 1, Awareness = 1, Fortitude = 0 },
+        talents = { "Sudden Attack", "Vigilant" },
+        traits  = { "Dark-Sight", "Natural Armour (6)", "Size (5)",
+                    "Tyranid (Instinctive Behaviour [Lurk])", "Unnatural Strength (x2)",
+                    "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.9 §13.8.8 — Pyrovore (Troop): WS 35 BS 40 S 40(6) T 40(6) Ag 25 Int 15 Per 45 WP 30 Fel 00, Wounds 28
+    {
+        chance  = { Tyranid = 88 },
+        glyph   = string.byte("P"),
+        name    = "Pyrovore",
+        color   = "crimson",
+        hp      = 28.0,
+        defense = 0.0,
+        corpse  = "charred Pyrovore",
+        xp      = 58,
+        power   = 4.0,
+        skill   = 40,                    -- BS (Flamespurt ranged-primary)
+        ws = 35, bs = 40, s = 40, t = 40, ag = 25, int = 15, per = 45, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Athletics = 1, Awareness = 1, Fortitude = 0 },
+        talents = { "Hip Shooting" },
+        traits  = { "Auto-Stabilized", "Dark-Sight", "Natural Armour (6)", "Quadruped",
+                    "Size (5)", "Tyranid (Instinctive Behaviour [Lurk])",
+                    "Unnatural Strength (x2)", "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.9 §13.8.10 — Gargoyle (Troop): WS 30 BS 35 S 25 T 25 Ag 40 Int 10 Per 40 WP 30 Fel 00, Wounds 6
+    {
+        chance  = { Tyranid = 94 },
+        glyph   = string.byte("G"),
+        name    = "Gargoyle",
+        color   = "crimson",
+        hp      = 6.0,
+        defense = 0.0,
+        corpse  = "dead Gargoyle",
+        xp      = 22,
+        power   = 3.0,
+        skill   = 35,                    -- BS (Fleshborer ranged-primary)
+        ws = 30, bs = 35, s = 25, t = 25, ag = 40, int = 10, per = 40, wp = 30, fel = 0,
+        equipment = {},
+        skills  = { Acrobatics = 0, Athletics = 0, Awareness = 0, Dodge = 0 },
+        talents = { "Raptor", "Leap Up" },
+        traits  = { "Dark-Sight", "Deadly Natural Weapons (Bio-Weapons)", "Flyer (8)",
+                    "Natural Armour (3)", "Tyranid (Instinctive Behaviour [Lurk])" },
+    },
+
+    -- IV.9 §13.8.10 — Mycetic Spore (Troop): WS 40 BS 40 S 45(14) T 45(14) Ag 30 Int 00 Per 20 WP 15 Fel 00, Wounds 66
+    -- NOTE: source St/T characteristic line prints (14) while the Traits line prints
+    -- Unnatural Strength/Toughness (x10); recorded verbatim from source (base 45).
+    {
+        chance  = { Tyranid = 100 },
+        glyph   = string.byte("M"),
+        name    = "Mycetic Spore",
+        color   = "purple",
+        hp      = 66.0,
+        defense = 0.0,
+        corpse  = "spent Mycetic Spore",
+        xp      = 90,
+        power   = 4.0,
+        skill   = 40,                    -- BS (Twin Deathspitter ranged-primary; Int 00 -> 0)
+        ws = 40, bs = 40, s = 45, t = 45, ag = 30, int = 0, per = 20, wp = 15, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 0, Dodge = 1 },
+        talents = { "Hip Shooting", "Sprint", "Whirlwind of Death" },
+        traits  = { "Blind", "Deadly Natural Weapons (Bio-Weapons)", "Flyer (14)",
+                    "From Beyond", "Size (8)", "Tyranid", "Undying",
+                    "Unnatural Senses (50)", "Unnatural Strength (x10)",
+                    "Unnatural Toughness (x10)" },
+    },
 }
 
 function spawnEnemy(roll, x, y, region)
