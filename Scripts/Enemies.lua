@@ -424,7 +424,7 @@ local enemies = {
     },
     {
         chance  = { Ork = 90 },
-        glyph   = string.byte("o"),
+        glyph   = string.byte("s"),
         name    = "Shoota Boy",
         color   = "desaturatedGreen",
         hp      = 20.0,

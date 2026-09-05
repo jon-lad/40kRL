@@ -23,7 +23,7 @@
 // without pulling in engine headers, so this test pins the color against the known
 // palette name list kept in sync with Colors.hpp.
 //
-// **Validates: Requirements 1.12**
+// **Validates: Requirements 5.4**
 //
 // TDD note: this property holds against the current (partially populated) roster
 // and must continue to hold as each faction column is added.
@@ -33,15 +33,14 @@ namespace {
 
 // The set of color names defined in Headers/Colors.hpp colorFromName. Kept in sync
 // with the resolver; a color used by an Enemy_Entry must appear here (Requirement
-// 1.12 — color must be resolvable, i.e. not fall through to the black sentinel).
+// 5.4 — color must be resolvable, i.e. not fall through to the black sentinel).
+// This list must match colorFromName in Headers/Colors.hpp EXACTLY: adding a name
+// here that the resolver does not define would let an entry render as black.
 const std::set<std::string>& knownColorNames() {
     static const std::set<std::string> names = {
         "white", "desaturatedGreen", "darkerGreen", "lightBlue", "orange",
         "lightGreen", "violet", "lightYellow", "lightGrey", "lighterOrange",
         "darkGrey", "red", "darkRed", "cyan", "brown", "gold",
-        // Faction / NPC palette additions (bestiary-npcs)
-        "crimson", "purple", "metalGrey", "lightCyan", "darkGreen", "pink",
-        "teal", "tan", "magenta", "steelBlue", "boneWhite", "darkOrange",
     };
     return names;
 }
