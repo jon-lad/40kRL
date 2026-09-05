@@ -81,15 +81,56 @@ std::string findEnemiesScript() {
     return std::string();
 }
 
-// The reference model of the shipped Ork column (Gretchin 50, Ork 75, Shoota Boy
-// 90, Nob 100), in declaration order. Requirement 7.2 / 7.3.
-std::vector<ModelEntry> orkColumnModel() {
-    return {
-        { "Gretchin",   { { "Ork", 50 } } },
-        { "Ork",        { { "Ork", 75 } } },
-        { "Shoota Boy", { { "Ork", 90 } } },
-        { "Nob",        { { "Ork", 100 } } },
-    };
+// Read the live, declaration-ordered `enemies` table out of the loaded script and
+// build the reference model INDEPENDENTLY of spawnEnemy's own selection logic.
+//
+// `enemies` is a local upvalue captured by the global spawnEnemy closure, so we
+// reach it via the standard debug library (debug.getupvalue) rather than a global.
+// This surfaces every Enemy_Entry in declaration order; for each we record the
+// entry's `name` and its `chance[region]` cumulative threshold (absent key => the
+// entry is simply omitted from this region's column, i.e. never selectable here).
+//
+// The resulting ModelEntry list is the specification the C++ referenceSelect model
+// operates on — derived purely from the CURRENT Enemies.lua data for whatever region
+// is chosen, with no hard-coded per-faction assumptions.
+std::vector<ModelEntry> deriveColumnModel(sol::state& lua, const std::string& region) {
+    std::vector<ModelEntry> model;
+
+    // Fetch the `enemies` upvalue from the spawnEnemy closure.
+    sol::protected_function getupvalue = lua["debug"]["getupvalue"];
+    sol::object spawnEnemyObj = lua["spawnEnemy"];
+
+    sol::table enemies;
+    bool found = false;
+    for (int i = 1; !found; ++i) {
+        sol::protected_function_result res = getupvalue(spawnEnemyObj, i);
+        if (!res.valid()) break;
+        sol::object nameObj = res.get<sol::object>(0);
+        if (nameObj == sol::lua_nil) break;          // no more upvalues
+        std::string upName = nameObj.as<std::string>();
+        if (upName == "enemies") {
+            enemies = res.get<sol::table>(1);
+            found = true;
+        }
+    }
+    if (!found) return model;                         // couldn't locate; empty model
+
+    // Walk entries in declaration order (ipairs order == array part order).
+    for (std::size_t i = 1; i <= enemies.size(); ++i) {
+        sol::optional<sol::table> entryOpt = enemies[i];
+        if (!entryOpt) continue;
+        sol::table entry = *entryOpt;
+        sol::optional<std::string> nameOpt = entry["name"];
+        std::string name = nameOpt.value_or(std::string());
+
+        sol::optional<sol::table> chanceOpt = entry["chance"];
+        if (!chanceOpt) continue;
+        sol::optional<int> thresholdOpt = (*chanceOpt)[region];
+        if (!thresholdOpt.has_value()) continue;      // entry not in this region column
+
+        model.push_back({ name, { { region, *thresholdOpt } } });
+    }
+    return model;
 }
 
 } // namespace
@@ -118,14 +159,18 @@ TEST_CASE("Region-scoped cumulative selection matches the reference model",
     // empty/absent column = no selection — all against the production spawnEnemy.
     rc::check("selection equals reference model across rolls and regions", [&] {
         const int roll = *rc::gen::inRange(0, 100);
-        // Case-sensitive: "ork" is intentionally NOT the "Ork" column.
+        // Mix of populated Faction_Region columns AND genuinely-absent columns.
+        // Case-sensitive: "ork" (lowercase) is NOT a Region_Name, and "" is empty;
+        // both must yield no selection, exercising the missing-key / no-column branch.
         const std::string region = *rc::gen::elementOf(std::vector<std::string>{
-            "Ork", "Tyranid", "Eldar", "", "ork" });
+            "Ork", "Tyranid", "Eldar", "Necron", "Chaos", "", "ork" });
 
         // Build a fresh sol::state per iteration; register a spy addActor that
-        // records the selected entry's name (mirrors Map::addActor).
+        // records the selected entry's name (mirrors Map::addActor). The debug
+        // library is opened so we can read the live `enemies` upvalue for the model.
         sol::state lua;
-        lua.open_libraries(sol::lib::base, sol::lib::table, sol::lib::string);
+        lua.open_libraries(sol::lib::base, sol::lib::table, sol::lib::string,
+                           sol::lib::debug);
 
         std::vector<std::string> spawnedNames;
         lua.set_function("addActor", [&](int /*x*/, int /*y*/, sol::table entry) {
@@ -141,14 +186,12 @@ TEST_CASE("Region-scoped cumulative selection matches the reference model",
         sol::protected_function_result r = spawnEnemy(roll, 0, 0, region);
         RC_ASSERT(r.valid());
 
-        // Reference expectation: only the "Ork" column is populated in the shipped
-        // script; every other region key is an absent column -> no selection.
-        std::optional<std::string> expected;
-        if (region == "Ork") {
-            expected = referenceSelect(orkColumnModel(), "Ork", roll);
-        } else {
-            expected = std::nullopt; // absent column
-        }
+        // Reference expectation is DATA-DRIVEN: build the column for whatever region
+        // was chosen straight from the loaded script, then apply the cumulative rule.
+        // Populated columns (Ork/Tyranid/Eldar/Necron/Chaos) yield real selections;
+        // absent columns ("" / "ork") produce an empty model => no selection.
+        const std::vector<ModelEntry> model = deriveColumnModel(lua, region);
+        const std::optional<std::string> expected = referenceSelect(model, region, roll);
 
         if (expected.has_value()) {
             RC_ASSERT(spawnedNames.size() == 1u);
@@ -175,13 +218,15 @@ TEST_CASE("Spawn-call fidelity: addActor invoked once on selection, zero on empt
 
     rc::check("addActor call count and payload track the selection model", [&] {
         const int roll = *rc::gen::inRange(0, 100);
-        // Bias toward populated ("Ork") and empty (absent) columns to cover both the
-        // exactly-once and zero-call branches.
+        // Mix of populated Faction_Region columns AND genuinely-absent columns to
+        // cover both the exactly-once and zero-call branches. "" and "ork" are NOT
+        // Region_Names, so they must produce zero addActor calls.
         const std::string region = *rc::gen::elementOf(std::vector<std::string>{
-            "Ork", "Ork", "Necron", "", "Chaos" });
+            "Ork", "Tyranid", "Eldar", "Necron", "Chaos", "", "ork" });
 
         sol::state lua;
-        lua.open_libraries(sol::lib::base, sol::lib::table, sol::lib::string);
+        lua.open_libraries(sol::lib::base, sol::lib::table, sol::lib::string,
+                           sol::lib::debug);
 
         int addActorCalls = 0;
         std::string lastSpawnedName;
@@ -204,12 +249,11 @@ TEST_CASE("Spawn-call fidelity: addActor invoked once on selection, zero on empt
         sol::protected_function_result r = spawnEnemy(roll, spawnX, spawnY, region);
         RC_ASSERT(r.valid());
 
-        std::optional<std::string> expected;
-        if (region == "Ork") {
-            expected = referenceSelect(orkColumnModel(), "Ork", roll);
-        } else {
-            expected = std::nullopt; // absent column -> empty-region no-spawn
-        }
+        // Data-driven reference: derive the chosen region's column from the loaded
+        // script and apply the cumulative-selection rule. Absent columns yield no
+        // selection => zero addActor calls.
+        const std::vector<ModelEntry> model = deriveColumnModel(lua, region);
+        const std::optional<std::string> expected = referenceSelect(model, region, roll);
 
         if (expected.has_value()) {
             RC_ASSERT(addActorCalls == 1);

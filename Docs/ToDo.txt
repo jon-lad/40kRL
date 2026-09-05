@@ -36,6 +36,7 @@ ROADMAP
 
 ## NPCs and AI
 
+- [ ] **NEXT:** Wire ranged AI for ranged-primary bestiary NPCs. ~12 NPCs are BS/ranged-primary in Enemies.lua but currently spawn with empty equipment, so addActor (Source/Map.cpp) gives them the default melee MonsterAi instead of RangedAi (RangedAi is only assigned when the equipped weapon has rangedStats). Add their ranged weapons to Equipment.lua (Shuriken Catapult, Eldar Long Rifle, Splinter Rifle, Gauss Flayer, Deffgun, Pulse Rifle, Pulse Carbine/Rail Rifle, Neutron Blaster, Fleshborer, Spore Mine Launcher, Flamespurt, Twin Deathspitter) and reference them in the affected entries (Eldar Ranger, Eldar Corsair, Kabalite, Necron Warrior, Loota, Fire Warrior, Pathfinder, Vespid Stingwing, Termagant, Biovore, Pyrovore, Gargoyle, Mycetic Spore). Spec stub staged at .kiro/specs/npc-ranged-ai-wiring/.
 - [ ] Add non-hostile NPCs to hive (traders, civilians, contacts)
 - [ ] Add hostile NPCs (gangers, cultists, mutants)
 - [ ] Move AI to Lua so people can modify mob behaviour
