@@ -11,6 +11,7 @@
 #include "HelpContent.hpp"
 #include "HighScoreStore.hpp"
 #include "TurnFlow.hpp"
+#include "EquipmentRegionSelect.hpp"
 
 static constexpr int DEFAULT_FOV_RADIUS   = 10;
 static constexpr int MAP_WIDTH            = 160;
@@ -2805,7 +2806,7 @@ void Engine::sendToBack(Actor* actor)
 	}
 }
 
-const EquipmentTemplate* Engine::selectEquipmentByTier(EquipmentSlot slot, const EnemyEquipmentConfig::TierWeights& weights)
+const EquipmentTemplate* Engine::selectEquipmentByTier(EquipmentSlot slot, const EnemyEquipmentConfig::TierWeights& weights, const std::string& regionName)
 {
 	// Normalize weights so they sum to 1.0
 	float totalWeight = weights.common + weights.uncommon + weights.rare;
@@ -2858,9 +2859,19 @@ const EquipmentTemplate* Engine::selectEquipmentByTier(EquipmentSlot slot, const
 		return nullptr;
 	}
 
-	// Randomly pick one from the matching candidates
-	int pick = rng->getInt(0, static_cast<int>(candidates.size()) - 1);
-	return candidates[pick];
+	// Apply the region filter on top of the tier + slot filtering (design Surface 3):
+	// restrict the tier-selected candidates to those region-eligible for regionName
+	// (exact key or "Universal", positive weight) and pick by cumulative weight using
+	// the engine-isolated helper (Headers/EquipmentRegionSelect.hpp).
+	int total = regionEligibleTotal(candidates, regionName);
+	if (total <= 0) {
+		// The region filter combined with the tier yielded nothing eligible. This is a
+		// graceful fallback, not an error — callers handle the no-item case themselves,
+		// so we do NOT emit a gui->message here.
+		return nullptr;
+	}
+	int roll = TCODRandom::getInstance()->getInt(0, total - 1);
+	return selectRegionEligible(candidates, regionName, roll);
 }
 
 // ─── Lua Data Loaders ────────────────────────────────────────────────────────

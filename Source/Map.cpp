@@ -1169,7 +1169,9 @@ void Map::addMonster(int x, int y)
 					// For each slot, use the helper to pick a template based on tier weights
 					for (int slotIdx = 0; slotIdx < static_cast<int>(EquipmentSlot::COUNT); ++slotIdx) {
 						EquipmentSlot targetSlot = static_cast<EquipmentSlot>(slotIdx);
-						const EquipmentTemplate* selected = engine.selectEquipmentByTier(targetSlot, cfg.tierWeights);
+						// Task 7.7 will refine this to pass the level's actual getRegionName();
+						// for now pass the configured default region to keep the build green.
+						const EquipmentTemplate* selected = engine.selectEquipmentByTier(targetSlot, cfg.tierWeights, resolveDefaultRegion());
 						if (selected) {
 							resolvedTemplates.push_back(selected);
 						}

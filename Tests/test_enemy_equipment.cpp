@@ -310,6 +310,7 @@ TEST_CASE("PBT: Tier weight distribution converges to configured weights", "[ene
         commonWeapon.value = 5;
         commonWeapon.modifiers = {1.0f, 0.0f, 0.0f, 0};
         commonWeapon.tier = ItemTier::COMMON;
+        commonWeapon.regionWeights = { { "ImperialHuman", 100 } };
 
         EquipmentTemplate uncommonWeapon;
         uncommonWeapon.name = "Uncommon Weapon";
@@ -320,6 +321,7 @@ TEST_CASE("PBT: Tier weight distribution converges to configured weights", "[ene
         uncommonWeapon.value = 20;
         uncommonWeapon.modifiers = {3.0f, 0.0f, 0.0f, 0};
         uncommonWeapon.tier = ItemTier::UNCOMMON;
+        uncommonWeapon.regionWeights = { { "ImperialHuman", 100 } };
 
         EquipmentTemplate rareWeapon;
         rareWeapon.name = "Rare Weapon";
@@ -330,6 +332,7 @@ TEST_CASE("PBT: Tier weight distribution converges to configured weights", "[ene
         rareWeapon.value = 100;
         rareWeapon.modifiers = {5.0f, 0.0f, 0.0f, 0};
         rareWeapon.tier = ItemTier::RARE;
+        rareWeapon.regionWeights = { { "ImperialHuman", 100 } };
 
         engine.equipmentTemplates.push_back(commonWeapon);
         engine.equipmentTemplates.push_back(uncommonWeapon);
@@ -348,7 +351,7 @@ TEST_CASE("PBT: Tier weight distribution converges to configured weights", "[ene
         int rareCount = 0;
 
         for (int i = 0; i < NUM_SELECTIONS; ++i) {
-            const EquipmentTemplate* selected = engine.selectEquipmentByTier(EquipmentSlot::WEAPON, weights);
+            const EquipmentTemplate* selected = engine.selectEquipmentByTier(EquipmentSlot::WEAPON, weights, "ImperialHuman");
             RC_ASSERT(selected != nullptr);
             if (selected->tier == ItemTier::COMMON) commonCount++;
             else if (selected->tier == ItemTier::UNCOMMON) uncommonCount++;

@@ -355,7 +355,7 @@ public:
 	// random selection. Normalizes the tier weights to sum to 1.0, rolls a tier, then
 	// picks a random template matching that tier and slot. Returns nullptr if no
 	// templates match (logs a warning via gui->message).
-	const EquipmentTemplate* selectEquipmentByTier(EquipmentSlot slot, const EnemyEquipmentConfig::TierWeights& weights);
+	const EquipmentTemplate* selectEquipmentByTier(EquipmentSlot slot, const EnemyEquipmentConfig::TierWeights& weights, const std::string& regionName);
 
 	// Creates the player actor, stairs, and initial map for a new game.
 	void init();
