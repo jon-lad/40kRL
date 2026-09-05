@@ -602,6 +602,78 @@ local enemies = {
     },
 
     -- ─────────────────────────────────────────────────────────────────────────
+    -- Necron Faction_Region column (Bestiary IV.6 Necrons). 3 Troop entries,
+    -- cumulative chance strictly ascending in declaration order, terminal value 100.
+    -- Characteristics copied verbatim as the base integer (Fel "00"/"01" -> 0/1;
+    -- Unnatural parentheticals excluded from the stored integer and recorded as
+    -- `Unnatural X (xN)` traits). hp = profile Wounds. Machine and Size traits are
+    -- recorded as trait strings (Req 3.3). Each (glyph, color) pair is distinct from
+    -- every other entry across the Bestiary, using colors defined in
+    -- Headers/Colors.hpp. Equipment left empty for now; weapon/armour wiring is
+    -- handled by tasks 12.3/12.4.
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    -- IV.6 — Necron Warrior (Troop): WS 30 BS 45 S 45(6) T 45(6) Ag 25 Int 25 Per 30 WP 45 Fel 01, Wounds 28
+    {
+        chance  = { Necron = 55 },
+        glyph   = string.byte("n"),
+        name    = "Necron Warrior",
+        color   = "lightGrey",
+        hp      = 28.0,
+        defense = 1.0,
+        corpse  = "collapsed Necron Warrior",
+        xp      = 56,
+        power   = 4.0,
+        skill   = 45,                    -- BS (Gauss Flayer ranged-primary)
+        ws = 30, bs = 45, s = 45, t = 45, ag = 25, int = 25, per = 30, wp = 45, fel = 1,
+        equipment = {},
+        skills  = { Athletics = 1, Fortitude = 0, Intimidate = 1 },
+        talents = { "Crack Shot", "Hip Shooting" },
+        traits  = { "Machine (6)", "Regeneration (3, Endless)", "Size (5)",
+                    "Unnatural Strength (x2)", "Unnatural Toughness (x2)" },
+    },
+
+    -- IV.6 — Canoptek Scarab (Troop): WS 35 BS 01 S 10 T 20 Ag 35 Int 05 Per 20 WP 20 Fel 00, Wounds 4
+    {
+        chance  = { Necron = 78 },
+        glyph   = string.byte("c"),
+        name    = "Canoptek Scarab",
+        color   = "lightGrey",
+        hp      = 4.0,
+        defense = 0.0,
+        corpse  = "shattered Scarab",
+        xp      = 12,
+        power   = 2.0,
+        skill   = 35,                    -- WS (Disruptor Mandibles melee; BS 01)
+        ws = 35, bs = 1, s = 10, t = 20, ag = 35, int = 5, per = 20, wp = 20, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 1, Dodge = 0, Stealth = 2 },
+        talents = { "Underfoot Assault" },
+        traits  = { "Deadly Natural Weapons (Disruptor Mandibles)", "Hoverer (4)",
+                    "Machine (4)", "Processor Link", "Size (2)" },
+    },
+
+    -- IV.6 — Canoptek Scarab Swarm (Troop): WS 35 BS 01 S 10 T 20 Ag 35 Int 05 Per 20 WP 20 Fel 00, Wounds 16
+    {
+        chance  = { Necron = 100 },
+        glyph   = string.byte("C"),
+        name    = "Canoptek Scarab Swarm",
+        color   = "lightGrey",
+        hp      = 16.0,
+        defense = 0.0,
+        corpse  = "scattered Scarab Swarm",
+        xp      = 32,
+        power   = 3.0,
+        skill   = 35,                    -- WS (Disruptor Mandibles melee; BS 01)
+        ws = 35, bs = 1, s = 10, t = 20, ag = 35, int = 5, per = 20, wp = 20, fel = 0,
+        equipment = {},
+        skills  = { Awareness = 1, Dodge = 0, Stealth = 2 },
+        talents = { "Combat Master", "Swift Attack" },
+        traits  = { "Deadly Natural Weapons (Disruptor Mandibles)", "Hoverer (8)",
+                    "Machine (4)", "Processor Link", "Regeneration (1d5)", "Size (5)" },
+    },
+
+    -- ─────────────────────────────────────────────────────────────────────────
     -- Ork Faction_Region column — LEGACY flat distribution, rebuilt from the
     -- bestiary IV.7 Troop set by task 6.2. Left unchanged here.
     -- ─────────────────────────────────────────────────────────────────────────
