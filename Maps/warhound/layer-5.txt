@@ -1,0 +1,5 @@
+        # # #
+        # < #      <- Ladder up to the Command Deck
+        # . #      <- Walkway through the neck
+        # > #
+        # # #

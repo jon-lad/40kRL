@@ -1,0 +1,5 @@
+          ^ ^      <- Reinforced Armoured Plasteel Windows
+        # . . #
+        # M M #    <- M = Moderati Stations (Weapon Control & Pilot)
+        # < P #    <- P = Princeps Command Throne (The Captain)
+        # # # #

@@ -1,8 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
+
+// sol::table is a template alias (basic_table_core<...>), not a plain class, so it
+// cannot be forward-declared with `class table;`. sol's lightweight forward header
+// provides the correct declaration without pulling in the full sol2 implementation.
+#include <sol/forward.hpp>
 
 // World map dimensions: each tile represents a 10km x 10km region.
 static constexpr int WORLD_MAP_WIDTH  = 160;
@@ -56,8 +62,34 @@ std::string regionForBiome(BiomeType biome);
 // Never returns an empty string (Requirements 2.2, 2.3).
 std::string resolveDefaultRegion();
 
-// Forward declarations for sol types (avoids pulling sol2 into the header).
-namespace sol { class state; }
+// Maps a Region_Name (or the Universal_Tag "Universal") to a non-negative selection
+// weight, mirroring the string-keyed `region` table in Scripts/Equipment.lua. Also
+// aliased in Engine.hpp for use on EquipmentTemplate (identical redeclaration).
+using RegionWeights = std::map<std::string, int>;
+
+// The documented default region weighting applied to an untagged/malformed entry:
+// { ImperialHuman = DEFAULT_REGION_WEIGHT }. Matches the terminal cumulative value
+// convention used by the NPC `chance` columns (equipment-region-assignment Reqs 5.3, 6.3).
+inline constexpr int DEFAULT_REGION_WEIGHT = 100;
+
+// Region-utility free helpers (equipment-region-assignment feature). These are
+// engine-isolated (no engine.* access) so they are unit/property testable without an
+// initialized Engine, per the test-isolation steering rule. Implementations live in
+// Source/WorldMap.cpp alongside regionForBiome / resolveDefaultRegion.
+
+// Returns true when name is a valid Region_Name from the shared taxonomy (Ork, Eldar,
+// DarkEldar, Necron, Tau, Tyranid, Kroot, Chaos, ImperialHuman, Servitor) or the
+// Universal_Tag "Universal".
+bool isValidRegionName(const std::string& name);
+
+// Parses a sol2 `region` table into RegionWeights: ignores non-string keys, keeps only
+// valid Region_Name/Universal keys with non-negative integer weights, and drops unknown
+// keys and malformed weights per-pair without throwing. Does NOT apply the default.
+RegionWeights parseRegionWeights(const sol::table& regionTable);
+
+// Applies the documented default { ImperialHuman = DEFAULT_REGION_WEIGHT } when the
+// supplied map is empty; leaves a non-empty map unchanged.
+void applyRegionDefault(RegionWeights& weights);
 
 // Generates terrain biomes for the world map using Perlin noise.
 // Reads noise parameters (scale, octaves, lacunarity, thresholds) from the Lua

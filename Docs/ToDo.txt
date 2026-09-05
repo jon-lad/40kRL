@@ -73,6 +73,8 @@ ROADMAP
   - Xenos planets
   - More biomes
 - [ ] Maps reflect location theme with appropriate tiles and decorations
+- [ ] Warhound Titan interior level (multi-layer). Prototype assets staged at Maps/warhound/ (layer-0..layer-6, tiles are 1m x 1m x 2m) — needs wiring into the map/level system as a hand-authored multi-layer level with vertical traversal between layers.
+- [ ] Titan foot layouts. Reference sketches staged at Reference/titan_foot_size.txtx — for scale/footprint of Titan-class walkers (map set-pieces and/or Massive-size creatures).
 
 ## Galactic Strategy Layer
 

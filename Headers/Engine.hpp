@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -14,6 +15,12 @@
 
 // Rarity tier for equipment items — used for weighted random selection during enemy spawning.
 enum class ItemTier { COMMON, UNCOMMON, RARE };
+
+// Maps a Region_Name (or the Universal_Tag "Universal") to a non-negative selection
+// weight, parsed from the optional `region` table in Scripts/Equipment.lua. The alias
+// is defined alongside the region utilities in WorldMap.hpp (included above); this is
+// an identical redeclaration for local readability (equipment-region-assignment).
+using RegionWeights = std::map<std::string, int>;
 
 // A template for a spawnable equipment item, loaded from Equipment.lua at startup.
 struct EquipmentTemplate {
@@ -33,6 +40,11 @@ struct EquipmentTemplate {
 	std::optional<SizeClassification> sizeClass;
 	std::optional<WeaponGroup> weaponGroup;
 	std::optional<DamageType> damageType;
+
+	// Per-region selection weighting parsed from the optional `region` table in
+	// Equipment.lua. Never empty after loading — defaults to { ImperialHuman = 100 }
+	// when the field is absent or fully malformed (equipment-region-assignment).
+	RegionWeights regionWeights;
 };
 
 // Parsed from Lua during enemy template loading. Determines how an enemy
@@ -343,7 +355,7 @@ public:
 	// random selection. Normalizes the tier weights to sum to 1.0, rolls a tier, then
 	// picks a random template matching that tier and slot. Returns nullptr if no
 	// templates match (logs a warning via gui->message).
-	const EquipmentTemplate* selectEquipmentByTier(EquipmentSlot slot, const EnemyEquipmentConfig::TierWeights& weights);
+	const EquipmentTemplate* selectEquipmentByTier(EquipmentSlot slot, const EnemyEquipmentConfig::TierWeights& weights, const std::string& regionName);
 
 	// Creates the player actor, stairs, and initial map for a new game.
 	void init();

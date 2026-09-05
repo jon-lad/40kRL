@@ -1,0 +1,6 @@
+      # # # # #
+    # # # # # # #
+    # > # # # > #  <- Ladders from both legs emerge here
+    # # # H # # #  <- H = Heavy Hip Gyro-Stabiliser (Blocks movement)
+    # # # < # # #
+      # # # # #

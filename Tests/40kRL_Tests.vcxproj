@@ -181,6 +181,8 @@
     <ClCompile Include="test_bestiary_equipment_schema.cpp" />
     <ClCompile Include="test_bestiary_unknown_region.cpp" />
     <ClCompile Include="test_bestiary_appearance.cpp" />
+    <ClCompile Include="test_equipment_region_loading.cpp" />
+    <ClCompile Include="test_equipment_region_selection.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
@@ -207,6 +209,7 @@
     <ClCompile Include="..\Source\CriticalEffects.cpp" />
     <ClCompile Include="..\Source\RangedCombat.cpp" />
     <ClCompile Include="..\Source\WorldMap.cpp" />
+    <ClCompile Include="..\Source\EquipmentRegionSelect.cpp" />
     <ClCompile Include="..\Source\WfcGenerator.cpp" />
     <ClCompile Include="..\Source\Openable.cpp" />
     <ClCompile Include="..\Source\DoorFactory.cpp" />
@@ -238,6 +241,7 @@
     <ClInclude Include="..\Headers\Container.hpp" />
     <ClInclude Include="..\Headers\Destructible.hpp" />
     <ClInclude Include="..\Headers\Engine.hpp" />
+    <ClInclude Include="..\Headers\EquipmentRegionSelect.hpp" />
     <ClInclude Include="..\Headers\Gui.hpp" />
     <ClInclude Include="..\Headers\InputHandler.hpp" />
     <ClInclude Include="..\Headers\main.hpp" />
