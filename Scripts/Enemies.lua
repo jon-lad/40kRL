@@ -1469,6 +1469,287 @@ local enemies = {
                     "Unnatural Senses (50)", "Unnatural Strength (x10)",
                     "Unnatural Toughness (x10)" },
     },
+
+    -- ─────────────────────────────────────────────────────────────────────────
+    -- ImperialHuman Faction_Region column (Bestiary §5.1 Imperial Humans). 11 Troop
+    -- entries: the Colonist base template, its six Minor NPC variants (Adept,
+    -- Bloodskinner, Entertainer, Hired Gun, Scum, Voidfarer) built as base-plus-
+    -- overrides, and four officers (Mutant Outcast, Oathsworn Bodyguard, Renegade,
+    -- Warp Witch). Cumulative chance strictly ascending in declaration order,
+    -- terminal value 100. Characteristics copied verbatim as the base integer.
+    -- hp = profile Wounds (Colonist base 9; Hired Gun override 12). Each variant's
+    -- skills/talents/traits are the Colonist base entries plus its cited additions
+    -- (Requirement 4.4). Each (glyph, color) pair is distinct from every other entry
+    -- across the Bestiary, using colors defined in Headers/Colors.hpp. Equipment
+    -- left empty for now; weapon/armour wiring is handled by tasks 12.3/12.4.
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    -- §5.1 — Colonist (base template) (Troop): WS 25 BS 20 S 30 T 30 Ag 30 Int 25 Per 25 WP 25 Fel 30, Wounds 9
+    {
+        chance  = { ImperialHuman = 18 },
+        glyph   = string.byte("C"),
+        name    = "Colonist",
+        color   = "white",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Colonist",
+        xp      = 12,
+        power   = 2.0,
+        skill   = 25,                    -- WS (Primitive melee / SP)
+        ws = 25, bs = 20, s = 30, t = 30, ag = 30, int = 25, per = 25, wp = 25, fel = 30,
+        equipment = {},
+        skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0,
+                    ["Drive (Ground Vehicle)"] = 0,
+                    ["Speak Language (Low Gothic)"] = 0, ["Trade (Labourer)"] = 0 },
+        talents = { "Basic Weapon Training (SP)", "Melee Weapon Training (Primitive)" },
+        traits  = {},
+    },
+
+    -- §5.1 — Adept (Colonist variant): base + Int 30; Wounds 9
+    {
+        chance  = { ImperialHuman = 30 },
+        glyph   = string.byte("a"),
+        name    = "Adept",
+        color   = "lightYellow",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Adept",
+        xp      = 14,
+        power   = 2.0,
+        skill   = 25,                    -- WS (base)
+        ws = 25, bs = 20, s = 30, t = 30, ag = 30, int = 30, per = 25, wp = 25, fel = 30,
+        equipment = {},
+        -- Colonist base skills + Adept additions.
+        skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0,
+                    ["Drive (Ground Vehicle)"] = 0,
+                    ["Speak Language (Low Gothic)"] = 0, ["Trade (Labourer)"] = 0,
+                    ["Common Knowledge (Imperium)"] = 1, Literacy = 1,
+                    ["Speak Language (High Gothic)"] = 0 },
+        talents = { "Basic Weapon Training (SP)", "Melee Weapon Training (Primitive)" },
+        traits  = {},
+    },
+
+    -- §5.1 — Bloodskinner (Colonist variant): base + WS 35, BS 30, Per 35; Wounds 9
+    {
+        chance  = { ImperialHuman = 40 },
+        glyph   = string.byte("b"),
+        name    = "Bloodskinner",
+        color   = "brown",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Bloodskinner",
+        xp      = 20,
+        power   = 3.0,
+        skill   = 35,                    -- WS (Chainaxe / knife melee-primary)
+        ws = 35, bs = 30, s = 30, t = 30, ag = 30, int = 25, per = 35, wp = 25, fel = 30,
+        equipment = {},
+        -- Colonist base skills + Bloodskinner additions.
+        skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0,
+                    ["Drive (Ground Vehicle)"] = 0,
+                    ["Speak Language (Low Gothic)"] = 0, ["Trade (Labourer)"] = 0,
+                    ["Navigation (Surface)"] = 0, Survival = 0, Tracking = 0,
+                    Wrangling = 0 },
+        -- Colonist base talents + Bloodskinner additions.
+        talents = { "Basic Weapon Training (SP)", "Melee Weapon Training (Primitive)",
+                    "Basic Weapon Training (Primitive)", "Melee Weapon Training (Chain)" },
+        traits  = {},
+    },
+
+    -- §5.1 — Entertainer (Colonist variant): base + Fel 35; Wounds 9
+    {
+        chance  = { ImperialHuman = 50 },
+        glyph   = string.byte("e"),
+        name    = "Entertainer",
+        color   = "magenta",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Entertainer",
+        xp      = 14,
+        power   = 2.0,
+        skill   = 25,                    -- WS (base)
+        ws = 25, bs = 20, s = 30, t = 30, ag = 30, int = 25, per = 25, wp = 25, fel = 35,
+        equipment = {},
+        -- Colonist base skills + Entertainer additions.
+        skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0,
+                    ["Drive (Ground Vehicle)"] = 0,
+                    ["Speak Language (Low Gothic)"] = 0, ["Trade (Labourer)"] = 0,
+                    Carouse = 0, Charm = 0, Deceive = 0, Performer = 0 },
+        talents = { "Basic Weapon Training (SP)", "Melee Weapon Training (Primitive)" },
+        traits  = {},
+    },
+
+    -- §5.1 — Hired Gun (Colonist variant): base + BS 35, Wounds 12
+    {
+        chance  = { ImperialHuman = 62 },
+        glyph   = string.byte("h"),
+        name    = "Hired Gun",
+        color   = "tan",
+        hp      = 12.0,                  -- Wounds override 12
+        defense = 0.0,
+        corpse  = "dead Hired Gun",
+        xp      = 24,
+        power   = 2.0,
+        skill   = 35,                    -- BS (Lasgun / stub automatic ranged-primary)
+        ws = 25, bs = 35, s = 30, t = 30, ag = 30, int = 25, per = 25, wp = 25, fel = 30,
+        equipment = {},
+        -- Colonist base skills + Hired Gun additions.
+        skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0,
+                    ["Drive (Ground Vehicle)"] = 0,
+                    ["Speak Language (Low Gothic)"] = 0, ["Trade (Labourer)"] = 0,
+                    Climb = 0, Intimidate = 0 },
+        -- Colonist base talents + Hired Gun additions.
+        talents = { "Basic Weapon Training (SP)", "Melee Weapon Training (Primitive)",
+                    "Basic Weapon Training (Universal)",
+                    "Pistol Weapon Training (Universal)" },
+        traits  = {},
+    },
+
+    -- §5.1 — Scum (Colonist variant): base + WS 30, Per 30; Wounds 9
+    {
+        chance  = { ImperialHuman = 74 },
+        glyph   = string.byte("s"),
+        name    = "Scum",
+        color   = "brown",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Scum",
+        xp      = 16,
+        power   = 2.0,
+        skill   = 30,                    -- WS (base override) / stub revolver
+        ws = 30, bs = 20, s = 30, t = 30, ag = 30, int = 25, per = 30, wp = 25, fel = 30,
+        equipment = {},
+        -- Colonist base skills + Scum additions.
+        skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0,
+                    ["Drive (Ground Vehicle)"] = 0,
+                    ["Speak Language (Low Gothic)"] = 0, ["Trade (Labourer)"] = 0,
+                    Carouse = 0, ["Chem-Use"] = 0, Deceive = 0, Gamble = 0,
+                    ["Silent Move"] = 0 },
+        -- Colonist base talents + Scum additions.
+        talents = { "Basic Weapon Training (SP)", "Melee Weapon Training (Primitive)",
+                    "Jaded", "Pistol Weapon Training (Universal)" },
+        traits  = {},
+    },
+
+    -- §5.1 — Voidfarer (Colonist variant): base + S 38, T 38; Wounds 9
+    {
+        chance  = { ImperialHuman = 82 },
+        glyph   = string.byte("v"),
+        name    = "Voidfarer",
+        color   = "steelBlue",
+        hp      = 9.0,
+        defense = 0.0,
+        corpse  = "dead Voidfarer",
+        xp      = 16,
+        power   = 3.0,
+        skill   = 25,                    -- WS (base)
+        ws = 25, bs = 20, s = 38, t = 38, ag = 30, int = 25, per = 25, wp = 25, fel = 30,
+        equipment = {},
+        -- Colonist base skills + Voidfarer additions.
+        skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0,
+                    ["Drive (Ground Vehicle)"] = 0,
+                    ["Speak Language (Low Gothic)"] = 0, ["Trade (Labourer)"] = 0,
+                    ["Speak Language (Void Cant)"] = 0, ["Tech-Use"] = 0 },
+        talents = { "Basic Weapon Training (SP)", "Melee Weapon Training (Primitive)" },
+        traits  = {},
+    },
+
+    -- §5.1 — Mutant Outcast (Troop): WS 28 BS 22 S 35 T 35 Ag 22 Int 18 Per 25 WP 18 Fel 15, Wounds 12
+    {
+        chance  = { ImperialHuman = 88 },
+        glyph   = string.byte("M"),
+        name    = "Mutant Outcast",
+        color   = "brown",
+        hp      = 12.0,
+        defense = 0.0,
+        corpse  = "dead Mutant Outcast",
+        xp      = 22,
+        power   = 3.0,
+        skill   = 28,                    -- WS (Improvised club melee-primary)
+        ws = 28, bs = 22, s = 35, t = 35, ag = 22, int = 18, per = 25, wp = 18, fel = 15,
+        equipment = {},
+        skills  = { Climb = 0, Intimidate = 0, Survival = 0, ["Trade (Scavenger)"] = 0 },
+        talents = { "Basic Weapon Training (Primitive)", "Frenzy", "Jaded",
+                    "Resistance (Poisons)" },
+        traits  = { "Mutation" },
+    },
+
+    -- §5.1 — Oathsworn Bodyguard (Troop): WS 42 BS 35 S 35 T 40 Ag 35 Int 35 Per 38 WP 35 Fel 28, Wounds 18
+    {
+        chance  = { ImperialHuman = 93 },
+        glyph   = string.byte("O"),
+        name    = "Oathsworn Bodyguard",
+        color   = "white",
+        hp      = 18.0,
+        defense = 1.0,
+        corpse  = "dead Oathsworn Bodyguard",
+        xp      = 48,
+        power   = 3.0,
+        skill   = 42,                    -- WS (melee-primary; strong ranged too)
+        ws = 42, bs = 35, s = 35, t = 40, ag = 35, int = 35, per = 38, wp = 35, fel = 28,
+        equipment = {},
+        skills  = { Awareness = 1, ["Common Lore (Imperium)"] = 0, Dodge = 1,
+                    ["Drive (Land Vehicle)"] = 0, Inquiry = 0, Intimidate = 1,
+                    Scrutiny = 1, Security = 1, Shadowing = 1, ["Silent Move"] = 0 },
+        talents = { "Basic Weapon Training (Las)", "Basic Weapon Training (SP)",
+                    "Basic Weapon Training (Bolt)", "Crack Shot", "Disarm",
+                    "Melee Weapon Training (Primitive)",
+                    "Melee Weapon Training (Universal)", "Nerves of Steel",
+                    "Pistol Weapon Training (Universal)", "Quick Draw" },
+        traits  = {},
+    },
+
+    -- §5.1 — Renegade (Troop): WS 38 BS 28 S 35 T 40 Ag 30 Int 25 Per 33 WP 35 Fel 22, Wounds 12
+    -- NOTE: this is the Chapter V Imperial-Human "Renegade" officer (§5.1), a DIFFERENT
+    -- entry from the Chaos "Renegade Soldier"/"Renegade Veteran" (IV.1). Its name is
+    -- exactly "Renegade".
+    {
+        chance  = { ImperialHuman = 97 },
+        glyph   = string.byte("r"),
+        name    = "Renegade",
+        color   = "tan",
+        hp      = 12.0,
+        defense = 0.0,
+        corpse  = "dead Renegade",
+        xp      = 32,
+        power   = 3.0,
+        skill   = 38,                    -- WS (Chainsword / hand cannon)
+        ws = 38, bs = 28, s = 35, t = 40, ag = 30, int = 25, per = 33, wp = 35, fel = 22,
+        equipment = {},
+        skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0, ["Chem-Use"] = 0,
+                    Intimidate = 1, ["Speak Language (Low Gothic)"] = 0, Deceive = 0,
+                    ["Tech-Use"] = 0 },
+        talents = { "Basic Weapon Training (SP)", "Jaded",
+                    "Melee Weapon Training (Chain)", "Melee Weapon Training (Primitive)",
+                    "Melee Weapon Training (Thrown)", "Pistol Training (Las)",
+                    "Pistol Training (SP)", "Peer (Renegade)" },
+        traits  = {},
+    },
+
+    -- §5.1 — Warp Witch (Troop): WS 28 BS 28 S 30 T 40 Ag 36 Int 28 Per 37 WP 45 Fel 23, Wounds 13
+    {
+        chance  = { ImperialHuman = 100 },
+        glyph   = string.byte("W"),
+        name    = "Warp Witch",
+        color   = "purple",
+        hp      = 13.0,
+        defense = 0.0,
+        corpse  = "dead Warp Witch",
+        xp      = 44,
+        power   = 2.0,
+        skill   = 28,                    -- WS (Sacrificial blade melee)
+        ws = 28, bs = 28, s = 30, t = 40, ag = 36, int = 28, per = 37, wp = 45, fel = 23,
+        equipment = {},
+        skills  = { Awareness = 0, ["Ciphers (Occult)"] = 0,
+                    ["Common Lore (Imperium)"] = 0, Command = 0, Deceive = 1,
+                    ["Forbidden Lore (Warp)"] = 1, Intimidate = 1, Invocation = 1,
+                    Psyniscience = 0, ["Secret Tongue (Cult)"] = 0,
+                    ["Speak Language (Low Gothic)"] = 0, ["Trade (Seer)"] = 0 },
+        talents = { "Dark Soul", "Fearless", "Jaded",
+                    "Melee Weapon Training (Primitive)", "Peer (Renegade)",
+                    "Pistol Weapon Training (SP)", "Psy Rating (6)",
+                    "Resistance (Psychic Techniques)" },
+        traits  = { "Dark Pact", "Mutation" },
+    },
 }
 
 function spawnEnemy(roll, x, y, region)
