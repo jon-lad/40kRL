@@ -204,6 +204,76 @@ Name | Class | Range | RoF (S/B/A) | Damage | Pen | Clip | Reload | Qualities | 
 
 ---
 
+## Weapon Upgrades
+
+> Source: RT Core Table 5-9 (all rows). Native lighter columns `Name | Weight | Availability`; Weight is the modifier the upgrade applies to the base weapon's weight (`x1/2` = halves it, `+N kg` = adds mass). No damage/pen/range profile applies — these are attachments to existing weapons.
+
+| Name | Weight | Availability | Source |
+|---|---|---|---|
+| Compact | x1/2 | Average | RT Core Table 5-9 |
+| Fire Selector | +1 kg | Scarce | RT Core Table 5-9 |
+| Forearm Weapon Mounting | +1 kg | Scarce | RT Core Table 5-9 |
+| Melee Attachment | +2 kg | Plentiful | RT Core Table 5-9 |
+| Mono | +0 kg | Scarce | RT Core Table 5-9 |
+| Motion Predictor | +0.5 kg | Very Rare | RT Core Table 5-9 |
+| Photo-scope | +0.5 kg | Very Rare | RT Core Table 5-9 |
+| Preysense-scope | +0.5 kg | Very Rare | RT Core Table 5-9 |
+| Omni-scope | +2 kg | Near Unique | RT Core Table 5-9 |
+| Overcharge Pack | +0.5 kg | Common | RT Core Table 5-9 |
+| Red-Dot Laser Sight | +0.5 kg | Scarce | RT Core Table 5-9 |
+| Silencer | +0.5 kg | Plentiful | RT Core Table 5-9 |
+| Suspensors | x1/2 | Extremely Rare | RT Core Table 5-9 |
+| Telescopic Sight | +1 kg | Average | RT Core Table 5-9 |
+| Vox Operated | +0.5 kg | Rare | RT Core Table 5-9 |
+
+---
+
+## Ammunition
+
+> Source: RT Core Table 5-10 (all rows). Native lighter columns `Name | Availability`. Standard munitions and power/fuel cells sold per weapon class (pistol/basic/heavy). No stat profile of their own — they supply the loaded weapon's Clip.
+
+| Name | Availability | Source |
+|---|---|---|
+| Arrows/Quarrels | Common | RT Core Table 5-10 |
+| Backpack Power Pack | Rare | RT Core Table 5-10 |
+| Shot | Common | RT Core Table 5-10 |
+| Bullets | Plentiful | RT Core Table 5-10 |
+| Shells | Common | RT Core Table 5-10 |
+| Charge Pack (pistol) | Common | RT Core Table 5-10 |
+| Charge Pack (basic) | Common | RT Core Table 5-10 |
+| Charge Pack (heavy) | Rare | RT Core Table 5-10 |
+| Fuel (pistol) | Scarce | RT Core Table 5-10 |
+| Fuel (basic) | Scarce | RT Core Table 5-10 |
+| Fuel (heavy) | Scarce | RT Core Table 5-10 |
+| Bolt Shells | Rare | RT Core Table 5-10 |
+| Melta Canister (pistol) | Very Rare | RT Core Table 5-10 |
+| Melta Canister (basic) | Very Rare | RT Core Table 5-10 |
+| Melta Canister (heavy) | Very Rare | RT Core Table 5-10 |
+| Plasma Flask (pistol) | Rare | RT Core Table 5-10 |
+| Plasma Flask (basic) | Rare | RT Core Table 5-10 |
+| Plasma Flask (heavy) | Very Rare | RT Core Table 5-10 |
+| Exotic | Very Rare | RT Core Table 5-10 |
+
+---
+
+## Unusual Ammunition
+
+> Source: RT Core Table 5-11 (all rows). Native lighter columns `Name | Availability`. Special-issue rounds that modify the loaded weapon's behaviour; each swaps in for standard ammunition of the matching type. Source B lists these by Availability only (no per-round stat line or footnote is given in the table).
+
+| Name | Availability | Source |
+|---|---|---|
+| Amputator Shells | Extremely Rare | RT Core Table 5-11 |
+| Bleeder Rounds | Rare | RT Core Table 5-11 |
+| Dumdum Bullets | Scarce | RT Core Table 5-11 |
+| Expander Rounds | Scarce | RT Core Table 5-11 |
+| Explosive Arrows/Quarrels | Scarce | RT Core Table 5-11 |
+| Hot-Shot Charge Pack | Scarce | RT Core Table 5-11 |
+| Inferno Shells | Rare | RT Core Table 5-11 |
+| Man-stopper Bullets | Scarce | RT Core Table 5-11 |
+| Tempest Bolt Shells | Near Unique | RT Core Table 5-11 |
+
+---
+
 ## Melee Weapons — Primitive / Low-Tech
 
 > Source: rows reconciled from Existing Target and RT Core Table 5-8. Existing curated `+SB` Damage formulas and Existing-only qualities (Primitive(7)/(8) magnitudes, Concussive(0), Defensive) retained where Source B omitted or differed. Weight/availability added from Table 5-8. NEW rows (Groxwhip, Improvised, Kraken Tooth Dagger, Truncheon) cite RT Core Table 5-8.
