@@ -404,7 +404,9 @@ local enemies = {
         power   = 3.0,
         skill   = 40,                    -- BS (Shuriken Catapult ranged-primary)
         ws = 40, bs = 40, s = 35, t = 35, ag = 40, int = 35, per = 40, wp = 35, fel = 30,
-        equipment = {},
+        equipment = { "Eldar Chainsword" },  -- defined in Equipment.lua (RT-Bestiary IV.4)
+        dropChance = 0.4,
+        equipTier = { common = 80, uncommon = 18, rare = 2 },
         skills  = { Acrobatics = 1, Awareness = 0, Deceive = 1, Discipline = 0,
                     Dodge = 1, ["Linguistics (Aeldari)"] = 0, Medicae = 0,
                     ["Navigate (Surface, Webway)"] = 0,
@@ -1591,7 +1593,9 @@ local enemies = {
         power   = 2.0,
         skill   = 35,                    -- BS (Lasgun / stub automatic ranged-primary)
         ws = 25, bs = 35, s = 30, t = 30, ag = 30, int = 25, per = 25, wp = 25, fel = 30,
-        equipment = {},
+        equipment = { "Lasgun", "Light Flak Coat" },  -- both defined in Equipment.lua (design §5)
+        dropChance = 0.4,
+        equipTier = { common = 90, uncommon = 8, rare = 2 },
         -- Colonist base skills + Hired Gun additions.
         skills  = { Awareness = 0, ["Common Lore (Imperium)"] = 0,
                     ["Drive (Ground Vehicle)"] = 0,
