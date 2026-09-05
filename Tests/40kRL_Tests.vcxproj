@@ -177,6 +177,8 @@
     <ClCompile Include="test_bestiary_hp.cpp" />
     <ClCompile Include="test_bestiary_collections.cpp" />
     <ClCompile Include="test_bestiary_roster.cpp" />
+    <ClCompile Include="test_bestiary_equipment.cpp" />
+    <ClCompile Include="test_bestiary_equipment_schema.cpp" />
   </ItemGroup>
   <!-- Game source files (all except main.cpp to avoid duplicate main()) -->
   <ItemGroup>
