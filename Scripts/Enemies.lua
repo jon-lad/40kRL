@@ -381,6 +381,93 @@ local enemies = {
     },
 
     -- ─────────────────────────────────────────────────────────────────────────
+    -- Eldar Faction_Region column (Bestiary IV.4 Craftworld Eldar + Eldar Corsair
+    -- §5.3). 3 entries, cumulative chance strictly ascending in declaration order,
+    -- terminal value 100. Characteristics copied verbatim as the base integer
+    -- (Unnatural parentheticals excluded from the stored integer and recorded as
+    -- `Unnatural X (xN)` traits). hp = profile Wounds. Each (glyph, color) pair is
+    -- distinct from every other entry across the Bestiary, using colors defined in
+    -- Headers/Colors.hpp. Equipment left empty for now; weapon/armour wiring is
+    -- handled by tasks 12.3/12.4.
+    -- ─────────────────────────────────────────────────────────────────────────
+
+    -- IV.4 — Eldar Guardian (Troop): WS 40 BS 40 S 35 T 35 Ag 40(6) Int 35 Per 40(5) WP 35 Fel 30, Wounds 9
+    {
+        chance  = { Eldar = 45 },
+        glyph   = string.byte("e"),
+        name    = "Eldar Guardian",
+        color   = "lightBlue",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Eldar Guardian",
+        xp      = 30,
+        power   = 3.0,
+        skill   = 40,                    -- BS (Shuriken Catapult ranged-primary)
+        ws = 40, bs = 40, s = 35, t = 35, ag = 40, int = 35, per = 40, wp = 35, fel = 30,
+        equipment = {},
+        skills  = { Acrobatics = 1, Awareness = 0, Deceive = 1, Discipline = 0,
+                    Dodge = 1, ["Linguistics (Aeldari)"] = 0, Medicae = 0,
+                    ["Navigate (Surface, Webway)"] = 0,
+                    ["Operate (Aeronautica, Surface)"] = 0, Parry = 0, Stealth = 1 },
+        talents = { "Catfall", "Hip Shooting", "Leap Up", "Quick Draw" },
+        traits  = { "Psyker", "Unnatural Agility (x2)", "Unnatural Perception (x1)" },
+    },
+
+    -- IV.4 — Eldar Ranger (Troop): WS 40 BS 50 S 35 T 35 Ag 50(8) Int 35 Per 40(6) WP 35 Fel 30, Wounds 9
+    {
+        chance  = { Eldar = 78 },
+        glyph   = string.byte("e"),
+        name    = "Eldar Ranger",
+        color   = "lightGreen",
+        hp      = 9.0,
+        defense = 1.0,
+        corpse  = "dead Eldar Ranger",
+        xp      = 44,
+        power   = 3.0,
+        skill   = 50,                    -- BS (Eldar Long Rifle sniper ranged-primary)
+        ws = 40, bs = 50, s = 35, t = 35, ag = 50, int = 35, per = 40, wp = 35, fel = 30,
+        equipment = {},
+        skills  = { Acrobatics = 1, Awareness = 2, Deceive = 1, Discipline = 0,
+                    Dodge = 2, ["Linguistics (Aeldari)"] = 0, Medicae = 0,
+                    ["Navigate (Surface, Webway)"] = 2,
+                    ["Operate (Aeronautica, Surface)"] = 0, Stealth = 2, Survival = 1 },
+        talents = { "Catfall", "Hip Shooting", "Keen Intuition", "Leap Up", "Marksman",
+                    "Quick Draw", "Stealth Sniper", "Surefooted Wayfinder",
+                    "Talented (Stealth)", "Target Selection" },
+        traits  = { "Psyker", "Unnatural Agility (x3)", "Unnatural Perception (x2)" },
+    },
+
+    -- §5.3 — Eldar Corsair (Troop): WS 48 BS 48 S 33 T 35 Ag 52(10) Int 39 Per 40 WP 43 Fel 25, Wounds 12
+    {
+        chance  = { Eldar = 100 },
+        glyph   = string.byte("E"),
+        name    = "Eldar Corsair",
+        color   = "cyan",
+        hp      = 12.0,
+        defense = 1.0,
+        corpse  = "dead Eldar Corsair",
+        xp      = 60,
+        power   = 3.0,
+        skill   = 48,                    -- BS (Shuriken Catapult ranged-primary)
+        ws = 48, bs = 48, s = 33, t = 35, ag = 52, int = 39, per = 40, wp = 43, fel = 25,
+        equipment = {},
+        skills  = { Acrobatics = 0, Awareness = 1, Barter = 0, Deceive = 1, Dodge = 0,
+                    Evaluate = 1,
+                    ["Forbidden Lore (The Black Library, Xenos, The Warp)"] = 0,
+                    Gamble = 0, ["Navigation (Stellar)"] = 0,
+                    ["Pilot (Interface Craft, Jump Pack)"] = 0, Medicae = 0,
+                    ["Silent Move"] = 1,
+                    ["Speak Language (Eldar, Low Gothic, Void Cant)"] = 1 },
+        talents = { "Basic Weapon Training (Las)", "Catfall",
+                    "Exotic Weapon Training (Shuriken Catapult, Shuriken Pistol)",
+                    "Leap Up", "Melee Weapon Training (Power, Primitive)",
+                    "Pistol Weapon Training (Las)", "Quick Draw",
+                    "Resistance (Fear, Psychic Techniques)", "Sprint" },
+        -- Dark-Sight from gear; inbuilt void impellors grant Flyer (12) in null gravity.
+        traits  = { "Unnatural Agility (x2)", "Dark-Sight", "Flyer (12)" },
+    },
+
+    -- ─────────────────────────────────────────────────────────────────────────
     -- Ork Faction_Region column — LEGACY flat distribution, rebuilt from the
     -- bestiary IV.7 Troop set by task 6.2. Left unchanged here.
     -- ─────────────────────────────────────────────────────────────────────────

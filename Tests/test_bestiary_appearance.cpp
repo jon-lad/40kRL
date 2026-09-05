@@ -41,6 +41,8 @@ const std::set<std::string>& knownColorNames() {
         "white", "desaturatedGreen", "darkerGreen", "lightBlue", "orange",
         "lightGreen", "violet", "lightYellow", "lightGrey", "lighterOrange",
         "darkGrey", "red", "darkRed", "cyan", "brown", "gold",
+        "crimson", "purple", "metalGrey", "lightCyan", "darkGreen", "pink",
+        "teal", "tan", "magenta", "steelBlue", "boneWhite", "darkOrange",
     };
     return names;
 }
