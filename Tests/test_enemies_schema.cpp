@@ -142,8 +142,18 @@ TEST_CASE("Enemies.lua schema: every entry's chance is a keyed table of ints in 
     }
 }
 
-// ─── Ork set retained with expected fields and cumulative chances (Req 7.1, 7.2) ─
-TEST_CASE("Enemies.lua retains the Ork set with expected fields and chance.Ork values",
+// ─── Ork column reconciled to the bestiary IV.7 Troop set (bestiary-npcs Req 8) ──
+// This test was superseded by the bestiary-npcs spec (Requirement 8, Ork
+// reconciliation), which rebuilt the Ork Faction_Region column from the Rogue
+// Trader bestiary IV.7 Troop set (+ Ork Freebooter §5.3). The legacy names
+// "Ork", "Shoota Boy" and "Nob" were retired ("Ork" -> "Ork Boy", "Shoota Boy"
+// folded into "Ork Boy", and the bestiary "Nob" is Elite / out of scope);
+// "Gretchin" was kept but realigned to the IV.7 profile. The old flat cumulative
+// distribution (Gretchin 50 / Ork 75 / Shoota Boy 90 / Nob 100) no longer applies,
+// so this case now asserts the reconciled roster and the structural invariant
+// (strictly ascending cumulative chances terminating at exactly 100) rather than
+// the retired hard-coded values.
+TEST_CASE("Enemies.lua Ork column reconciled to the IV.7 Troop set (legacy names retired)",
           "[region-based-npc-spawns][enemies-schema]") {
     sol::state lua;
     LoadedEnemies enemies = collectEnemies(lua);
@@ -153,36 +163,48 @@ TEST_CASE("Enemies.lua retains the Ork set with expected fields and chance.Ork v
     }
     REQUIRE(enemies.loaded);
 
-    // Req 7.1: the four Ork-faction templates still exist.
-    REQUIRE(enemies.byName.count("Gretchin") == 1);
-    REQUIRE(enemies.byName.count("Ork") == 1);
-    REQUIRE(enemies.byName.count("Shoota Boy") == 1);
-    REQUIRE(enemies.byName.count("Nob") == 1);
+    // collectEnemies drives spawnEnemy with the "Ork" region, so inOrder holds the
+    // Ork Faction_Region column (entries whose chance table carries an "Ork" key).
+    // The column still exists and is non-empty.
+    REQUIRE_FALSE(enemies.inOrder.empty());
 
-    // Helper: assert an entry keeps its expected template fields and Ork chance.
-    auto checkEntry = [&](const std::string& name, char glyphChar, const std::string& corpse,
-                          int xp, int expectedOrkChance) {
-        INFO("enemy = " << name);
-        sol::table e = enemies.byName.at(name);
-
-        // Existing template fields retained (Req 7.1).
-        CHECK(fieldOr<std::string>(e, "name", "") == name);
-        CHECK(fieldOr<int>(e, "glyph", -1) == static_cast<int>(glyphChar));
-        CHECK(fieldOr<std::string>(e, "corpse", "") == corpse);
-        CHECK(fieldOr<int>(e, "xp", -1) == xp);
-
-        // Req 7.2: chance.Ork reproduces the previous flat cumulative distribution.
+    // Reconciled rank-and-file exist (Gretchin realigned; the bare "Ork" renamed to
+    // "Ork Boy") and belong to the Ork column (their chance table carries "Ork").
+    auto isOrkColumnEntry = [](const sol::table& e) {
         sol::object chanceObj = e["chance"];
-        REQUIRE(chanceObj.get_type() == sol::type::table);
-        sol::table chanceTbl = chanceObj.as<sol::table>();
-        sol::object ork = chanceTbl["Ork"];
-        REQUIRE(ork.get_type() == sol::type::number);
-        CHECK(ork.as<int>() == expectedOrkChance);
+        if (chanceObj.get_type() != sol::type::table) return false;
+        sol::object ork = chanceObj.as<sol::table>()["Ork"];
+        return ork.get_type() == sol::type::number;
     };
 
-    // Expected cumulative Ork chances: Gretchin 50, Ork 75, Shoota Boy 90, Nob 100.
-    checkEntry("Gretchin",   'g', "dead Gretchin",   15,  50);
-    checkEntry("Ork",        'o', "dead Ork",        35,  75);
-    checkEntry("Shoota Boy", 'o', "dead Shoota Boy", 40,  90);
-    checkEntry("Nob",        'N', "Nob carcass",    100, 100);
+    for (const char* name : { "Gretchin", "Ork Boy" }) {
+        INFO("expected reconciled Ork entry = " << name);
+        REQUIRE(enemies.byName.count(name) == 1);
+        CHECK(isOrkColumnEntry(enemies.byName.at(name)));
+    }
+
+    // Legacy names retired by the bestiary-npcs Ork reconciliation.
+    CHECK(enemies.byName.count("Ork") == 0);
+    CHECK(enemies.byName.count("Shoota Boy") == 0);
+    CHECK(enemies.byName.count("Nob") == 0);
+
+    // Structural invariant: within the Ork column the cumulative chance.Ork values
+    // are strictly ascending in declaration order and the final one is exactly 100.
+    int prev = 0;
+    int last = -1;
+    bool sawAny = false;
+    for (const auto& e : enemies.inOrder) {
+        if (!isOrkColumnEntry(e)) continue;
+        const std::string name = fieldOr<std::string>(e, "name", "<unnamed>");
+        INFO("Ork column entry = " << name);
+        const int cum = e["chance"].get<sol::table>()["Ork"].get<int>();
+        CHECK(cum > prev); // strictly ascending
+        CHECK(cum >= 0);
+        CHECK(cum <= 100);
+        prev = cum;
+        last = cum;
+        sawAny = true;
+    }
+    REQUIRE(sawAny);
+    CHECK(last == 100); // terminal cumulative value is exactly 100
 }
