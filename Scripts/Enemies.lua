@@ -7,11 +7,55 @@
 -- The function calls back into C++ via the injected addActor(x, y, entry) function,
 -- passing the entire enemy table entry so C++ can read all fields including equipment config.
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Faction_Region convention
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Each faction owns exactly one Faction_Region column. There are ten Region_Name
+-- values, and every Enemy_Entry declares a SINGLE-KEY `chance` table naming its own
+-- faction, e.g. `chance = { Tyranid = 40 }`. Because spawnEnemy reads
+-- `e.chance[region]` and skips entries whose table lacks the requested key, an entry
+-- is only ever selectable in its own faction's region (faction purity).
+--
+-- The ten Faction_Region keys (declaration/design order):
+--   Chaos          -- Renegades/Heretics/Mutants + Daemons (Bestiary IV.1, IV.3)
+--   Eldar          -- Craftworld Eldar + Eldar Corsair     (IV.4, §5.3)
+--   DarkEldar      -- Harlequins & Dark Eldar              (IV.5)
+--   Necron         -- Necrons                              (IV.6)
+--   Ork            -- Orks + Ork Freebooter                (IV.7, §5.3)
+--   Tau            -- Tau/Kroot/Vespid + Kroot Mercenary   (IV.8, §5.3)
+--   Tyranid        -- Tyranids                             (IV.9)
+--   ImperialHuman  -- Imperial Humans (Colonist + variants + officers) (§5.1)
+--   Servitor       -- Servitors                            (§5.2)
+--   Warp           -- Denizens of the Warp                 (§5.4)
+--
+-- Within a Faction_Region column the cumulative `chance` values are strictly
+-- ascending in declaration order, and the final entry in each column is exactly 100.
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Deferred scope (future work — intentionally NOT in this data set)
+-- ─────────────────────────────────────────────────────────────────────────────
+--   * Elite-tier and Master-tier NPCs. Only Troop-tagged profiles and the six
+--     Colonist variants are in scope; Elite/Master profiles are deferred. The schema
+--     and the spawnEnemy signature are unchanged, so Elite/Master entries can be
+--     added later without structural change.
+--   * Weighted multi-faction regions. A whole level is designated a single
+--     Faction_Region; weighted mixes across factions are deferred.
+--   * Per-tile spawn granularity. Region designation is per level, not per tile.
+--   * Vehicles and war machines live in `Reference/vehicles.md`, not the bestiary
+--     creature set, and are out of scope for this feature.
+-- ─────────────────────────────────────────────────────────────────────────────
+
 -- Enemy definitions table.
--- Fields: chance (per-region cumulative % table keyed by Region_Name), glyph, name,
---         color, hp, defense, corpse, xp, power, skill
+-- Fields: chance (single-key per-faction cumulative % table keyed by Region_Name),
+--         glyph, name, color, hp, defense, corpse, xp, power, skill,
+--         and the nine characteristics (ws, bs, s, t, ag, int, per, wp, fel).
 -- Optional equipment fields: equipment (list of strings), dropChance (float), equipTier (table)
--- The Ork column reproduces the previous flat distribution:
+-- Optional stat-block fields: skills (name->rank table), talents (string list), traits (string list)
+--
+-- NOTE: The faction data entries are populated by subsequent tasks (Chaos, Eldar,
+-- DarkEldar, Necron, Ork reconciliation, Tau, Tyranid, ImperialHuman, Servitor,
+-- Warp). The Ork column below is the legacy flat distribution retained until the
+-- Ork reconciliation task rebuilds it from the bestiary IV.7 Troop set:
 --   Gretchin 50, Ork 75, Shoota Boy 90, Nob 100.
 local enemies = {
     {
